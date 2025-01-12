@@ -1,0 +1,11 @@
+[package]
+name = "dataflex-lsp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dirs = "5.0.1"
+log = "0.4.22"
+simplelog = "0.12.2"
+tokio = { version = "1.43.0", features = ["full"] }
+tower-lsp = "0.20.0"
