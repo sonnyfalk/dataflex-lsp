@@ -1,3 +1,4 @@
+mod dataflex_document;
 mod language_server;
 mod logging;
 
