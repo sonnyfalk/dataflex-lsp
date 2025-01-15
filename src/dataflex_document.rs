@@ -35,3 +35,19 @@ impl DataFlexDocument {
         self.update();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::DataFlexDocument;
+
+    #[test]
+    fn test_replace_content() {
+        let mut doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n".to_string());
+        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
+
+        doc.replace_content("Procedure test\nEnd_Procedure\n".to_string());
+        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+            "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))");
+    }
+}
