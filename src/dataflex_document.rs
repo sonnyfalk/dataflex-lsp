@@ -1,9 +1,13 @@
+use tower_lsp::lsp_types::SemanticToken;
 use tree_sitter::{Parser, Tree};
+
+mod syntax_map;
 
 pub struct DataFlexDocument {
     text: String,
     parser: Parser,
     tree: Option<Tree>,
+    syntax_map: Option<syntax_map::SyntaxMap>,
 }
 
 impl DataFlexDocument {
@@ -12,6 +16,7 @@ impl DataFlexDocument {
             text,
             parser: Self::make_parser(),
             tree: None,
+            syntax_map: None,
         };
         doc.update();
         doc
@@ -27,6 +32,7 @@ impl DataFlexDocument {
 
     fn update(&mut self) {
         self.tree = self.parser.parse(self.text.as_bytes(), None);
+        self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
     }
 
     pub fn replace_content(&mut self, text: String) {
@@ -34,11 +40,16 @@ impl DataFlexDocument {
 
         self.update();
     }
+
+    pub fn semantic_tokens_full(&self) -> Option<Vec<SemanticToken>> {
+        let syntax_map = self.syntax_map.as_ref()?;
+        Some(syntax_map.get_tokens())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::DataFlexDocument;
+    use super::*;
 
     #[test]
     fn test_replace_content() {

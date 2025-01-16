@@ -24,16 +24,36 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         log::info!(
             "initialize - client: {}, path: {}",
-            params.client_info.unwrap().name,
+            params.client_info.as_ref().unwrap().name,
             params
                 .workspace_folders
+                .as_ref()
                 .unwrap()
                 .first()
                 .unwrap()
                 .uri
                 .to_string()
         );
+        log::info!("InitializeParams: {:?}", params);
 
+        let semantic_tokens_options = if let Some(_) = params
+            .capabilities
+            .text_document
+            .and_then(|t| t.semantic_tokens)
+        {
+            Some(SemanticTokensServerCapabilities::from(
+                SemanticTokensOptions {
+                    full: Some(SemanticTokensFullOptions::Bool(true)),
+                    legend: SemanticTokensLegend {
+                        token_types: vec![SemanticTokenType::KEYWORD],
+                        token_modifiers: vec![],
+                    },
+                    ..Default::default()
+                },
+            ))
+        } else {
+            None
+        };
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
@@ -43,6 +63,7 @@ impl LanguageServer for DataFlexLanguageServer {
                         ..Default::default()
                     },
                 )),
+                semantic_tokens_provider: semantic_tokens_options,
                 ..Default::default()
             },
             ..Default::default()
@@ -87,5 +108,27 @@ impl LanguageServer for DataFlexLanguageServer {
                 .unwrap()
                 .replace_content(change.text);
         }
+    }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        log::trace!(
+            "Got a textDocument/semanticTokensFull notification for {}",
+            params.text_document.uri.as_str()
+        );
+
+        let tokens = self
+            .open_files
+            .get(&params.text_document.uri)
+            .unwrap()
+            .semantic_tokens_full()
+            .unwrap();
+
+        Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
+            data: tokens,
+            ..Default::default()
+        })))
     }
 }
