@@ -28,7 +28,8 @@ impl SyntaxMap {
 
         let tree = doc.tree.as_ref().unwrap();
         let mut query_cursor = QueryCursor::new();
-        let mut captures = query_cursor.captures(&query, tree.root_node(), doc.text.as_bytes());
+        let mut captures =
+            query_cursor.captures(&query, tree.root_node(), doc.line_map.text_provider());
         let capture_names = query.capture_names();
 
         let mut prev_pos = Point { row: 0, column: 0 };

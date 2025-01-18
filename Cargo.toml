@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 dashmap = "6.1.0"
 dirs = "5.0.1"
+line-span = "0.1.5"
 log = "0.4.22"
 simplelog = "0.12.2"
 streaming-iterator = "0.1.9"
