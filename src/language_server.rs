@@ -86,7 +86,7 @@ impl LanguageServer for DataFlexLanguageServer {
         log::info!("Start tracking {}", params.text_document.uri);
         self.open_files.insert(
             params.text_document.uri,
-            DataFlexDocument::new(params.text_document.text),
+            DataFlexDocument::new(&params.text_document.text),
         );
     }
 
@@ -101,13 +101,10 @@ impl LanguageServer for DataFlexLanguageServer {
             params.text_document.uri.as_str()
         );
 
-        let mut params = params;
-        if let Some(change) = params.content_changes.pop() {
-            self.open_files
-                .get_mut(&params.text_document.uri)
-                .unwrap()
-                .replace_content(change.text);
-        }
+        self.open_files
+            .get_mut(&params.text_document.uri)
+            .unwrap()
+            .edit_content(&params.content_changes);
     }
 
     async fn semantic_tokens_full(

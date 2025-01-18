@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::SemanticToken;
+use tower_lsp::lsp_types::{SemanticToken, TextDocumentContentChangeEvent};
 use tree_sitter::{Parser, Tree};
 
 mod line_map;
@@ -12,9 +12,9 @@ pub struct DataFlexDocument {
 }
 
 impl DataFlexDocument {
-    pub fn new(text: String) -> Self {
+    pub fn new(text: &str) -> Self {
         let mut doc = Self {
-            line_map: line_map::LineMap::new(&text),
+            line_map: line_map::LineMap::new(text),
             parser: Self::make_parser(),
             tree: None,
             syntax_map: None,
@@ -45,9 +45,19 @@ impl DataFlexDocument {
         self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
     }
 
-    pub fn replace_content(&mut self, text: String) {
-        self.line_map = line_map::LineMap::new(&text);
+    pub fn replace_content(&mut self, text: &str) {
+        self.line_map = line_map::LineMap::new(text);
         self.update();
+    }
+
+    pub fn edit_content(&mut self, changes: &Vec<TextDocumentContentChangeEvent>) {
+        for change in changes {
+            let Some(range) = change.range else {
+                self.replace_content(&change.text);
+                continue;
+            };
+            // TODO: Convert UTF-16 to UTF-8 range.
+        }
     }
 
     pub fn semantic_tokens_full(&self) -> Option<Vec<SemanticToken>> {
@@ -62,11 +72,11 @@ mod tests {
 
     #[test]
     fn test_replace_content() {
-        let mut doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n".to_string());
+        let mut doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
 
-        doc.replace_content("Procedure test\nEnd_Procedure\n".to_string());
+        doc.replace_content(&"Procedure test\nEnd_Procedure\n".to_string());
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
             "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))");
     }

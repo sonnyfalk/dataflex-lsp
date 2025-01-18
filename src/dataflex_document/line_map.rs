@@ -1,12 +1,12 @@
 use line_span::LineSpanExt;
-use tree_sitter::{Node, Point};
+use tree_sitter::{Node, Point, Range};
 
 pub struct LineMap {
     lines: Vec<String>,
 }
 
 impl LineMap {
-    pub fn new(text: &String) -> Self {
+    pub fn new(text: &str) -> Self {
         let lines = text
             .line_spans()
             .map(|l| l.as_str_with_ending().to_string())
