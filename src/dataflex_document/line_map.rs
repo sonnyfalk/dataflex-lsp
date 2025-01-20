@@ -1,24 +1,30 @@
-use line_span::LineSpanExt;
-use tree_sitter::{Node, Point, Range};
+use line_span::{LineSpan, LineSpanExt, LineSpanIter};
+use tree_sitter::{Node, Point};
 
 pub struct LineMap {
-    lines: Vec<String>,
+    lines: Vec<Line>,
+}
+
+struct Line {
+    text: String,
 }
 
 impl LineMap {
     pub fn new(text: &str) -> Self {
         let lines = text
             .line_spans()
-            .map(|l| l.as_str_with_ending().to_string())
+            .map(|l| Line {
+                text: l.as_str_with_ending().to_string(),
+            })
             .collect();
         Self { lines }
     }
 
     pub fn line_text_with_ending(&self, line: usize) -> Option<&str> {
-        self.lines.get(line).and_then(|l| Some(l.as_str()))
+        self.lines.get(line).and_then(|l| Some(l.text.as_str()))
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn text_in_range(&self, start: Point, end: Point) -> String {
         self.text_in_range_iterator(start, end)
             .fold(String::new(), |text, s| text + s)
@@ -36,6 +42,93 @@ impl LineMap {
         |node: Node| {
             self.text_in_range_iterator(node.start_position(), node.end_position())
                 .map(|t| t.as_bytes())
+        }
+    }
+
+    pub fn replace_range(&mut self, start: Point, end: Point, text: &str) {
+        if start.row == end.row {
+            let mut text_it = text.line_spans();
+            if let Some(line_span) = text_it.next() {
+                let tail =
+                    self.lines[start.row].replace_range(start.column..end.column, Some(&line_span));
+                let line = start.row + 1;
+                self.splice_lines(line..line, text_it, tail);
+            } else {
+                self.lines[start.row].replace_range(start.column..end.column, None);
+            }
+        }
+    }
+
+    fn splice_lines(
+        &mut self,
+        line_range: std::ops::Range<usize>,
+        it: LineSpanIter,
+        tail: Option<String>,
+    ) {
+        let mut current_line = line_range.start;
+        let mut inserted_lines = 0;
+        self.lines.splice(
+            line_range,
+            it.map(|l| {
+                inserted_lines += 1;
+                Line {
+                    text: l.as_str_with_ending().to_string(),
+                }
+            }),
+        );
+
+        if inserted_lines > 0 {
+            current_line += inserted_lines - 1;
+        }
+
+        if !self.lines[current_line].text.ends_with("\n") {
+            if let Some(tail) = tail {
+                self.lines[current_line].text.push_str(&tail);
+            } else if (current_line + 1) < self.line_count() {
+                let next_line = self.lines.remove(current_line + 1);
+                self.lines[current_line].text.push_str(&next_line.text);
+            }
+        } else if let Some(tail) = tail {
+            current_line += 1;
+            self.lines.insert(current_line, Line { text: tail });
+        }
+    }
+
+    #[cfg(test)]
+    pub fn text(&self) -> String {
+        self.lines
+            .iter()
+            .fold(String::new(), |text, l| text + &l.text)
+    }
+
+    pub fn line_count(&self) -> usize {
+        self.lines.len()
+    }
+}
+
+impl Line {
+    fn replace_range(
+        &mut self,
+        range: std::ops::Range<usize>,
+        line_span: Option<&LineSpan>,
+    ) -> Option<String> {
+        let Some(line_span) = line_span else {
+            self.text.replace_range(range, "");
+            return None;
+        };
+
+        if line_span.ending_str().is_empty() {
+            self.text.replace_range(range, line_span.as_str());
+            None
+        } else {
+            let tail = self.text.split_off(range.end);
+            self.text
+                .replace_range(range, line_span.as_str_with_ending());
+            if tail.is_empty() {
+                None
+            } else {
+                Some(tail)
+            }
         }
     }
 }
@@ -108,8 +201,8 @@ mod tests {
 
     #[test]
     fn test_line_text_with_ending() {
-        let line_map = LineMap::new(&"Object oTest is a cTest\nEnd_Object\n".to_string());
-        assert_eq!(line_map.lines.len(), 2);
+        let line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.line_count(), 2);
 
         assert_eq!(
             line_map.line_text_with_ending(0),
@@ -121,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_text_in_range() {
-        let line_map = LineMap::new(&"Object oTest is a cTest\nEnd_Object\n".to_string());
+        let line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
         assert_eq!(
             line_map.text_in_range(
                 Point { row: 0, column: 0 },
@@ -154,5 +247,82 @@ mod tests {
             ),
             "Object oTest is a cTest\nEnd_Object\n"
         );
+    }
+
+    #[test]
+    fn test_insert_text() {
+        let mut line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.text(), "Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.line_count(), 2);
+
+        assert_eq!(
+            line_map.line_text_with_ending(0).unwrap(),
+            "Object oTest is a cTest\n"
+        );
+        assert_eq!(line_map.text(), "Object oTest is a cTest\nEnd_Object\n");
+
+        line_map.replace_range(
+            Point { row: 0, column: 12 },
+            Point { row: 0, column: 12 },
+            "It",
+        );
+        assert_eq!(
+            line_map.line_text_with_ending(0).unwrap(),
+            "Object oTestIt is a cTest\n"
+        );
+
+        assert_eq!(line_map.text(), "Object oTestIt is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.line_count(), 2);
+    }
+
+    #[test]
+    fn test_insert_multiline_text() {
+        let mut line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+
+        assert_eq!(line_map.text(), "Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.line_count(), 2);
+
+        line_map.replace_range(
+            Point { row: 0, column: 23 },
+            Point { row: 0, column: 23 },
+            "\n    Procedure foo\n    End_Procedure",
+        );
+
+        assert_eq!(
+            line_map.text(),
+            "Object oTest is a cTest\n    Procedure foo\n    End_Procedure\nEnd_Object\n"
+        );
+
+        assert_eq!(
+            line_map.line_text_with_ending(0).unwrap(),
+            "Object oTest is a cTest\n"
+        );
+        assert_eq!(
+            line_map.line_text_with_ending(1).unwrap(),
+            "    Procedure foo\n"
+        );
+        assert_eq!(
+            line_map.line_text_with_ending(2).unwrap(),
+            "    End_Procedure\n"
+        );
+
+        assert_eq!(line_map.line_count(), 4);
+    }
+
+    #[test]
+    fn test_delete_text() {
+        let mut line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+        line_map.replace_range(
+            Point { row: 0, column: 8 },
+            Point { row: 0, column: 12 },
+            "",
+        );
+        assert_eq!(line_map.text(), "Object o is a cTest\nEnd_Object\n");
+        assert_eq!(
+            line_map.line_text_with_ending(0).unwrap(),
+            "Object o is a cTest\n"
+        );
+        assert_eq!(line_map.line_text_with_ending(1).unwrap(), "End_Object\n");
+        assert_eq!(line_map.line_count(), 2);
     }
 }
