@@ -34,7 +34,6 @@ impl LanguageServer for DataFlexLanguageServer {
                 .uri
                 .to_string()
         );
-        log::info!("InitializeParams: {:?}", params);
 
         let semantic_tokens_options = if let Some(_) = params
             .capabilities
@@ -59,7 +58,7 @@ impl LanguageServer for DataFlexLanguageServer {
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
                         open_close: Some(true),
-                        change: Some(TextDocumentSyncKind::FULL),
+                        change: Some(TextDocumentSyncKind::INCREMENTAL),
                         ..Default::default()
                     },
                 )),

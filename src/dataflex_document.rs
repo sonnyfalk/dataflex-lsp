@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::{SemanticToken, TextDocumentContentChangeEvent};
-use tree_sitter::{Parser, Tree};
+use tree_sitter::{Parser, Point, Tree};
 
 mod line_map;
 mod syntax_map;
@@ -45,6 +45,7 @@ impl DataFlexDocument {
         self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
     }
 
+    #[cfg(test)]
     pub fn replace_content(&mut self, text: &str) {
         self.line_map = line_map::LineMap::new(text);
         self.update();
@@ -53,11 +54,21 @@ impl DataFlexDocument {
     pub fn edit_content(&mut self, changes: &Vec<TextDocumentContentChangeEvent>) {
         for change in changes {
             let Some(range) = change.range else {
-                self.replace_content(&change.text);
+                self.line_map = line_map::LineMap::new(&change.text);
                 continue;
             };
             // TODO: Convert UTF-16 to UTF-8 range.
+            let start = Point {
+                row: range.start.line as usize,
+                column: range.start.character as usize,
+            };
+            let end = Point {
+                row: range.end.line as usize,
+                column: range.end.character as usize,
+            };
+            self.line_map.replace_range(start, end, &change.text);
         }
+        self.update();
     }
 
     pub fn semantic_tokens_full(&self) -> Option<Vec<SemanticToken>> {
@@ -79,5 +90,30 @@ mod tests {
         doc.replace_content(&"Procedure test\nEnd_Procedure\n".to_string());
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
             "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))");
+    }
+
+    #[test]
+    fn test_edit_content() {
+        let mut doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
+
+        doc.edit_content(&vec![TextDocumentContentChangeEvent {
+            range: Some(tower_lsp::lsp_types::Range {
+                start: tower_lsp::lsp_types::Position {
+                    line: 0,
+                    character: 23,
+                },
+                end: tower_lsp::lsp_types::Position {
+                    line: 0,
+                    character: 23,
+                },
+            }),
+            text: "\nProcedure test\nEnd_Procedure".to_string(),
+            range_length: None,
+        }]);
+
+        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))");
     }
 }
