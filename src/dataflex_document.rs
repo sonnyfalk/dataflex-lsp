@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::{SemanticToken, TextDocumentContentChangeEvent};
-use tree_sitter::{Parser, Point, Tree};
+use tree_sitter::{InputEdit, Parser, Point, Tree};
 
 mod line_map;
 mod syntax_map;
@@ -39,7 +39,7 @@ impl DataFlexDocument {
                     .and_then(|line| line.as_bytes().get(point.column..))
                     .unwrap_or(&[])
             },
-            None,
+            self.tree.as_ref(),
         );
 
         self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
@@ -48,6 +48,7 @@ impl DataFlexDocument {
     #[cfg(test)]
     pub fn replace_content(&mut self, text: &str) {
         self.line_map = line_map::LineMap::new(text);
+        self.tree = None;
         self.update();
     }
 
@@ -55,6 +56,7 @@ impl DataFlexDocument {
         for change in changes {
             let Some(range) = change.range else {
                 self.line_map = line_map::LineMap::new(&change.text);
+                self.tree = None;
                 continue;
             };
             // TODO: Convert UTF-16 to UTF-8 range.
@@ -66,7 +68,23 @@ impl DataFlexDocument {
                 row: range.end.line as usize,
                 column: range.end.character as usize,
             };
+            let start_byte = self.line_map.offset_at_point(start);
+            let old_end_byte = self.line_map.offset_at_point(end);
+            let new_end_byte = start_byte + change.text.len();
+
             self.line_map.replace_range(start, end, &change.text);
+            let new_end_position = self.line_map.point_at_offset(new_end_byte);
+
+            if let Some(tree) = self.tree.as_mut() {
+                tree.edit(&InputEdit {
+                    start_byte,
+                    old_end_byte,
+                    new_end_byte,
+                    start_position: start,
+                    old_end_position: end,
+                    new_end_position,
+                });
+            }
         }
         self.update();
     }

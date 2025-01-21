@@ -116,6 +116,31 @@ impl LineMap {
     pub fn line_count(&self) -> usize {
         self.lines.len()
     }
+
+    pub fn offset_at_point(&self, point: Point) -> usize {
+        self.lines[..point.row]
+            .iter()
+            .fold(0, |offset, l| offset + l.text.len())
+            + point.column
+    }
+
+    pub fn point_at_offset(&self, offset: usize) -> Point {
+        let mut byte_index = 0;
+        for (line_index, line) in self.lines.iter().enumerate() {
+            let line_len = line.text.len();
+            if byte_index + line_len > offset {
+                return Point {
+                    row: line_index,
+                    column: offset - byte_index,
+                };
+            }
+            byte_index += line_len;
+        }
+        Point {
+            row: self.lines.len(),
+            column: 0,
+        }
+    }
 }
 
 impl Line {
@@ -414,5 +439,27 @@ mod tests {
         assert_eq!(line_map.line_text_with_ending(1).unwrap(), "_Object\n");
 
         assert_eq!(line_map.line_count(), 2);
+    }
+
+    #[test]
+    fn test_offset_at_point() {
+        let line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.offset_at_point(Point { row: 0, column: 0 }), 0);
+        assert_eq!(line_map.offset_at_point(Point { row: 0, column: 1 }), 1);
+        assert_eq!(line_map.offset_at_point(Point { row: 0, column: 23 }), 23);
+        assert_eq!(line_map.offset_at_point(Point { row: 1, column: 0 }), 24);
+        assert_eq!(line_map.offset_at_point(Point { row: 1, column: 4 }), 28);
+        assert_eq!(line_map.offset_at_point(Point { row: 2, column: 0 }), 35);
+    }
+
+    #[test]
+    fn test_point_at_offset() {
+        let line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.point_at_offset(0), Point { row: 0, column: 0 });
+        assert_eq!(line_map.point_at_offset(1), Point { row: 0, column: 1 });
+        assert_eq!(line_map.point_at_offset(23), Point { row: 0, column: 23 });
+        assert_eq!(line_map.point_at_offset(24), Point { row: 1, column: 0 });
+        assert_eq!(line_map.point_at_offset(28), Point { row: 1, column: 4 });
+        assert_eq!(line_map.point_at_offset(35), Point { row: 2, column: 0 });
     }
 }
