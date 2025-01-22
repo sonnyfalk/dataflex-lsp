@@ -5,45 +5,51 @@ use tree_sitter::{Point, Query, QueryCursor};
 use super::*;
 
 pub struct SyntaxMap {
+    lines: Vec<Line>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct Line {
     tokens: Vec<SyntaxToken>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 struct SyntaxToken {
-    position: Point,
+    delta_start: u32,
     length: u32,
     kind: u32,
 }
 
 impl SyntaxMap {
     pub fn new(doc: &DataFlexDocument) -> Self {
-        let tokens = Self::generate_tokens(doc);
+        let lines = Self::generate_lines(doc);
 
-        Self { tokens }
+        Self { lines }
     }
 
     pub fn get_tokens(&self) -> Vec<SemanticToken> {
-        let mut prev_pos = Point { row: 0, column: 0 };
-        self.tokens
-            .iter()
-            .map(|token| {
-                let sem_token = SemanticToken {
-                    delta_line: (token.position.row - prev_pos.row) as u32,
-                    delta_start: if token.position.row == prev_pos.row {
-                        (token.position.column - prev_pos.column) as u32
-                    } else {
-                        (token.position.column) as u32
+        let (sem_tokens, _) = self.lines.iter().enumerate().fold(
+            (Vec::new(), 0),
+            |(sem_tokens, prev_row), (row, line)| {
+                line.tokens.iter().fold(
+                    (sem_tokens, prev_row),
+                    |(mut sem_tokens, prev_row), token| {
+                        sem_tokens.push(SemanticToken {
+                            delta_line: (row - prev_row) as u32,
+                            delta_start: token.delta_start,
+                            length: token.length,
+                            token_type: token.kind,
+                            token_modifiers_bitset: 0,
+                        });
+                        (sem_tokens, row)
                     },
-                    length: token.length,
-                    token_type: token.kind,
-                    token_modifiers_bitset: 0,
-                };
-                prev_pos = token.position;
-                sem_token
-            })
-            .collect()
+                )
+            },
+        );
+        sem_tokens
     }
 
-    fn generate_tokens(doc: &DataFlexDocument) -> Vec<SyntaxToken> {
+    fn generate_lines(doc: &DataFlexDocument) -> Vec<Line> {
         let query = Query::new(
             &tree_sitter_dataflex::LANGUAGE.into(),
             tree_sitter_dataflex::HIGHLIGHTS_QUERY,
@@ -52,34 +58,129 @@ impl SyntaxMap {
 
         let tree = doc.tree.as_ref().unwrap();
         let mut query_cursor = QueryCursor::new();
-        let mut captures =
+        let captures =
             query_cursor.captures(&query, tree.root_node(), doc.line_map.text_provider());
         let capture_names = query.capture_names();
 
-        let mut tokens = Vec::new();
-        while let Some(query_match) = captures.next() {
-            for capture in query_match.0.captures {
-                let start = capture.node.start_position();
-                let end = capture.node.end_position();
-                if start.row != end.row {
-                    //FIXME: Break up multi-line tokens
-                    continue;
-                }
-                let len = end.column - start.column;
-                let token = match capture_names[capture.index as usize] {
-                    "keyword" => Some(SyntaxToken {
-                        position: start,
-                        length: len as u32,
-                        kind: 0,
-                    }),
-                    _ => None,
-                };
-                if let Some(token) = token {
-                    tokens.push(token);
-                }
-            }
-        }
+        let mut lines = Vec::with_capacity(doc.line_map.line_count());
+        lines.resize_with(doc.line_map.line_count(), || Line { tokens: Vec::new() });
 
-        tokens
+        let (lines, _) = captures.fold(
+            (lines, Point { row: 0, column: 0 }),
+            |(lines, prev_pos), query_match| {
+                query_match.0.captures.iter().fold(
+                    (lines, prev_pos),
+                    |(mut lines, prev_pos), capture| {
+                        let start = capture.node.start_position();
+                        let end = capture.node.end_position();
+                        if start.row == end.row {
+                            let token = match capture_names[capture.index as usize] {
+                                "keyword" => Some(SyntaxToken {
+                                    delta_start: if start.row == prev_pos.row {
+                                        (start.column - prev_pos.column) as u32
+                                    } else {
+                                        start.column as u32
+                                    },
+                                    length: (end.column - start.column) as u32,
+                                    kind: 0,
+                                }),
+                                _ => None,
+                            };
+                            if let Some(token) = token {
+                                lines[start.row].tokens.push(token);
+                                (lines, start)
+                            } else {
+                                (lines, prev_pos)
+                            }
+                        } else {
+                            //FIXME: Break up multi-line tokens
+                            (lines, prev_pos)
+                        }
+                    },
+                )
+            },
+        );
+
+        lines
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lines() {
+        let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(
+            doc.syntax_map.unwrap().lines,
+            [
+                Line {
+                    tokens: vec![
+                        SyntaxToken {
+                            delta_start: 0,
+                            length: 6,
+                            kind: 0
+                        },
+                        SyntaxToken {
+                            delta_start: 13,
+                            length: 2,
+                            kind: 0
+                        },
+                        SyntaxToken {
+                            delta_start: 3,
+                            length: 1,
+                            kind: 0
+                        }
+                    ]
+                },
+                Line {
+                    tokens: vec![SyntaxToken {
+                        delta_start: 0,
+                        length: 10,
+                        kind: 0
+                    }]
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_get_tokens() {
+        let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let tokens = doc.syntax_map.unwrap().get_tokens();
+        assert_eq!(
+            tokens,
+            [
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 0,
+                    length: 6,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 13,
+                    length: 2,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 3,
+                    length: 1,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                },
+                SemanticToken {
+                    delta_line: 1,
+                    delta_start: 0,
+                    length: 10,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                }
+            ]
+        );
     }
 }
