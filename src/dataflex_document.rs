@@ -91,7 +91,7 @@ impl DataFlexDocument {
 
     pub fn semantic_tokens_full(&self) -> Option<Vec<SemanticToken>> {
         let syntax_map = self.syntax_map.as_ref()?;
-        Some(syntax_map.get_tokens())
+        Some(syntax_map.get_all_tokens())
     }
 }
 

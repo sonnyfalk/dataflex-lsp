@@ -1,3 +1,4 @@
+use std::ops::{Bound, RangeBounds};
 use streaming_iterator::StreamingIterator;
 use tower_lsp::lsp_types::SemanticToken;
 use tree_sitter::{Point, Query, QueryCursor};
@@ -27,13 +28,37 @@ impl SyntaxMap {
         Self { lines }
     }
 
-    pub fn get_tokens(&self) -> Vec<SemanticToken> {
-        let (sem_tokens, _) = self.lines.iter().enumerate().fold(
-            (Vec::new(), 0),
-            |(sem_tokens, prev_row), (row, line)| {
+    pub fn get_all_tokens(&self) -> Vec<SemanticToken> {
+        self.get_tokens_for_lines(0..self.lines.len())
+    }
+
+    pub fn get_tokens_for_lines(&self, line_range: impl RangeBounds<usize>) -> Vec<SemanticToken> {
+        let line_range = match line_range.start_bound() {
+            Bound::Included(start) => *start,
+            Bound::Excluded(start) => start + 1,
+            Bound::Unbounded => 0,
+        }..match line_range.end_bound() {
+            Bound::Included(end) => end + 1,
+            Bound::Excluded(end) => *end,
+            Bound::Unbounded => self.lines.len(),
+        };
+
+        let prev_row = if line_range.start > 0 {
+            (0..line_range.start)
+                .rev()
+                .find(|i| !self.lines[*i].tokens.is_empty())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let row_offset = line_range.start;
+        let (sem_tokens, _) = self.lines[line_range].iter().enumerate().fold(
+            (Vec::new(), prev_row),
+            |(sem_tokens, prev_row), (relative_row, line)| {
                 line.tokens.iter().fold(
                     (sem_tokens, prev_row),
                     |(mut sem_tokens, prev_row), token| {
+                        let row = row_offset + relative_row;
                         sem_tokens.push(SemanticToken {
                             delta_line: (row - prev_row) as u32,
                             delta_start: token.delta_start,
@@ -146,9 +171,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_tokens() {
+    fn test_get_all_tokens() {
         let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
-        let tokens = doc.syntax_map.unwrap().get_tokens();
+        let tokens = doc.syntax_map.unwrap().get_all_tokens();
         assert_eq!(
             tokens,
             [
@@ -181,6 +206,49 @@ mod tests {
                     token_modifiers_bitset: 0
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn test_get_tokens_for_lines() {
+        let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let syntax_map = doc.syntax_map.as_ref().unwrap();
+        assert_eq!(
+            syntax_map.get_tokens_for_lines(0..1),
+            [
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 0,
+                    length: 6,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 13,
+                    length: 2,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                },
+                SemanticToken {
+                    delta_line: 0,
+                    delta_start: 3,
+                    length: 1,
+                    token_type: 0,
+                    token_modifiers_bitset: 0
+                },
+            ]
+        );
+
+        assert_eq!(
+            syntax_map.get_tokens_for_lines(1..2),
+            [SemanticToken {
+                delta_line: 1,
+                delta_start: 0,
+                length: 10,
+                token_type: 0,
+                token_modifiers_bitset: 0
+            }]
         );
     }
 }
