@@ -16,5 +16,7 @@ pub fn initialize_logging() {
         std::fs::File::create(log_file).unwrap(),
     )
     .expect("failed to initialize logger");
+    log_panics::init();
+
     log::info!("Log initialized");
 }
