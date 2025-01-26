@@ -165,7 +165,8 @@ mod tests {
                         length: 10,
                         kind: 0
                     }]
-                }
+                },
+                Line { tokens: vec![] }
             ]
         );
     }
