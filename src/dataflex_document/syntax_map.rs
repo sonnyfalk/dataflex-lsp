@@ -136,7 +136,10 @@ mod tests {
 
     #[test]
     fn test_lines() {
-        let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let doc = DataFlexDocument::new(
+            "Object oTest is a cTest\nEnd_Object\n",
+            index::IndexRef::make_test_index_ref(),
+        );
         assert_eq!(
             doc.syntax_map.unwrap().lines,
             [
@@ -173,7 +176,10 @@ mod tests {
 
     #[test]
     fn test_get_all_tokens() {
-        let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let doc = DataFlexDocument::new(
+            "Object oTest is a cTest\nEnd_Object\n",
+            index::IndexRef::make_test_index_ref(),
+        );
         let tokens = doc.syntax_map.unwrap().get_all_tokens();
         assert_eq!(
             tokens,
@@ -212,7 +218,10 @@ mod tests {
 
     #[test]
     fn test_get_tokens_for_lines() {
-        let doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let doc = DataFlexDocument::new(
+            "Object oTest is a cTest\nEnd_Object\n",
+            index::IndexRef::make_test_index_ref(),
+        );
         let syntax_map = doc.syntax_map.as_ref().unwrap();
         assert_eq!(
             syntax_map.get_tokens_for_lines(0..1),

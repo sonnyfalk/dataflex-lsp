@@ -1,21 +1,26 @@
 use tower_lsp::lsp_types::{SemanticToken, TextDocumentContentChangeEvent};
 use tree_sitter::{InputEdit, Parser, Point, Tree};
 
+use crate::index;
+
 mod line_map;
 mod syntax_map;
 
+#[allow(dead_code)]
 pub struct DataFlexDocument {
     line_map: line_map::LineMap,
     parser: Parser,
+    index: index::IndexRef,
     tree: Option<Tree>,
     syntax_map: Option<syntax_map::SyntaxMap>,
 }
 
 impl DataFlexDocument {
-    pub fn new(text: &str) -> Self {
+    pub fn new(text: &str, index_ref: index::IndexRef) -> Self {
         let mut doc = Self {
             line_map: line_map::LineMap::new(text),
             parser: Self::make_parser(),
+            index: index_ref,
             tree: None,
             syntax_map: None,
         };
@@ -101,7 +106,10 @@ mod tests {
 
     #[test]
     fn test_replace_content() {
-        let mut doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let mut doc = DataFlexDocument::new(
+            "Object oTest is a cTest\nEnd_Object\n",
+            index::IndexRef::make_test_index_ref(),
+        );
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
 
@@ -112,7 +120,10 @@ mod tests {
 
     #[test]
     fn test_edit_content() {
-        let mut doc = DataFlexDocument::new("Object oTest is a cTest\nEnd_Object\n");
+        let mut doc = DataFlexDocument::new(
+            "Object oTest is a cTest\nEnd_Object\n",
+            index::IndexRef::make_test_index_ref(),
+        );
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
 

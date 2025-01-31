@@ -1,13 +1,19 @@
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
 use dashmap::DashMap;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
 use crate::dataflex_document::DataFlexDocument;
+use crate::index;
 
 pub struct DataFlexLanguageServer {
     client: Client,
     open_files: DashMap<Url, DataFlexDocument>,
+    workspace_root: OnceLock<PathBuf>,
+    indexer: OnceLock<index::Indexer>,
 }
 
 impl DataFlexLanguageServer {
@@ -15,6 +21,8 @@ impl DataFlexLanguageServer {
         Self {
             client,
             open_files: DashMap::new(),
+            workspace_root: OnceLock::new(),
+            indexer: OnceLock::new(),
         }
     }
 }
@@ -22,18 +30,22 @@ impl DataFlexLanguageServer {
 #[tower_lsp::async_trait]
 impl LanguageServer for DataFlexLanguageServer {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        let workspace_root = params
+            .workspace_folders
+            .as_ref()
+            .unwrap()
+            .first()
+            .unwrap()
+            .uri
+            .to_file_path()
+            .ok();
         log::info!(
-            "initialize - client: {}, path: {}",
+            "initialize - client: {}, path: {:?}",
             params.client_info.as_ref().unwrap().name,
-            params
-                .workspace_folders
-                .as_ref()
-                .unwrap()
-                .first()
-                .unwrap()
-                .uri
-                .to_string()
+            workspace_root
         );
+
+        _ = self.workspace_root.set(workspace_root.unwrap_or_default());
 
         let semantic_tokens_options = if let Some(_) = params
             .capabilities
@@ -72,6 +84,15 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn initialized(&self, _: InitializedParams) {
         log::info!("initialized() called");
 
+        let workspace_info = self
+            .workspace_root
+            .get()
+            .map(|ref path| index::WorkspaceInfo::load_from_path(path))
+            .unwrap_or(index::WorkspaceInfo::new());
+
+        _ = self.indexer.set(index::Indexer::new(workspace_info));
+        self.indexer.get().unwrap().start_indexing();
+
         self.client
             .log_message(MessageType::INFO, "server initialized!")
             .await;
@@ -85,7 +106,10 @@ impl LanguageServer for DataFlexLanguageServer {
         log::info!("Start tracking {}", params.text_document.uri);
         self.open_files.insert(
             params.text_document.uri,
-            DataFlexDocument::new(&params.text_document.text),
+            DataFlexDocument::new(
+                &params.text_document.text,
+                self.indexer.get().unwrap().get_index().clone(),
+            ),
         );
     }
 
