@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, ffi::OsStr, path::PathBuf};
 
 #[allow(dead_code)]
 pub struct WorkspaceInfo {
@@ -15,6 +15,7 @@ pub struct ProjectInfo {
 #[allow(dead_code)]
 pub struct Index {
     workspace: WorkspaceInfo,
+    files: HashMap<String, IndexFile>,
 }
 
 #[allow(dead_code)]
@@ -26,6 +27,8 @@ pub struct IndexRef {
 pub struct Indexer {
     index: IndexRef,
 }
+
+pub struct IndexFile {}
 
 impl WorkspaceInfo {
     pub fn new() -> Self {
@@ -81,7 +84,10 @@ impl WorkspaceInfo {
 
 impl Index {
     pub fn new(workspace: WorkspaceInfo) -> Self {
-        Self { workspace }
+        Self {
+            workspace,
+            files: HashMap::new(),
+        }
     }
 }
 
@@ -97,7 +103,6 @@ impl IndexRef {
         self.index.read().await
     }
 
-    #[allow(dead_code)]
     pub async fn get_mut(&self) -> tokio::sync::RwLockWriteGuard<Index> {
         self.index.write().await
     }
@@ -122,12 +127,76 @@ impl Indexer {
         });
     }
 
-    async fn index_workspace(_index: &IndexRef) {
+    async fn index_workspace(index: &IndexRef) {
         log::info!("Indexing workspace");
+        let root_folder = index.get().await.workspace.root_folder.clone();
+        Self::index_directory(root_folder, index).await;
+    }
+
+    async fn index_directory(path: PathBuf, index: &IndexRef) {
+        let Some(path_entries) = path.read_dir().ok() else {
+            return;
+        };
+        for path in path_entries.filter_map(|p| Some(p.ok()?.path())) {
+            if path.is_dir() {
+                Box::pin(Self::index_directory(path, index)).await;
+            } else if Self::should_index_file(&path) {
+                Self::index_file(path, index).await;
+            }
+        }
+    }
+
+    async fn index_file(path: PathBuf, index: &IndexRef) {
+        if !path.is_file() || !path.exists() {
+            return;
+        }
+        let Some(content) = tokio::fs::read(&path).await.ok() else {
+            return;
+        };
+        Self::index_file_content(&content, &path, index).await;
+    }
+
+    async fn index_file_content(content: &[u8], path: &PathBuf, index: &IndexRef) {
+        log::info!("Indexing file content for {:?}", path);
+        let mut parser = Self::make_parser();
+
+        let Some(tree) = parser.parse(content, None) else {
+            return;
+        };
+
+        Self::index_parse_tree(&tree, path, index).await;
+    }
+
+    async fn index_parse_tree(_tree: &tree_sitter::Tree, path: &PathBuf, index: &IndexRef) {
+        let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
+            return;
+        };
+        log::info!("Indexing file parse tree for {:?}", path);
+        let index_file = IndexFile {};
+        index
+            .get_mut()
+            .await
+            .files
+            .insert(file_name.to_string(), index_file);
     }
 
     async fn watch_and_index_changed_files(_index: &IndexRef) {
         log::info!("Watching workspace files");
+    }
+
+    fn make_parser() -> tree_sitter::Parser {
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_dataflex::LANGUAGE.into())
+            .expect("Error loading DataFlex grammar");
+        parser
+    }
+
+    fn should_index_file(path: &PathBuf) -> bool {
+        match path.extension().and_then(OsStr::to_str) {
+            Some("pkg" | "vw" | "wo" | "sl" | "dd") => true,
+            _ => false,
+        }
     }
 }
 
