@@ -37,7 +37,7 @@ impl DataFlexDocument {
     }
 
     fn update(&mut self) {
-        self.tree = self.parser.parse_with(
+        self.tree = self.parser.parse_with_options(
             &mut |_, point| {
                 self.line_map
                     .line_text_with_ending(point.row)
@@ -45,6 +45,7 @@ impl DataFlexDocument {
                     .unwrap_or(&[])
             },
             self.tree.as_ref(),
+            None,
         );
 
         self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
