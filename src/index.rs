@@ -7,7 +7,7 @@ mod workspace;
 mod indexer;
 
 pub use workspace::WorkspaceInfo;
-pub use indexer::Indexer;
+pub use indexer::{Indexer, IndexerConfig};
 
 #[derive(Debug)]
 pub struct Index {

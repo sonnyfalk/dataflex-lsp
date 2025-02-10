@@ -2,12 +2,23 @@ use super::*;
 
 pub struct Indexer {
     index: IndexRef,
+    config: IndexerConfig,
+    dataflex_version: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct IndexerConfig {
+    versioned_system_paths: HashMap<String, Vec<PathBuf>>,
+    default_version: String,
 }
 
 impl Indexer {
-    pub fn new(workspace: WorkspaceInfo) -> Self {
+    pub fn new(workspace: WorkspaceInfo, config: IndexerConfig) -> Self {
+        let dataflex_version = workspace.get_dataflex_version().cloned();
         Self {
             index: IndexRef::new(Index::new(workspace)),
+            config,
+            dataflex_version,
         }
     }
 
@@ -17,26 +28,41 @@ impl Indexer {
 
     pub fn start_indexing(&self) {
         let index = self.index.clone();
+        let system_paths = self.config.system_path(self.dataflex_version.as_ref()).cloned();
         tokio::spawn(async move {
+            if let Some(system_paths) = system_paths {
+                log::info!("Indexing system paths");
+                Self::index_system_paths(&system_paths, &index).await;
+            }
+            log::info!("Indexing workspace");
             Self::index_workspace(&index).await;
-            log::trace!("Finished indexing workspace:\n{:#?}", index.get().await);
+            log::info!("Finished indexing: {} files", index.get().await.files.len());
+            log::trace!("{:#?}", index.get().await);
             Self::watch_and_index_changed_files(&index).await;
         });
     }
 
-    async fn index_workspace(index: &IndexRef) {
-        log::trace!("Indexing workspace");
-        let root_folder = index.get().await.workspace.get_root_folder().clone();
-        Self::index_directory(root_folder, index).await;
+    async fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
+        for path in paths {
+            if path.is_absolute() {
+                log::trace!("Indexing {:?}", path);
+                Self::index_directory(path, index).await;
+            }
+        }
     }
 
-    async fn index_directory(path: PathBuf, index: &IndexRef) {
+    async fn index_workspace(index: &IndexRef) {
+        let root_folder = index.get().await.workspace.get_root_folder().clone();
+        Self::index_directory(&root_folder, index).await;
+    }
+
+    async fn index_directory(path: &PathBuf, index: &IndexRef) {
         let Some(path_entries) = path.read_dir().ok() else {
             return;
         };
         for path in path_entries.filter_map(|p| Some(p.ok()?.path())) {
             if path.is_dir() {
-                Box::pin(Self::index_directory(path, index)).await;
+                Box::pin(Self::index_directory(&path, index)).await;
             } else if Self::should_index_file(&path) {
                 Self::index_file(path, index).await;
             }
@@ -138,6 +164,67 @@ impl Indexer {
             Some("pkg" | "vw" | "wo" | "sl" | "dd") => true,
             _ => false,
         }
+    }
+}
+
+impl IndexerConfig {
+    pub fn new() -> Self {
+        if let Some(versioned_system_paths) = Self::versioned_system_paths() {
+            let default_version = versioned_system_paths
+                .iter()
+                .map(|(version, _)| version.clone())
+                .next()
+                .unwrap_or(String::new());
+            Self {
+                versioned_system_paths,
+                default_version,
+            }
+        } else {
+            Self {
+                versioned_system_paths: HashMap::new(),
+                default_version: String::new(),
+            }
+        }
+    }
+
+    pub fn system_path(&self, dataflex_version: Option<&String>) -> Option<&Vec<PathBuf>> {
+        let dataflex_version = dataflex_version.unwrap_or(&self.default_version);
+        self.versioned_system_paths
+            .get(dataflex_version)
+            .or(self.versioned_system_paths.get(&self.default_version))
+    }
+
+    #[cfg(target_os = "windows")]
+    fn versioned_system_paths() -> Option<HashMap<String, Vec<PathBuf>>> {
+        let reg_key = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
+            .open_subkey("SOFTWARE\\Data Access Worldwide\\DataFlex")
+            .ok()?;
+
+        Some(reg_key.enum_keys().flat_map(Result::ok).fold(
+            HashMap::new(),
+            |mut result, version: String| {
+                let make_path: Option<String> = reg_key
+                    .open_subkey(format!("{version}\\DfComp"))
+                    .and_then(|k| k.get_value("MakePath"))
+                    .ok();
+                if let Some(make_path) = make_path {
+                    result.insert(
+                        version,
+                        make_path
+                            .split(";")
+                            .map(str::trim)
+                            .map(PathBuf::from)
+                            .collect(),
+                    );
+                }
+                result
+            },
+        ))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn versioned_system_paths() -> Option<HashMap<String, Vec<PathBuf>>> {
+        None
     }
 }
 

@@ -17,3 +17,6 @@ tokio = { version = "1.43.0", features = ["full"] }
 tower-lsp = "0.20.0"
 tree-sitter = "0.25.1"
 tree-sitter-dataflex = { version = "0.1.0", path = "../tree-sitter-dataflex" }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
