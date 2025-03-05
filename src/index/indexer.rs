@@ -32,7 +32,7 @@ impl Indexer {
             .config
             .system_path(self.dataflex_version.as_ref())
             .cloned();
-        std::thread::spawn(move || {
+        rayon::spawn(move || {
             if let Some(system_paths) = system_paths {
                 log::info!("Indexing system paths");
                 Self::index_system_paths(&system_paths, &index);
@@ -40,46 +40,52 @@ impl Indexer {
             log::info!("Indexing workspace");
             Self::index_workspace(&index);
             log::info!("Finished indexing: {} files", index.get().files.len());
-            log::info!("{:#?}", index.get());
+            log::trace!("{:#?}", index.get());
             Self::watch_and_index_changed_files(&index);
         });
     }
 
     fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
-        for path in paths {
-            if path.is_absolute() {
-                log::trace!("Indexing {:?}", path);
-                Self::index_directory(path, index);
+        rayon::scope(|scope| {
+            for path in paths {
+                if path.is_absolute() {
+                    log::trace!("Indexing {:?}", path);
+                    Self::index_directory(path, index, &scope);
+                }
             }
-        }
+        });
     }
 
     fn index_workspace(index: &IndexRef) {
         let root_folder = index.get().workspace.get_root_folder().clone();
-        Self::index_directory(&root_folder, index);
+        rayon::scope(|scope| {
+            Self::index_directory(&root_folder, index, &scope);
+        });
     }
 
-    fn index_directory(path: &PathBuf, index: &IndexRef) {
+    fn index_directory<'a>(path: &PathBuf, index: &'a IndexRef, scope: &rayon::Scope<'a>) {
         let Some(path_entries) = path.read_dir().ok() else {
             return;
         };
         for path in path_entries.filter_map(|p| Some(p.ok()?.path())) {
             if path.is_dir() {
-                Self::index_directory(&path, index);
+                Self::index_directory(&path, index, scope);
             } else if Self::should_index_file(&path) {
-                Self::index_file(path, index);
+                Self::index_file(path, index, scope);
             }
         }
     }
 
-    fn index_file(path: PathBuf, index: &IndexRef) {
+    fn index_file<'a>(path: PathBuf, index: &'a IndexRef, scope: &rayon::Scope<'a>) {
         if !path.is_file() || !path.exists() {
             return;
         }
         let Some(content) = std::fs::read(&path).ok() else {
             return;
         };
-        Self::index_file_content(&content, &path, index);
+        scope.spawn(move |_| {
+            Self::index_file_content(&content, &path, index);
+        });
     }
 
     fn index_file_content(content: &[u8], path: &PathBuf, index: &IndexRef) {
