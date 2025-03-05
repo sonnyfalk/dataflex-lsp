@@ -46,7 +46,7 @@ impl Indexer {
     }
 
     fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
-        rayon::scope(|scope| {
+        rayon::in_place_scope(|scope| {
             for path in paths {
                 if path.is_absolute() {
                     log::trace!("Indexing {:?}", path);
@@ -58,7 +58,7 @@ impl Indexer {
 
     fn index_workspace(index: &IndexRef) {
         let root_folder = index.get().workspace.get_root_folder().clone();
-        rayon::scope(|scope| {
+        rayon::in_place_scope(|scope| {
             Self::index_directory(&root_folder, index, &scope);
         });
     }
