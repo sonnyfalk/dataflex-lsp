@@ -3,11 +3,11 @@ use std::{collections::HashMap, ffi::OsStr, path::PathBuf, str::FromStr};
 use streaming_iterator::StreamingIterator;
 use strum::EnumString;
 
-mod workspace;
 mod indexer;
+mod workspace;
 
-pub use workspace::WorkspaceInfo;
 pub use indexer::{Indexer, IndexerConfig};
+pub use workspace::WorkspaceInfo;
 
 #[derive(Debug)]
 pub struct Index {
@@ -18,7 +18,7 @@ pub struct Index {
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct IndexRef {
-    index: std::sync::Arc<tokio::sync::RwLock<Index>>,
+    index: std::sync::Arc<std::sync::RwLock<Index>>,
 }
 
 #[derive(Debug)]
@@ -38,17 +38,21 @@ impl Index {
 impl IndexRef {
     pub fn new(index: Index) -> Self {
         Self {
-            index: std::sync::Arc::new(tokio::sync::RwLock::new(index)),
+            index: std::sync::Arc::new(std::sync::RwLock::new(index)),
         }
     }
 
     #[allow(dead_code)]
-    pub async fn get(&self) -> tokio::sync::RwLockReadGuard<Index> {
-        self.index.read().await
+    pub fn get(&self) -> std::sync::RwLockReadGuard<Index> {
+        self.index
+            .read()
+            .expect("unable to acquire index read lock")
     }
 
-    pub async fn get_mut(&self) -> tokio::sync::RwLockWriteGuard<Index> {
-        self.index.write().await
+    pub fn get_mut(&self) -> std::sync::RwLockWriteGuard<Index> {
+        self.index
+            .write()
+            .expect("unable to acquire index write lock")
     }
 }
 

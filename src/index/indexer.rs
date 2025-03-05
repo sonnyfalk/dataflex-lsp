@@ -28,58 +28,61 @@ impl Indexer {
 
     pub fn start_indexing(&self) {
         let index = self.index.clone();
-        let system_paths = self.config.system_path(self.dataflex_version.as_ref()).cloned();
-        tokio::spawn(async move {
+        let system_paths = self
+            .config
+            .system_path(self.dataflex_version.as_ref())
+            .cloned();
+        std::thread::spawn(move || {
             if let Some(system_paths) = system_paths {
                 log::info!("Indexing system paths");
-                Self::index_system_paths(&system_paths, &index).await;
+                Self::index_system_paths(&system_paths, &index);
             }
             log::info!("Indexing workspace");
-            Self::index_workspace(&index).await;
-            log::info!("Finished indexing: {} files", index.get().await.files.len());
-            log::trace!("{:#?}", index.get().await);
-            Self::watch_and_index_changed_files(&index).await;
+            Self::index_workspace(&index);
+            log::info!("Finished indexing: {} files", index.get().files.len());
+            log::info!("{:#?}", index.get());
+            Self::watch_and_index_changed_files(&index);
         });
     }
 
-    async fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
+    fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
         for path in paths {
             if path.is_absolute() {
                 log::trace!("Indexing {:?}", path);
-                Self::index_directory(path, index).await;
+                Self::index_directory(path, index);
             }
         }
     }
 
-    async fn index_workspace(index: &IndexRef) {
-        let root_folder = index.get().await.workspace.get_root_folder().clone();
-        Self::index_directory(&root_folder, index).await;
+    fn index_workspace(index: &IndexRef) {
+        let root_folder = index.get().workspace.get_root_folder().clone();
+        Self::index_directory(&root_folder, index);
     }
 
-    async fn index_directory(path: &PathBuf, index: &IndexRef) {
+    fn index_directory(path: &PathBuf, index: &IndexRef) {
         let Some(path_entries) = path.read_dir().ok() else {
             return;
         };
         for path in path_entries.filter_map(|p| Some(p.ok()?.path())) {
             if path.is_dir() {
-                Box::pin(Self::index_directory(&path, index)).await;
+                Self::index_directory(&path, index);
             } else if Self::should_index_file(&path) {
-                Self::index_file(path, index).await;
+                Self::index_file(path, index);
             }
         }
     }
 
-    async fn index_file(path: PathBuf, index: &IndexRef) {
+    fn index_file(path: PathBuf, index: &IndexRef) {
         if !path.is_file() || !path.exists() {
             return;
         }
-        let Some(content) = tokio::fs::read(&path).await.ok() else {
+        let Some(content) = std::fs::read(&path).ok() else {
             return;
         };
-        Self::index_file_content(&content, &path, index).await;
+        Self::index_file_content(&content, &path, index);
     }
 
-    async fn index_file_content(content: &[u8], path: &PathBuf, index: &IndexRef) {
+    fn index_file_content(content: &[u8], path: &PathBuf, index: &IndexRef) {
         log::trace!("Indexing file content for {:?}", path);
         let mut parser = Self::make_parser();
 
@@ -87,10 +90,10 @@ impl Indexer {
             return;
         };
 
-        Self::index_parse_tree(&tree, content, path, index).await;
+        Self::index_parse_tree(&tree, content, path, index);
     }
 
-    async fn index_parse_tree(
+    fn index_parse_tree(
         tree: &tree_sitter::Tree,
         content: &[u8],
         path: &PathBuf,
@@ -142,12 +145,11 @@ impl Indexer {
 
         index
             .get_mut()
-            .await
             .files
             .insert(file_name.to_string(), index_file);
     }
 
-    async fn watch_and_index_changed_files(_index: &IndexRef) {
+    fn watch_and_index_changed_files(_index: &IndexRef) {
         log::trace!("Watching workspace files");
     }
 
@@ -238,18 +240,17 @@ enum TagsQueryIndexElement {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_index_file_dependency() {
+    #[test]
+    fn test_index_file_dependency() {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_file_content(
             "Use cWebView.pkg\n".as_bytes(),
             &PathBuf::from_str("test.vw").unwrap(),
             &index_ref,
-        )
-        .await;
+        );
 
         assert_eq!(
-            index_ref.get().await.files["test.vw"].dependencies,
+            index_ref.get().files["test.vw"].dependencies,
             ["cWebView.pkg"]
         );
     }
