@@ -112,7 +112,7 @@ mod tests {
             index::IndexRef::make_test_index_ref(),
         );
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
-            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
 
         doc.replace_content(&"Procedure test\nEnd_Procedure\n".to_string());
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
@@ -126,7 +126,7 @@ mod tests {
             index::IndexRef::make_test_index_ref(),
         );
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
-            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (object_footer (keyword))))");
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
 
         doc.edit_content(&vec![TextDocumentContentChangeEvent {
             range: Some(tower_lsp::lsp_types::Range {
@@ -144,6 +144,6 @@ mod tests {
         }]);
 
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
-            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))");
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))");
     }
 }

@@ -144,6 +144,19 @@ impl Indexer {
                         index_file.dependencies.push(file_dependency.to_string());
                     }
                 }
+                Some(TagsQueryIndexElement::ClassDefinition) => {
+                    if let Some(name) = query_match
+                        .nodes_for_capture_index(name_capture_index)
+                        .next()
+                        .map(|node| node.utf8_text(content).ok())
+                        .flatten()
+                    {
+                        let class_symbol = ClassSymbol {
+                            name: String::from(name),
+                        };
+                        index_file.symbols.push(IndexSymbol::Class(class_symbol));
+                    }
+                }
                 _ => {}
             };
             index_file
@@ -240,6 +253,7 @@ impl IndexerConfig {
 #[strum(serialize_all = "snake_case")]
 enum TagsQueryIndexElement {
     FileDependency,
+    ClassDefinition,
 }
 
 #[cfg(test)]
@@ -258,6 +272,21 @@ mod tests {
         assert_eq!(
             index_ref.get().files["test.vw"].dependencies,
             ["cWebView.pkg"]
+        );
+    }
+
+    #[test]
+    fn test_index_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_file_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n".as_bytes(),
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!("{:?}", index_ref.get().files["test.pkg"].symbols),
+            "[Class(ClassSymbol { name: \"cMyClass\" })]"
         );
     }
 }

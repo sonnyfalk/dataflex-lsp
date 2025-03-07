@@ -24,6 +24,19 @@ pub struct IndexRef {
 #[derive(Debug)]
 pub struct IndexFile {
     dependencies: Vec<String>,
+    symbols: Vec<IndexSymbol>,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum IndexSymbol {
+    Class(ClassSymbol),
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct ClassSymbol {
+    pub name: String,
 }
 
 impl Index {
@@ -42,7 +55,6 @@ impl IndexRef {
         }
     }
 
-    #[allow(dead_code)]
     pub fn get(&self) -> std::sync::RwLockReadGuard<Index> {
         self.index
             .read()
@@ -60,6 +72,7 @@ impl IndexFile {
     fn new() -> Self {
         Self {
             dependencies: Vec::new(),
+            symbols: Vec::new(),
         }
     }
 }
