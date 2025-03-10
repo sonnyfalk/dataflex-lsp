@@ -257,14 +257,21 @@ enum TagsQueryIndexElement {
 }
 
 #[cfg(test)]
+impl Indexer {
+    pub fn index_test_content(content: &str, path: &PathBuf, index: &IndexRef) {
+        Self::index_file_content(content.as_bytes(), path, index);
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_index_file_dependency() {
         let index_ref = IndexRef::make_test_index_ref();
-        Indexer::index_file_content(
-            "Use cWebView.pkg\n".as_bytes(),
+        Indexer::index_test_content(
+            "Use cWebView.pkg\n",
             &PathBuf::from_str("test.vw").unwrap(),
             &index_ref,
         );
@@ -278,8 +285,8 @@ mod tests {
     #[test]
     fn test_index_class() {
         let index_ref = IndexRef::make_test_index_ref();
-        Indexer::index_file_content(
-            "Class cMyClass is a cBaseClass\nEnd_Class\n".as_bytes(),
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
             &PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );

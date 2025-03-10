@@ -39,12 +39,34 @@ pub struct ClassSymbol {
     pub name: String,
 }
 
+impl IndexSymbol {
+    fn class_symbol(&self) -> Option<&ClassSymbol> {
+        match self {
+            Self::Class(class_symbol) => Some(class_symbol),
+            _ => None,
+        }
+    }
+}
+
 impl Index {
     pub fn new(workspace: WorkspaceInfo) -> Self {
         Self {
             workspace,
             files: HashMap::new(),
         }
+    }
+
+    pub fn find_class(&self, name: &str) -> Option<&ClassSymbol> {
+        let class_symbol = self
+            .files
+            .values()
+            .map(|f| &f.symbols)
+            .flatten()
+            .filter_map(IndexSymbol::class_symbol)
+            .filter(|c| c.name == name)
+            .next();
+
+        class_symbol
     }
 }
 
@@ -88,5 +110,25 @@ impl Index {
 impl IndexRef {
     pub fn make_test_index_ref() -> Self {
         Self::new(Index::make_test_index())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!("{:?}", index_ref.get().find_class("cMyClass")),
+            "Some(ClassSymbol { name: \"cMyClass\" })"
+        );
     }
 }
