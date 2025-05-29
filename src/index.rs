@@ -7,7 +7,7 @@ mod indexer;
 mod workspace;
 
 pub use indexer::{Indexer, IndexerConfig};
-pub use workspace::WorkspaceInfo;
+pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
 #[derive(Debug)]
 pub struct Index {

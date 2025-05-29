@@ -4,8 +4,29 @@ use std::path::PathBuf;
 #[derive(Debug)]
 pub struct WorkspaceInfo {
     root_folder: PathBuf,
-    dataflex_version: Option<String>,
+    dataflex_version: Option<DataFlexVersion>,
     projects: Vec<ProjectInfo>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DataFlexVersion(String);
+
+impl From<String> for DataFlexVersion {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&str> for DataFlexVersion {
+    fn from(value: &str) -> Self {
+        Self::from(String::from(value))
+    }
+}
+
+impl Default for DataFlexVersion {
+    fn default() -> Self {
+        Self::from(String::new())
+    }
 }
 
 #[allow(dead_code)]
@@ -32,7 +53,10 @@ impl WorkspaceInfo {
 
         if let Some(ini_file) = ini::Ini::load_from_file(path).ok() {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
-            let dataflex_version = ini_file.section(Some("Properties")).and_then(|properties| properties.get("Version")).map(String::from);
+            let dataflex_version = ini_file
+                .section(Some("Properties"))
+                .and_then(|properties| properties.get("Version"))
+                .map(DataFlexVersion::from);
             let projects: Vec<ProjectInfo> = ini_file
                 .section(Some("Projects"))
                 .map(|projects| {
@@ -62,7 +86,7 @@ impl WorkspaceInfo {
         &self.root_folder
     }
 
-    pub fn get_dataflex_version(&self) -> Option<&String> {
+    pub fn get_dataflex_version(&self) -> Option<&DataFlexVersion> {
         self.dataflex_version.as_ref()
     }
 

@@ -3,13 +3,13 @@ use super::*;
 pub struct Indexer {
     index: IndexRef,
     config: IndexerConfig,
-    dataflex_version: Option<String>,
+    dataflex_version: Option<DataFlexVersion>,
 }
 
 #[derive(Debug)]
 pub struct IndexerConfig {
-    versioned_system_paths: HashMap<String, Vec<PathBuf>>,
-    default_version: String,
+    versioned_system_paths: HashMap<DataFlexVersion, Vec<PathBuf>>,
+    default_version: DataFlexVersion,
 }
 
 impl Indexer {
@@ -195,7 +195,7 @@ impl IndexerConfig {
                 .iter()
                 .map(|(version, _)| version.clone())
                 .next()
-                .unwrap_or(String::new());
+                .unwrap_or_default();
             Self {
                 versioned_system_paths,
                 default_version,
@@ -203,12 +203,12 @@ impl IndexerConfig {
         } else {
             Self {
                 versioned_system_paths: HashMap::new(),
-                default_version: String::new(),
+                default_version: Default::default(),
             }
         }
     }
 
-    pub fn system_path(&self, dataflex_version: Option<&String>) -> Option<&Vec<PathBuf>> {
+    pub fn system_path(&self, dataflex_version: Option<&DataFlexVersion>) -> Option<&Vec<PathBuf>> {
         let dataflex_version = dataflex_version.unwrap_or(&self.default_version);
         self.versioned_system_paths
             .get(dataflex_version)
@@ -216,7 +216,7 @@ impl IndexerConfig {
     }
 
     #[cfg(target_os = "windows")]
-    fn versioned_system_paths() -> Option<HashMap<String, Vec<PathBuf>>> {
+    fn versioned_system_paths() -> Option<HashMap<DataFlexVersion, Vec<PathBuf>>> {
         let reg_key = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
             .open_subkey("SOFTWARE\\Data Access Worldwide\\DataFlex")
             .ok()?;
@@ -230,7 +230,7 @@ impl IndexerConfig {
                     .ok();
                 if let Some(make_path) = make_path {
                     result.insert(
-                        version,
+                        DataFlexVersion::from(version),
                         make_path
                             .split(";")
                             .map(str::trim)
@@ -244,7 +244,7 @@ impl IndexerConfig {
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn versioned_system_paths() -> Option<HashMap<String, Vec<PathBuf>>> {
+    fn versioned_system_paths() -> Option<HashMap<DataFlexVersion, Vec<PathBuf>>> {
         None
     }
 }
