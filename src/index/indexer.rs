@@ -162,10 +162,7 @@ impl Indexer {
             index_file
         });
 
-        index
-            .get_mut()
-            .files
-            .insert(file_name.to_string(), index_file);
+        index.get_mut().update_file(file_name, index_file);
     }
 
     fn watch_and_index_changed_files(_index: &IndexRef) {

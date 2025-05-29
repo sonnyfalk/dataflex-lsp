@@ -68,6 +68,10 @@ impl Index {
 
         class_symbol
     }
+
+    pub fn update_file(&mut self, file_name: &str, index_file: IndexFile) {
+        self.files.insert(file_name.to_string(), index_file);
+    }
 }
 
 impl IndexRef {
