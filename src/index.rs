@@ -46,6 +46,7 @@ struct SymbolsDiff<'a> {
 }
 
 impl IndexSymbol {
+    #[cfg(test)]
     fn class_symbol(&self) -> Option<&ClassSymbol> {
         match self {
             Self::Class(class_symbol) => Some(class_symbol),
@@ -76,6 +77,7 @@ impl Index {
         }
     }
 
+    #[cfg(test)]
     pub fn find_class(&self, name: &str) -> Option<&ClassSymbol> {
         let Some(file) = self.class_lookup_table.get(name) else {
             return None;
@@ -93,6 +95,10 @@ impl Index {
             .next();
 
         class_symbol
+    }
+
+    pub fn is_known_class(&self, name: &str) -> bool {
+        self.class_lookup_table.get(name).is_some()
     }
 
     pub fn update_file(&mut self, file_name: &str, index_file: IndexFile) {

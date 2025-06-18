@@ -41,7 +41,6 @@ impl LineMap {
         self.lines.get(line).and_then(|l| Some(l.text.as_str()))
     }
 
-    #[cfg(test)]
     pub fn text_in_range(&self, start: Point, end: Point) -> String {
         self.text_in_range_iterator(start, end)
             .fold(String::new(), |text, s| text + s)

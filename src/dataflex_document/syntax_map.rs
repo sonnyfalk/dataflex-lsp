@@ -109,6 +109,22 @@ impl SyntaxMap {
                                     length: (end.column - start.column) as u32,
                                     kind: 0,
                                 }),
+                                "entity.other.inherited-class" => {
+                                    let name = doc.line_map.text_in_range(start, end);
+                                    if doc.index.get().is_known_class(&name) {
+                                        Some(SyntaxToken {
+                                            delta_start: if start.row == prev_pos.row {
+                                                (start.column - prev_pos.column) as u32
+                                            } else {
+                                                start.column as u32
+                                            },
+                                            length: (end.column - start.column) as u32,
+                                            kind: 1,
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                }
                                 _ => None,
                             };
                             if let Some(token) = token {

@@ -56,7 +56,7 @@ impl LanguageServer for DataFlexLanguageServer {
                 SemanticTokensOptions {
                     full: Some(SemanticTokensFullOptions::Bool(true)),
                     legend: SemanticTokensLegend {
-                        token_types: vec![SemanticTokenType::KEYWORD],
+                        token_types: vec![SemanticTokenType::KEYWORD, SemanticTokenType::CLASS],
                         token_modifiers: vec![],
                     },
                     ..Default::default()
@@ -90,7 +90,10 @@ impl LanguageServer for DataFlexLanguageServer {
             .map(|ref path| index::WorkspaceInfo::load_from_path(path))
             .unwrap_or(index::WorkspaceInfo::new());
 
-        _ = self.indexer.set(index::Indexer::new(workspace_info, index::IndexerConfig::new()));
+        _ = self.indexer.set(index::Indexer::new(
+            workspace_info,
+            index::IndexerConfig::new(),
+        ));
         self.indexer.get().unwrap().start_indexing();
 
         self.client
