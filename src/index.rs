@@ -39,11 +39,29 @@ pub struct ClassSymbol {
     pub name: String,
 }
 
+struct SymbolsDiff<'a> {
+    added_symbols: Vec<&'a IndexSymbol>,
+    removed_symbols: Vec<&'a IndexSymbol>,
+}
+
 impl IndexSymbol {
     fn class_symbol(&self) -> Option<&ClassSymbol> {
         match self {
             Self::Class(class_symbol) => Some(class_symbol),
-            _ => None,
+        }
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            Self::Class(class_symbol) => &class_symbol.name,
+        }
+    }
+
+    fn is_matching(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Class(class_symbol), Self::Class(other_class_symbol)) => {
+                class_symbol.name == other_class_symbol.name
+            }
         }
     }
 }
@@ -101,6 +119,37 @@ impl IndexFile {
             symbols: Vec::new(),
         }
     }
+
+    fn diff_symbols<'a>(&'a self, other: &'a Self) -> SymbolsDiff<'a> {
+        let existing_symbols = self
+            .symbols
+            .iter()
+            .fold(HashMap::new(), |mut table, symbol| {
+                table.insert(symbol.name(), symbol);
+                table
+            });
+
+        let (added_symbols, removed_symbols) = other.symbols.iter().fold(
+            (Vec::new(), existing_symbols),
+            |(mut added_symbols, mut existing_symbols), symbol| {
+                if let Some(&existing_symbol) = existing_symbols.get(symbol.name()) {
+                    if existing_symbol.is_matching(symbol) {
+                        existing_symbols.remove(symbol.name());
+                    } else {
+                        added_symbols.push(symbol);
+                    }
+                } else {
+                    added_symbols.push(symbol);
+                }
+                return (added_symbols, existing_symbols);
+            },
+        );
+
+        SymbolsDiff {
+            added_symbols,
+            removed_symbols: removed_symbols.into_values().collect(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -134,5 +183,86 @@ mod tests {
             format!("{:?}", index_ref.get().find_class("cMyClass")),
             "Some(ClassSymbol { name: \"cMyClass\" })"
         );
+    }
+
+    #[test]
+    fn test_diff_symbols_add_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get("test.pkg")
+            .unwrap()
+            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_diff_symbols_remove_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get("test.pkg")
+            .unwrap()
+            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+        assert_eq!(symbols_diff.added_symbols.len(), 0);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_rename_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get("test.pkg")
+            .unwrap()
+            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
     }
 }
