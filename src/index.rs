@@ -13,6 +13,7 @@ pub use workspace::{DataFlexVersion, WorkspaceInfo};
 pub struct Index {
     workspace: WorkspaceInfo,
     files: HashMap<String, IndexFile>,
+    class_lookup_table: HashMap<String, String>,
 }
 
 #[allow(dead_code)]
@@ -71,6 +72,7 @@ impl Index {
         Self {
             workspace,
             files: HashMap::new(),
+            class_lookup_table: HashMap::new(),
         }
     }
 
@@ -88,7 +90,38 @@ impl Index {
     }
 
     pub fn update_file(&mut self, file_name: &str, index_file: IndexFile) {
-        self.files.insert(file_name.to_string(), index_file);
+        let old_index_file = self.files.insert(file_name.to_string(), index_file);
+        self.update_lookup_tables(file_name, old_index_file);
+    }
+
+    fn update_lookup_tables(&mut self, file_name: &str, old_index_file: Option<IndexFile>) {
+        let Some(new_index_file) = self.files.get(file_name) else {
+            // If there's no new index file, just remove all old symbols.
+            for symbol in old_index_file.map_or(vec![], |index_file| index_file.symbols) {
+                // FIXME: This needs to be updated to support multiple classes with the same name.
+                self.class_lookup_table.remove(symbol.name());
+            }
+            return;
+        };
+        let Some(old_index_file) = old_index_file else {
+            // If there's no old index file, just add all symbols.
+            for symbol in &new_index_file.symbols {
+                self.class_lookup_table
+                    .insert(String::from(symbol.name()), String::from(file_name));
+            }
+            return;
+        };
+
+        // If we have both an old index file and a new one, diff the symbols and update the lookup table accordingly.
+        let symbols_diff = old_index_file.diff_symbols(new_index_file);
+        for symbol in symbols_diff.removed_symbols {
+            // FIXME: This needs to be updated to support multiple classes with the same name.
+            self.class_lookup_table.remove(symbol.name());
+        }
+        for symbol in symbols_diff.added_symbols {
+            self.class_lookup_table
+                .insert(String::from(symbol.name()), String::from(file_name));
+        }
     }
 }
 
@@ -264,5 +297,49 @@ mod tests {
             .diff_symbols(new_index.files.get("test.pkg").unwrap());
         assert_eq!(symbols_diff.added_symbols.len(), 1);
         assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_class_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+        assert_eq!(
+            index_ref.get().class_lookup_table.get("cMyClass"),
+            Some(&String::from("test.pkg"))
+        );
+
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+        assert_eq!(
+            index_ref.get().class_lookup_table.get("cMyClass"),
+            Some(&String::from("test.pkg"))
+        );
+        assert_eq!(
+            index_ref.get().class_lookup_table.get("cOtherClass"),
+            Some(&String::from("test.pkg"))
+        );
+
+        Indexer::index_test_content(
+            "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
+            &PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+        assert_eq!(index_ref.get().class_lookup_table.get("cMyClass"), None);
+        assert_eq!(
+            index_ref.get().class_lookup_table.get("cMyRenamedClass"),
+            Some(&String::from("test.pkg"))
+        );
+        assert_eq!(
+            index_ref.get().class_lookup_table.get("cOtherClass"),
+            Some(&String::from("test.pkg"))
+        );
     }
 }
