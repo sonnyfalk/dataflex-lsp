@@ -77,11 +77,17 @@ impl Index {
     }
 
     pub fn find_class(&self, name: &str) -> Option<&ClassSymbol> {
-        let class_symbol = self
-            .files
-            .values()
-            .map(|f| &f.symbols)
-            .flatten()
+        let Some(file) = self.class_lookup_table.get(name) else {
+            return None;
+        };
+
+        let Some(index_file) = self.files.get(file) else {
+            return None;
+        };
+
+        let class_symbol = index_file
+            .symbols
+            .iter()
             .filter_map(IndexSymbol::class_symbol)
             .filter(|c| c.name == name)
             .next();
