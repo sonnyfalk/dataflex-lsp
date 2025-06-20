@@ -24,6 +24,7 @@ pub struct IndexRef {
 
 #[derive(Debug)]
 pub struct IndexFile {
+    path: PathBuf,
     dependencies: Vec<String>,
     symbols: Vec<IndexSymbol>,
 }
@@ -101,9 +102,9 @@ impl Index {
         self.class_lookup_table.get(name).is_some()
     }
 
-    pub fn update_file(&mut self, file_name: &str, index_file: IndexFile) {
-        let old_index_file = self.files.insert(file_name.to_string(), index_file);
-        self.update_lookup_tables(file_name, old_index_file);
+    pub fn update_file(&mut self, file_name: String, index_file: IndexFile) {
+        let old_index_file = self.files.insert(file_name.clone(), index_file);
+        self.update_lookup_tables(&file_name, old_index_file);
     }
 
     fn update_lookup_tables(&mut self, file_name: &str, old_index_file: Option<IndexFile>) {
@@ -158,8 +159,9 @@ impl IndexRef {
 }
 
 impl IndexFile {
-    fn new() -> Self {
+    fn new(path: PathBuf) -> Self {
         Self {
+            path,
             dependencies: Vec::new(),
             symbols: Vec::new(),
         }
@@ -220,7 +222,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
 
@@ -235,14 +237,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &new_index_ref,
         );
 
@@ -262,14 +264,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &new_index_ref,
         );
 
@@ -289,14 +291,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &new_index_ref,
         );
 
@@ -317,7 +319,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
         assert_eq!(
@@ -327,7 +329,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
         assert_eq!(
@@ -341,7 +343,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
         assert_eq!(index_ref.get().class_lookup_table.get("cMyClass"), None);

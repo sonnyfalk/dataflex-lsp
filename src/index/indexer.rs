@@ -84,11 +84,11 @@ impl Indexer {
             return;
         };
         scope.spawn(move |_| {
-            Self::index_file_content(&content, &path, index);
+            Self::index_file_content(&content, path, index);
         });
     }
 
-    fn index_file_content(content: &[u8], path: &PathBuf, index: &IndexRef) {
+    fn index_file_content(content: &[u8], path: PathBuf, index: &IndexRef) {
         log::trace!("Indexing file content for {:?}", path);
         let mut parser = Self::make_parser();
 
@@ -99,15 +99,12 @@ impl Indexer {
         Self::index_parse_tree(&tree, content, path, index);
     }
 
-    fn index_parse_tree(
-        tree: &tree_sitter::Tree,
-        content: &[u8],
-        path: &PathBuf,
-        index: &IndexRef,
-    ) {
+    fn index_parse_tree(tree: &tree_sitter::Tree, content: &[u8], path: PathBuf, index: &IndexRef) {
         let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
             return;
         };
+        let file_name = String::from(file_name);
+
         log::trace!("Indexing file parse tree for {:?}", path);
 
         let query = tree_sitter::Query::new(
@@ -132,7 +129,7 @@ impl Indexer {
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, tree.root_node(), content);
 
-        let index_file = matches.fold(IndexFile::new(), |mut index_file, query_match| {
+        let index_file = matches.fold(IndexFile::new(path), |mut index_file, query_match| {
             match pattern_index_element_map[query_match.pattern_index] {
                 Some(TagsQueryIndexElement::FileDependency) => {
                     if let Some(file_dependency) = query_match
@@ -255,7 +252,7 @@ enum TagsQueryIndexElement {
 
 #[cfg(test)]
 impl Indexer {
-    pub fn index_test_content(content: &str, path: &PathBuf, index: &IndexRef) {
+    pub fn index_test_content(content: &str, path: PathBuf, index: &IndexRef) {
         Self::index_file_content(content.as_bytes(), path, index);
     }
 }
@@ -269,7 +266,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Use cWebView.pkg\n",
-            &PathBuf::from_str("test.vw").unwrap(),
+            PathBuf::from_str("test.vw").unwrap(),
             &index_ref,
         );
 
@@ -284,7 +281,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            &PathBuf::from_str("test.pkg").unwrap(),
+            PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
 
