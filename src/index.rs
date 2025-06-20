@@ -41,13 +41,20 @@ pub struct ClassSymbol {
     pub name: String,
 }
 
+#[derive(Debug)]
+pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
+    pub path: &'a PathBuf,
+    pub symbol: &'a IndexSymbolType,
+}
+
+type ClassSymbolSnapshot<'a> = IndexSymbolSnapshot<'a, ClassSymbol>;
+
 struct SymbolsDiff<'a> {
     added_symbols: Vec<&'a IndexSymbol>,
     removed_symbols: Vec<&'a IndexSymbol>,
 }
 
 impl IndexSymbol {
-    #[cfg(test)]
     fn class_symbol(&self) -> Option<&ClassSymbol> {
         match self {
             Self::Class(class_symbol) => Some(class_symbol),
@@ -78,8 +85,7 @@ impl Index {
         }
     }
 
-    #[cfg(test)]
-    pub fn find_class(&self, name: &str) -> Option<&ClassSymbol> {
+    pub fn find_class(&self, name: &str) -> Option<ClassSymbolSnapshot> {
         let Some(file) = self.class_lookup_table.get(name) else {
             return None;
         };
@@ -95,7 +101,14 @@ impl Index {
             .filter(|c| c.name == name)
             .next();
 
-        class_symbol
+        if let Some(class_symbol) = class_symbol {
+            Some(ClassSymbolSnapshot {
+                path: &index_file.path,
+                symbol: class_symbol,
+            })
+        } else {
+            None
+        }
     }
 
     pub fn is_known_class(&self, name: &str) -> bool {
@@ -228,7 +241,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().find_class("cMyClass")),
-            "Some(ClassSymbol { name: \"cMyClass\" })"
+             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { name: \"cMyClass\" } })"
         );
     }
 
