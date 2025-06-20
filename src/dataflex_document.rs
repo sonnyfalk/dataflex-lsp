@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{SemanticToken, TextDocumentContentChangeEvent};
+use tower_lsp::lsp_types;
 use tree_sitter::{InputEdit, Parser, Point, Tree};
 
 use crate::index;
@@ -58,7 +58,7 @@ impl DataFlexDocument {
         self.update();
     }
 
-    pub fn edit_content(&mut self, changes: &Vec<TextDocumentContentChangeEvent>) {
+    pub fn edit_content(&mut self, changes: &Vec<lsp_types::TextDocumentContentChangeEvent>) {
         for change in changes {
             let Some(range) = change.range else {
                 self.line_map = line_map::LineMap::new(&change.text);
@@ -95,9 +95,44 @@ impl DataFlexDocument {
         self.update();
     }
 
-    pub fn semantic_tokens_full(&self) -> Option<Vec<SemanticToken>> {
+    pub fn semantic_tokens_full(&self) -> Option<Vec<lsp_types::SemanticToken>> {
         let syntax_map = self.syntax_map.as_ref()?;
         Some(syntax_map.get_all_tokens())
+    }
+
+    pub fn find_definition(&self, position: lsp_types::Position) -> Option<lsp_types::Location> {
+        let Some(tree) = self.tree.as_ref() else {
+            return None;
+        };
+        let start = Point {
+            row: position.line as usize,
+            column: position.character as usize,
+        };
+        let Some(node) = tree.root_node().descendant_for_point_range(start, start) else {
+            return None;
+        };
+        let name = self
+            .line_map
+            .text_in_range(node.start_position(), node.end_position());
+
+        let index = self.index.get();
+        let Some(class_symbol) = index.find_class(&name) else {
+            return None;
+        };
+
+        Some(lsp_types::Location::new(
+            lsp_types::Url::from_file_path(class_symbol.path).unwrap(),
+            lsp_types::Range::new(
+                lsp_types::Position {
+                    line: class_symbol.symbol.location.row as u32,
+                    character: class_symbol.symbol.location.column as u32,
+                },
+                lsp_types::Position {
+                    line: class_symbol.symbol.location.row as u32,
+                    character: class_symbol.symbol.location.column as u32,
+                },
+            ),
+        ))
     }
 }
 
@@ -128,7 +163,7 @@ mod tests {
         assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
 
-        doc.edit_content(&vec![TextDocumentContentChangeEvent {
+        doc.edit_content(&vec![lsp_types::TextDocumentContentChangeEvent {
             range: Some(tower_lsp::lsp_types::Range {
                 start: tower_lsp::lsp_types::Position {
                     line: 0,

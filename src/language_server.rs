@@ -75,6 +75,7 @@ impl LanguageServer for DataFlexLanguageServer {
                     },
                 )),
                 semantic_tokens_provider: semantic_tokens_options,
+                definition_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -153,5 +154,21 @@ impl LanguageServer for DataFlexLanguageServer {
             data: tokens,
             ..Default::default()
         })))
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let location = self
+            .open_files
+            .get(&params.text_document_position_params.text_document.uri)
+            .unwrap()
+            .find_definition(params.text_document_position_params.position);
+        if let Some(location) = location {
+            Ok(Some(GotoDefinitionResponse::Scalar(location)))
+        } else {
+            Ok(None)
+        }
     }
 }
