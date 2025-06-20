@@ -7,6 +7,7 @@ mod indexer;
 mod workspace;
 
 pub use indexer::{Indexer, IndexerConfig};
+use tree_sitter::Point;
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
 #[derive(Debug)]
@@ -38,6 +39,7 @@ pub enum IndexSymbol {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ClassSymbol {
+    pub location: Point,
     pub name: String,
 }
 
@@ -241,7 +243,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().find_class("cMyClass")),
-             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { name: \"cMyClass\" } })"
+             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\" } })"
         );
     }
 

@@ -142,16 +142,17 @@ impl Indexer {
                     }
                 }
                 Some(TagsQueryIndexElement::ClassDefinition) => {
-                    if let Some(name) = query_match
+                    if let Some(name_node) = query_match
                         .nodes_for_capture_index(name_capture_index)
                         .next()
-                        .map(|node| node.utf8_text(content).ok())
-                        .flatten()
                     {
-                        let class_symbol = ClassSymbol {
-                            name: String::from(name),
-                        };
-                        index_file.symbols.push(IndexSymbol::Class(class_symbol));
+                        if let Some(name) = name_node.utf8_text(content).ok() {
+                            let class_symbol = ClassSymbol {
+                                location: name_node.start_position(),
+                                name: String::from(name),
+                            };
+                            index_file.symbols.push(IndexSymbol::Class(class_symbol));
+                        }
                     }
                 }
                 _ => {}
@@ -287,7 +288,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files["test.pkg"].symbols),
-            "[Class(ClassSymbol { name: \"cMyClass\" })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\" })]"
         );
     }
 }
