@@ -3,6 +3,7 @@ use tree_sitter::{InputEdit, Parser, Point, Tree};
 
 use crate::index;
 
+mod code_completion;
 mod line_map;
 mod syntax_map;
 
@@ -133,6 +134,36 @@ impl DataFlexDocument {
                 },
             ),
         ))
+    }
+
+    pub fn code_completion(
+        &self,
+        position: lsp_types::Position,
+    ) -> Option<Vec<lsp_types::CompletionItem>> {
+        let position = Point {
+            row: position.line as usize,
+            column: position.character as usize,
+        };
+
+        let completions = code_completion::CodeCompletion::code_completion(self, position);
+        completions.map(|mut completions| {
+            completions
+                .drain(..)
+                .map(|item| lsp_types::CompletionItem {
+                    label: item.label,
+                    kind: Some(lsp_types::CompletionItemKind::from(item.kind)),
+                    ..Default::default()
+                })
+                .collect()
+        })
+    }
+}
+
+impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind {
+    fn from(kind: code_completion::CompletionItemKind) -> Self {
+        match kind {
+            code_completion::CompletionItemKind::Class => Self::CLASS,
+        }
     }
 }
 

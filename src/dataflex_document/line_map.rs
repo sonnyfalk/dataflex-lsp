@@ -46,6 +46,10 @@ impl LineMap {
             .fold(String::new(), |text, s| text + s)
     }
 
+    pub fn text_for_node(&self, node: &Node) -> String {
+        self.text_in_range(node.start_position(), node.end_position())
+    }
+
     pub fn text_in_range_iterator<'a>(
         &'a self,
         start: Point,

@@ -117,6 +117,10 @@ impl Index {
         self.class_lookup_table.get(name).is_some()
     }
 
+    pub fn all_known_classes(&self) -> Vec<String> {
+        self.class_lookup_table.keys().cloned().collect()
+    }
+
     pub fn update_file(&mut self, file_name: String, index_file: IndexFile) {
         let old_index_file = self.files.insert(file_name.clone(), index_file);
         self.update_lookup_tables(&file_name, old_index_file);

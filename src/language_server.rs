@@ -76,6 +76,7 @@ impl LanguageServer for DataFlexLanguageServer {
                 )),
                 semantic_tokens_provider: semantic_tokens_options,
                 definition_provider: Some(OneOf::Left(true)),
+                completion_provider: Some(Default::default()),
                 ..Default::default()
             },
             ..Default::default()
@@ -167,6 +168,23 @@ impl LanguageServer for DataFlexLanguageServer {
             .find_definition(params.text_document_position_params.position);
         if let Some(location) = location {
             Ok(Some(GotoDefinitionResponse::Scalar(location)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        log::info!("completion request");
+        let completions = self
+            .open_files
+            .get(&params.text_document_position.text_document.uri)
+            .unwrap()
+            .code_completion(params.text_document_position.position);
+        if let Some(completions) = completions {
+            Ok(Some(CompletionResponse::List(CompletionList {
+                is_incomplete: false,
+                items: completions,
+            })))
         } else {
             Ok(None)
         }
