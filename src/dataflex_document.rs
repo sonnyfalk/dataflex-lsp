@@ -48,7 +48,10 @@ impl DataFlexDocument {
             self.tree.as_ref(),
             None,
         );
+        self.update_syntax_map();
+    }
 
+    pub fn update_syntax_map(&mut self) {
         self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
     }
 

@@ -12,6 +12,17 @@ pub struct IndexerConfig {
     default_version: DataFlexVersion,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum IndexerState {
+    Initializing,
+    InitialIndexing,
+    Inactive,
+}
+
+pub trait IndexerObserver {
+    fn state_transition(&self, old_state: IndexerState, new_state: IndexerState);
+}
+
 impl Indexer {
     pub fn new(workspace: WorkspaceInfo, config: IndexerConfig) -> Self {
         let dataflex_version = workspace.get_dataflex_version().cloned();
@@ -26,13 +37,14 @@ impl Indexer {
         &self.index
     }
 
-    pub fn start_indexing(&self) {
+    pub fn start_indexing<T: IndexerObserver + Send + 'static>(&self, observer: T) {
         let index = self.index.clone();
         let system_paths = self
             .config
             .system_path(self.dataflex_version.as_ref())
             .cloned();
         rayon::spawn(move || {
+            observer.state_transition(IndexerState::Initializing, IndexerState::InitialIndexing);
             if let Some(system_paths) = system_paths {
                 log::info!("Indexing system paths");
                 Self::index_system_paths(&system_paths, &index);
@@ -41,6 +53,7 @@ impl Indexer {
             Self::index_workspace(&index);
             log::info!("Finished indexing: {} files", index.get().files.len());
             log::trace!("{:#?}", index.get());
+            observer.state_transition(IndexerState::InitialIndexing, IndexerState::Inactive);
             Self::watch_and_index_changed_files(&index);
         });
     }

@@ -20,6 +20,37 @@ struct DataFlexLanguageServerInner {
     indexer: OnceLock<index::Indexer>,
 }
 
+struct IndexerObserver {
+    inner: Weak<DataFlexLanguageServerInner>,
+    runtime: tokio::runtime::Handle,
+}
+
+impl index::IndexerObserver for IndexerObserver {
+    fn state_transition(&self, old_state: index::IndexerState, new_state: index::IndexerState) {
+        let Some(inner) = self.inner.upgrade() else {
+            return;
+        };
+
+        log::info!(
+            "Indexing state changed from {:?} to {:?}",
+            old_state,
+            new_state
+        );
+        match (old_state, new_state) {
+            (index::IndexerState::InitialIndexing, index::IndexerState::Inactive) => {
+                for mut file in inner.open_files.iter_mut() {
+                    file.update_syntax_map();
+                }
+
+                self.runtime.spawn(async move {
+                    _ = inner.client.semantic_tokens_refresh().await;
+                });
+            }
+            _ => (),
+        }
+    }
+}
+
 impl DataFlexLanguageServer {
     pub fn new(client: Client) -> Self {
         Self {
@@ -106,7 +137,14 @@ impl LanguageServer for DataFlexLanguageServer {
             workspace_info,
             index::IndexerConfig::new(),
         ));
-        self.inner.indexer.get().unwrap().start_indexing();
+        self.inner
+            .indexer
+            .get()
+            .unwrap()
+            .start_indexing(IndexerObserver {
+                inner: Arc::downgrade(&self.inner),
+                runtime: tokio::runtime::Handle::current(),
+            });
 
         self.inner
             .client

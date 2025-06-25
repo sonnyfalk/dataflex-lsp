@@ -6,7 +6,7 @@ use strum::EnumString;
 mod indexer;
 mod workspace;
 
-pub use indexer::{Indexer, IndexerConfig};
+pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 use tree_sitter::Point;
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
