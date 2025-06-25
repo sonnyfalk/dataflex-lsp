@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock, Weak};
 
 use dashmap::DashMap;
 use tower_lsp::jsonrpc::Result;
@@ -10,6 +10,10 @@ use crate::dataflex_document::DataFlexDocument;
 use crate::index;
 
 pub struct DataFlexLanguageServer {
+    inner: Arc<DataFlexLanguageServerInner>,
+}
+
+struct DataFlexLanguageServerInner {
     client: Client,
     open_files: DashMap<Url, DataFlexDocument>,
     workspace_root: OnceLock<PathBuf>,
@@ -19,10 +23,12 @@ pub struct DataFlexLanguageServer {
 impl DataFlexLanguageServer {
     pub fn new(client: Client) -> Self {
         Self {
-            client,
-            open_files: DashMap::new(),
-            workspace_root: OnceLock::new(),
-            indexer: OnceLock::new(),
+            inner: Arc::new(DataFlexLanguageServerInner {
+                client,
+                open_files: DashMap::new(),
+                workspace_root: OnceLock::new(),
+                indexer: OnceLock::new(),
+            }),
         }
     }
 }
@@ -45,7 +51,10 @@ impl LanguageServer for DataFlexLanguageServer {
             workspace_root
         );
 
-        _ = self.workspace_root.set(workspace_root.unwrap_or_default());
+        _ = self
+            .inner
+            .workspace_root
+            .set(workspace_root.unwrap_or_default());
 
         let semantic_tokens_options = if let Some(_) = params
             .capabilities
@@ -87,18 +96,20 @@ impl LanguageServer for DataFlexLanguageServer {
         log::info!("initialized() called");
 
         let workspace_info = self
+            .inner
             .workspace_root
             .get()
             .map(|ref path| index::WorkspaceInfo::load_from_path(path))
             .unwrap_or(index::WorkspaceInfo::new());
 
-        _ = self.indexer.set(index::Indexer::new(
+        _ = self.inner.indexer.set(index::Indexer::new(
             workspace_info,
             index::IndexerConfig::new(),
         ));
-        self.indexer.get().unwrap().start_indexing();
+        self.inner.indexer.get().unwrap().start_indexing();
 
-        self.client
+        self.inner
+            .client
             .log_message(MessageType::INFO, "server initialized!")
             .await;
     }
@@ -109,17 +120,17 @@ impl LanguageServer for DataFlexLanguageServer {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         log::info!("Start tracking {}", params.text_document.uri);
-        self.open_files.insert(
+        self.inner.open_files.insert(
             params.text_document.uri,
             DataFlexDocument::new(
                 &params.text_document.text,
-                self.indexer.get().unwrap().get_index().clone(),
+                self.inner.indexer.get().unwrap().get_index().clone(),
             ),
         );
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.open_files.remove(&params.text_document.uri);
+        self.inner.open_files.remove(&params.text_document.uri);
         log::info!("Stop tracking {}", params.text_document.uri);
     }
 
@@ -129,7 +140,8 @@ impl LanguageServer for DataFlexLanguageServer {
             params.text_document.uri.as_str()
         );
 
-        self.open_files
+        self.inner
+            .open_files
             .get_mut(&params.text_document.uri)
             .unwrap()
             .edit_content(&params.content_changes);
@@ -145,6 +157,7 @@ impl LanguageServer for DataFlexLanguageServer {
         );
 
         let tokens = self
+            .inner
             .open_files
             .get(&params.text_document.uri)
             .unwrap()
@@ -162,6 +175,7 @@ impl LanguageServer for DataFlexLanguageServer {
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
         let location = self
+            .inner
             .open_files
             .get(&params.text_document_position_params.text_document.uri)
             .unwrap()
@@ -176,6 +190,7 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         log::info!("completion request");
         let completions = self
+            .inner
             .open_files
             .get(&params.text_document_position.text_document.uri)
             .unwrap()
