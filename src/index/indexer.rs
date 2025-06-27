@@ -122,9 +122,9 @@ impl Indexer {
 
         let query = tree_sitter::Query::new(
             &tree_sitter_dataflex::LANGUAGE.into(),
-            tree_sitter_dataflex::TAGS_QUERY,
+            Self::indexer_query(),
         )
-        .expect("Error loading TAGS_QUERY");
+        .expect("Error loading indexer query");
 
         let pattern_index_element_map: Vec<Option<TagsQueryIndexElement>> = (0..query
             .pattern_count())
@@ -215,6 +215,10 @@ impl Indexer {
             Some("pkg" | "vw" | "wo" | "sl" | "dd") => true,
             _ => false,
         }
+    }
+
+    fn indexer_query() -> &'static str {
+        include_str!("indexer.scm")
     }
 }
 
