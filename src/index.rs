@@ -41,6 +41,23 @@ pub enum IndexSymbol {
 pub struct ClassSymbol {
     pub location: Point,
     pub name: String,
+    pub methods: Vec<MethodSymbol>,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct MethodSymbol {
+    pub location: Point,
+    pub name: String,
+    pub kind: MethodKind,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum MethodKind {
+    Procedure,
+    Function,
+    Set,
 }
 
 #[derive(Debug)]
@@ -58,6 +75,12 @@ struct SymbolsDiff<'a> {
 
 impl IndexSymbol {
     fn class_symbol(&self) -> Option<&ClassSymbol> {
+        match self {
+            Self::Class(class_symbol) => Some(class_symbol),
+        }
+    }
+
+    fn class_symbol_mut(&mut self) -> Option<&mut ClassSymbol> {
         match self {
             Self::Class(class_symbol) => Some(class_symbol),
         }
@@ -247,7 +270,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().find_class("cMyClass")),
-             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\" } })"
+             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\", methods: [] } })"
         );
     }
 
