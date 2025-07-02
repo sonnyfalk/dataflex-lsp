@@ -291,6 +291,81 @@ enum TagsQueryIndexElement {
     MethodDefinition,
 }
 
+struct SymbolsDiff<'a> {
+    added_symbols: Vec<&'a IndexSymbol>,
+    removed_symbols: Vec<&'a IndexSymbol>,
+}
+
+impl Index {
+    fn update_file(&mut self, file_name: String, index_file: IndexFile) {
+        let old_index_file = self.files.insert(file_name.clone(), index_file);
+        self.update_lookup_tables(&file_name, old_index_file);
+    }
+
+    fn update_lookup_tables(&mut self, file_name: &str, old_index_file: Option<IndexFile>) {
+        let Some(new_index_file) = self.files.get(file_name) else {
+            // If there's no new index file, just remove all old symbols.
+            for symbol in old_index_file.map_or(vec![], |index_file| index_file.symbols) {
+                // FIXME: This needs to be updated to support multiple classes with the same name.
+                self.class_lookup_table.remove(symbol.name());
+            }
+            return;
+        };
+        let Some(old_index_file) = old_index_file else {
+            // If there's no old index file, just add all symbols.
+            for symbol in &new_index_file.symbols {
+                self.class_lookup_table
+                    .insert(String::from(symbol.name()), String::from(file_name));
+            }
+            return;
+        };
+
+        // If we have both an old index file and a new one, diff the symbols and update the lookup table accordingly.
+        let symbols_diff = old_index_file.diff_symbols(new_index_file);
+        for symbol in symbols_diff.removed_symbols {
+            // FIXME: This needs to be updated to support multiple classes with the same name.
+            self.class_lookup_table.remove(symbol.name());
+        }
+        for symbol in symbols_diff.added_symbols {
+            self.class_lookup_table
+                .insert(String::from(symbol.name()), String::from(file_name));
+        }
+    }
+}
+
+impl IndexFile {
+    fn diff_symbols<'a>(&'a self, other: &'a Self) -> SymbolsDiff<'a> {
+        let existing_symbols = self
+            .symbols
+            .iter()
+            .fold(HashMap::new(), |mut table, symbol| {
+                table.insert(symbol.name(), symbol);
+                table
+            });
+
+        let (added_symbols, removed_symbols) = other.symbols.iter().fold(
+            (Vec::new(), existing_symbols),
+            |(mut added_symbols, mut existing_symbols), symbol| {
+                if let Some(&existing_symbol) = existing_symbols.get(symbol.name()) {
+                    if existing_symbol.is_matching(symbol) {
+                        existing_symbols.remove(symbol.name());
+                    } else {
+                        added_symbols.push(symbol);
+                    }
+                } else {
+                    added_symbols.push(symbol);
+                }
+                return (added_symbols, existing_symbols);
+            },
+        );
+
+        SymbolsDiff {
+            added_symbols,
+            removed_symbols: removed_symbols.into_values().collect(),
+        }
+    }
+}
+
 #[cfg(test)]
 impl Indexer {
     pub fn index_test_content(content: &str, path: PathBuf, index: &IndexRef) {
@@ -345,5 +420,86 @@ mod tests {
             format!("{:?}", index_ref.get().files["test.pkg"].symbols),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\", methods: [MethodSymbol { location: Point { row: 1, column: 14 }, name: \"SayHello\", kind: Procedure }] })]"
         );
+    }
+
+    #[test]
+    fn test_diff_symbols_add_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get("test.pkg")
+            .unwrap()
+            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_diff_symbols_remove_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get("test.pkg")
+            .unwrap()
+            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+        assert_eq!(symbols_diff.added_symbols.len(), 0);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_rename_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get("test.pkg")
+            .unwrap()
+            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
     }
 }
