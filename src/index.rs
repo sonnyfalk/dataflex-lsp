@@ -3,12 +3,15 @@ use std::{collections::HashMap, ffi::OsStr, path::PathBuf, str::FromStr};
 use streaming_iterator::StreamingIterator;
 use strum::EnumString;
 
+mod index_symbol;
 mod indexer;
 mod workspace;
 
+pub use index_symbol::{ClassSymbol, ClassSymbolSnapshot, IndexSymbol, MethodKind, MethodSymbol};
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
-use tree_sitter::Point;
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
+
+use tree_sitter::Point;
 
 #[derive(Debug)]
 pub struct Index {
@@ -30,75 +33,9 @@ pub struct IndexFile {
     symbols: Vec<IndexSymbol>,
 }
 
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum IndexSymbol {
-    Class(ClassSymbol),
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct ClassSymbol {
-    pub location: Point,
-    pub name: String,
-    pub methods: Vec<MethodSymbol>,
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct MethodSymbol {
-    pub location: Point,
-    pub name: String,
-    pub kind: MethodKind,
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum MethodKind {
-    Procedure,
-    Function,
-    Set,
-}
-
-#[derive(Debug)]
-pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
-    pub path: &'a PathBuf,
-    pub symbol: &'a IndexSymbolType,
-}
-
-type ClassSymbolSnapshot<'a> = IndexSymbolSnapshot<'a, ClassSymbol>;
-
 struct SymbolsDiff<'a> {
     added_symbols: Vec<&'a IndexSymbol>,
     removed_symbols: Vec<&'a IndexSymbol>,
-}
-
-impl IndexSymbol {
-    fn class_symbol(&self) -> Option<&ClassSymbol> {
-        match self {
-            Self::Class(class_symbol) => Some(class_symbol),
-        }
-    }
-
-    fn class_symbol_mut(&mut self) -> Option<&mut ClassSymbol> {
-        match self {
-            Self::Class(class_symbol) => Some(class_symbol),
-        }
-    }
-
-    fn name(&self) -> &str {
-        match self {
-            Self::Class(class_symbol) => &class_symbol.name,
-        }
-    }
-
-    fn is_matching(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Class(class_symbol), Self::Class(other_class_symbol)) => {
-                class_symbol.name == other_class_symbol.name
-            }
-        }
-    }
 }
 
 impl Index {
