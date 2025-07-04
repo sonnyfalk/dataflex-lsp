@@ -162,7 +162,7 @@ impl Indexer {
                         if let Some(name) = name_node.utf8_text(content).ok() {
                             let class_symbol = ClassSymbol {
                                 location: name_node.start_position(),
-                                name: String::from(name),
+                                name: SymbolName::from(name),
                                 methods: Vec::new(),
                             };
                             index_file.symbols.push(IndexSymbol::Class(class_symbol));
@@ -182,7 +182,7 @@ impl Indexer {
                             {
                                 let method_symbol = MethodSymbol {
                                     location: name_node.start_position(),
-                                    name: String::from(name),
+                                    name: SymbolName::from(name),
                                     kind: MethodKind::Procedure,
                                 };
                                 class_symbol.methods.push(method_symbol);
@@ -315,7 +315,7 @@ impl Index {
             // If there's no old index file, just add all symbols.
             for symbol in &new_index_file.symbols {
                 self.class_lookup_table
-                    .insert(String::from(symbol.name()), String::from(file_name));
+                    .insert(symbol.name().clone(), String::from(file_name));
             }
             return;
         };
@@ -328,7 +328,7 @@ impl Index {
         }
         for symbol in symbols_diff.added_symbols {
             self.class_lookup_table
-                .insert(String::from(symbol.name()), String::from(file_name));
+                .insert(symbol.name().clone(), String::from(file_name));
         }
     }
 }
@@ -403,7 +403,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files["test.pkg"].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\", methods: [] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [] })]"
         );
     }
 
@@ -418,7 +418,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files["test.pkg"].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\", methods: [MethodSymbol { location: Point { row: 1, column: 14 }, name: \"SayHello\", kind: Procedure }] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [MethodSymbol { location: Point { row: 1, column: 14 }, name: SymbolName(\"SayHello\"), kind: Procedure }] })]"
         );
     }
 

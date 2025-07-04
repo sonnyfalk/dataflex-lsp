@@ -10,7 +10,7 @@ pub enum IndexSymbol {
 #[allow(dead_code)]
 pub struct ClassSymbol {
     pub location: Point,
-    pub name: String,
+    pub name: SymbolName,
     pub methods: Vec<MethodSymbol>,
 }
 
@@ -18,7 +18,7 @@ pub struct ClassSymbol {
 #[allow(dead_code)]
 pub struct MethodSymbol {
     pub location: Point,
-    pub name: String,
+    pub name: SymbolName,
     pub kind: MethodKind,
 }
 
@@ -29,6 +29,9 @@ pub enum MethodKind {
     Function,
     Set,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SymbolName(String);
 
 #[derive(Debug)]
 pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
@@ -51,7 +54,7 @@ impl IndexSymbol {
         }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &SymbolName {
         match self {
             Self::Class(class_symbol) => &class_symbol.name,
         }
@@ -63,5 +66,23 @@ impl IndexSymbol {
                 class_symbol.name == other_class_symbol.name
             }
         }
+    }
+}
+
+impl From<String> for SymbolName {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&str> for SymbolName {
+    fn from(value: &str) -> Self {
+        Self::from(String::from(value))
+    }
+}
+
+impl ToString for SymbolName {
+    fn to_string(&self) -> String {
+        self.0.clone()
     }
 }

@@ -8,7 +8,9 @@ mod index_symbol;
 mod indexer;
 mod workspace;
 
-pub use index_symbol::{ClassSymbol, ClassSymbolSnapshot, IndexSymbol, MethodKind, MethodSymbol};
+pub use index_symbol::{
+    ClassSymbol, ClassSymbolSnapshot, IndexSymbol, MethodKind, MethodSymbol, SymbolName,
+};
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
@@ -19,7 +21,7 @@ use tree_sitter::Point;
 pub struct Index {
     workspace: WorkspaceInfo,
     files: HashMap<String, IndexFile>,
-    class_lookup_table: HashMap<String, String>,
+    class_lookup_table: HashMap<SymbolName, String>,
 }
 
 #[allow(dead_code)]
@@ -37,7 +39,7 @@ impl Index {
         }
     }
 
-    pub fn find_class(&self, name: &str) -> Option<ClassSymbolSnapshot> {
+    pub fn find_class(&self, name: &SymbolName) -> Option<ClassSymbolSnapshot> {
         let Some(file) = self.class_lookup_table.get(name) else {
             return None;
         };
@@ -50,7 +52,7 @@ impl Index {
             .symbols
             .iter()
             .filter_map(IndexSymbol::class_symbol)
-            .filter(|c| c.name == name)
+            .filter(|c| c.name == *name)
             .next();
 
         if let Some(class_symbol) = class_symbol {
@@ -63,11 +65,11 @@ impl Index {
         }
     }
 
-    pub fn is_known_class(&self, name: &str) -> bool {
+    pub fn is_known_class(&self, name: &SymbolName) -> bool {
         self.class_lookup_table.get(name).is_some()
     }
 
-    pub fn all_known_classes(&self) -> Vec<String> {
+    pub fn all_known_classes(&self) -> Vec<SymbolName> {
         self.class_lookup_table.keys().cloned().collect()
     }
 }
@@ -120,9 +122,9 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().find_class("cMyClass")),
-             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: \"cMyClass\", methods: [] } })"
-        );
+            format!("{:?}", index_ref.get().find_class(&SymbolName::from("cMyClass"))),
+             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [] } })"
+        ); 
     }
 
     #[test]
@@ -135,7 +137,7 @@ mod tests {
             &index_ref,
         );
         assert_eq!(
-            index_ref.get().class_lookup_table.get("cMyClass"),
+            index_ref.get().class_lookup_table.get(&SymbolName::from("cMyClass")),
             Some(&String::from("test.pkg"))
         );
 
@@ -145,11 +147,11 @@ mod tests {
             &index_ref,
         );
         assert_eq!(
-            index_ref.get().class_lookup_table.get("cMyClass"),
+            index_ref.get().class_lookup_table.get(&SymbolName::from("cMyClass")),
             Some(&String::from("test.pkg"))
         );
         assert_eq!(
-            index_ref.get().class_lookup_table.get("cOtherClass"),
+            index_ref.get().class_lookup_table.get(&SymbolName::from("cOtherClass")),
             Some(&String::from("test.pkg"))
         );
 
@@ -158,13 +160,13 @@ mod tests {
             PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
-        assert_eq!(index_ref.get().class_lookup_table.get("cMyClass"), None);
+        assert_eq!(index_ref.get().class_lookup_table.get(&SymbolName::from("cMyClass")), None);
         assert_eq!(
-            index_ref.get().class_lookup_table.get("cMyRenamedClass"),
+            index_ref.get().class_lookup_table.get(&SymbolName::from("cMyRenamedClass")),
             Some(&String::from("test.pkg"))
         );
         assert_eq!(
-            index_ref.get().class_lookup_table.get("cOtherClass"),
+            index_ref.get().class_lookup_table.get(&SymbolName::from("cOtherClass")),
             Some(&String::from("test.pkg"))
         );
     }

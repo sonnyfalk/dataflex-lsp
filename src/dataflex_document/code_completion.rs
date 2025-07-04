@@ -40,7 +40,7 @@ impl CodeCompletion {
             .all_known_classes()
             .drain(..)
             .map(|class_name| CompletionItem {
-                label: class_name,
+                label: class_name.to_string(),
                 kind: CompletionItemKind::Class,
             })
             .collect()

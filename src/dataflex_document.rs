@@ -120,7 +120,7 @@ impl DataFlexDocument {
             .text_in_range(node.start_position(), node.end_position());
 
         let index = self.index.get();
-        let Some(class_symbol) = index.find_class(&name) else {
+        let Some(class_symbol) = index.find_class(&index::SymbolName::from(name)) else {
             return None;
         };
 

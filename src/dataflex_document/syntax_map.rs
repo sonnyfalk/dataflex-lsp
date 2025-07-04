@@ -111,7 +111,7 @@ impl SyntaxMap {
                                 }),
                                 "entity.other.inherited-class" => {
                                     let name = doc.line_map.text_in_range(start, end);
-                                    if doc.index.get().is_known_class(&name) {
+                                    if doc.index.get().is_known_class(&index::SymbolName::from(name)) {
                                         Some(SyntaxToken {
                                             delta_start: if start.row == prev_pos.row {
                                                 (start.column - prev_pos.column) as u32
