@@ -3,6 +3,7 @@ use std::{collections::HashMap, ffi::OsStr, path::PathBuf, str::FromStr};
 use streaming_iterator::StreamingIterator;
 use strum::EnumString;
 
+mod index_file;
 mod index_symbol;
 mod indexer;
 mod workspace;
@@ -11,6 +12,7 @@ pub use index_symbol::{ClassSymbol, ClassSymbolSnapshot, IndexSymbol, MethodKind
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
+use index_file::IndexFile;
 use tree_sitter::Point;
 
 #[derive(Debug)]
@@ -24,13 +26,6 @@ pub struct Index {
 #[derive(Clone)]
 pub struct IndexRef {
     index: std::sync::Arc<std::sync::RwLock<Index>>,
-}
-
-#[derive(Debug)]
-pub struct IndexFile {
-    path: PathBuf,
-    dependencies: Vec<String>,
-    symbols: Vec<IndexSymbol>,
 }
 
 impl Index {
@@ -94,16 +89,6 @@ impl IndexRef {
         self.index
             .write()
             .expect("unable to acquire index write lock")
-    }
-}
-
-impl IndexFile {
-    fn new(path: PathBuf) -> Self {
-        Self {
-            path,
-            dependencies: Vec::new(),
-            symbols: Vec::new(),
-        }
     }
 }
 
