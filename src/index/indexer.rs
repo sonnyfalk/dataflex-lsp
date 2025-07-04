@@ -151,7 +151,9 @@ impl Indexer {
                         .map(|node| node.utf8_text(content).ok())
                         .flatten()
                     {
-                        index_file.dependencies.push(file_dependency.to_string());
+                        index_file
+                            .dependencies
+                            .push(IndexFileRef::from(file_dependency));
                     }
                 }
                 Some(TagsQueryIndexElement::ClassDefinition) => {
@@ -298,12 +300,13 @@ struct SymbolsDiff<'a> {
 
 impl Index {
     fn update_file(&mut self, file_name: String, index_file: IndexFile) {
-        let old_index_file = self.files.insert(file_name.clone(), index_file);
-        self.update_lookup_tables(&file_name, old_index_file);
+        let file_ref = IndexFileRef::from(file_name);
+        let old_index_file = self.files.insert(file_ref.clone(), index_file);
+        self.update_lookup_tables(&file_ref, old_index_file);
     }
 
-    fn update_lookup_tables(&mut self, file_name: &str, old_index_file: Option<IndexFile>) {
-        let Some(new_index_file) = self.files.get(file_name) else {
+    fn update_lookup_tables(&mut self, file_ref: &IndexFileRef, old_index_file: Option<IndexFile>) {
+        let Some(new_index_file) = self.files.get(file_ref) else {
             // If there's no new index file, just remove all old symbols.
             for symbol in old_index_file.map_or(vec![], |index_file| index_file.symbols) {
                 // FIXME: This needs to be updated to support multiple classes with the same name.
@@ -315,7 +318,7 @@ impl Index {
             // If there's no old index file, just add all symbols.
             for symbol in &new_index_file.symbols {
                 self.class_lookup_table
-                    .insert(symbol.name().clone(), String::from(file_name));
+                    .insert(symbol.name().clone(), file_ref.clone());
             }
             return;
         };
@@ -328,7 +331,7 @@ impl Index {
         }
         for symbol in symbols_diff.added_symbols {
             self.class_lookup_table
-                .insert(symbol.name().clone(), String::from(file_name));
+                .insert(symbol.name().clone(), file_ref.clone());
         }
     }
 }
@@ -387,8 +390,8 @@ mod tests {
         );
 
         assert_eq!(
-            index_ref.get().files["test.vw"].dependencies,
-            ["cWebView.pkg"]
+            index_ref.get().files[&IndexFileRef::from("test.vw")].dependencies,
+            [IndexFileRef::from("cWebView.pkg")]
         );
     }
 
@@ -402,7 +405,7 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().files["test.pkg"].symbols),
+            format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [] })]"
         );
     }
@@ -417,7 +420,7 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().files["test.pkg"].symbols),
+            format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [MethodSymbol { location: Point { row: 1, column: 14 }, name: SymbolName(\"SayHello\"), kind: Procedure }] })]"
         );
     }
@@ -442,9 +445,14 @@ mod tests {
         let new_index = new_index_ref.get();
         let symbols_diff = orig_index
             .files
-            .get("test.pkg")
+            .get(&IndexFileRef::from("test.pkg"))
             .unwrap()
-            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
         assert_eq!(symbols_diff.added_symbols.len(), 1);
         assert_eq!(symbols_diff.removed_symbols.len(), 0);
     }
@@ -469,9 +477,14 @@ mod tests {
         let new_index = new_index_ref.get();
         let symbols_diff = orig_index
             .files
-            .get("test.pkg")
+            .get(&IndexFileRef::from("test.pkg"))
             .unwrap()
-            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
         assert_eq!(symbols_diff.added_symbols.len(), 0);
         assert_eq!(symbols_diff.removed_symbols.len(), 1);
     }
@@ -496,9 +509,14 @@ mod tests {
         let new_index = new_index_ref.get();
         let symbols_diff = orig_index
             .files
-            .get("test.pkg")
+            .get(&IndexFileRef::from("test.pkg"))
             .unwrap()
-            .diff_symbols(new_index.files.get("test.pkg").unwrap());
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
         assert_eq!(symbols_diff.added_symbols.len(), 1);
         assert_eq!(symbols_diff.removed_symbols.len(), 1);
     }
