@@ -41,19 +41,13 @@ pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
 
 pub type ClassSymbolSnapshot<'a> = IndexSymbolSnapshot<'a, ClassSymbol>;
 
+#[derive(Debug)]
+pub struct IndexSymbolRef {
+    pub file_ref: IndexFileRef,
+    pub symbol_path: Vec<SymbolName>,
+}
+
 impl IndexSymbol {
-    pub fn class_symbol(&self) -> Option<&ClassSymbol> {
-        match self {
-            Self::Class(class_symbol) => Some(class_symbol),
-        }
-    }
-
-    pub fn class_symbol_mut(&mut self) -> Option<&mut ClassSymbol> {
-        match self {
-            Self::Class(class_symbol) => Some(class_symbol),
-        }
-    }
-
     pub fn name(&self) -> &SymbolName {
         match self {
             Self::Class(class_symbol) => &class_symbol.name,
@@ -84,5 +78,33 @@ impl From<&str> for SymbolName {
 impl ToString for SymbolName {
     fn to_string(&self) -> String {
         self.0.clone()
+    }
+}
+
+pub trait IndexSymbolType {
+    fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self>;
+    fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self>;
+}
+
+impl IndexSymbolType for ClassSymbol {
+    fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self> {
+        match index_symbol {
+            IndexSymbol::Class(class_symbol) => Some(class_symbol),
+        }
+    }
+
+    fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
+        match index_symbol {
+            IndexSymbol::Class(class_symbol) => Some(class_symbol),
+        }
+    }
+}
+
+impl IndexSymbolRef {
+    pub fn new(file_ref: IndexFileRef, symbol_path: Vec<SymbolName>) -> Self {
+        Self {
+            file_ref,
+            symbol_path,
+        }
     }
 }

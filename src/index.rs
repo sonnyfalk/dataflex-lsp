@@ -8,9 +8,8 @@ mod index_symbol;
 mod indexer;
 mod workspace;
 
-pub use index_symbol::{
-    ClassSymbol, ClassSymbolSnapshot, IndexSymbol, MethodKind, MethodSymbol, SymbolName,
-};
+pub use index_symbol::*;
+
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
@@ -21,7 +20,7 @@ use tree_sitter::Point;
 pub struct Index {
     workspace: WorkspaceInfo,
     files: HashMap<IndexFileRef, IndexFile>,
-    class_lookup_table: HashMap<SymbolName, IndexFileRef>,
+    class_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
 }
 
 #[allow(dead_code)]
@@ -40,26 +39,8 @@ impl Index {
     }
 
     pub fn find_class(&self, name: &SymbolName) -> Option<ClassSymbolSnapshot> {
-        let Some(file) = self.class_lookup_table.get(name) else {
-            return None;
-        };
-
-        let Some(index_file) = self.files.get(file) else {
-            return None;
-        };
-
-        let class_symbol = index_file
-            .symbols
-            .iter()
-            .filter_map(IndexSymbol::class_symbol)
-            .filter(|c| c.name == *name)
-            .next();
-
-        if let Some(class_symbol) = class_symbol {
-            Some(ClassSymbolSnapshot {
-                path: &index_file.path,
-                symbol: class_symbol,
-            })
+        if let Some(symbol_ref) = self.class_lookup_table.get(name) {
+            self.find_symbol_ref(symbol_ref)
         } else {
             None
         }
@@ -71,6 +52,30 @@ impl Index {
 
     pub fn all_known_classes(&self) -> Vec<SymbolName> {
         self.class_lookup_table.keys().cloned().collect()
+    }
+
+    fn find_symbol_ref<'a, T: IndexSymbolType>(
+        &'a self,
+        symbol_ref: &IndexSymbolRef,
+    ) -> Option<IndexSymbolSnapshot<'a, T>> {
+        let Some(index_file) = self.files.get(&symbol_ref.file_ref) else {
+            return None;
+        };
+        let Some(name) = symbol_ref.symbol_path.first() else {
+            return None;
+        };
+
+        let symbol = index_file
+            .symbols
+            .iter()
+            .filter(|sym| sym.name() == name)
+            .filter_map(|sym| T::from_index_symbol(sym))
+            .next();
+
+        symbol.map(|symbol| IndexSymbolSnapshot {
+            path: &index_file.path,
+            symbol,
+        })
     }
 }
 
@@ -137,11 +142,14 @@ mod tests {
             &index_ref,
         );
         assert_eq!(
-            index_ref
-                .get()
-                .class_lookup_table
-                .get(&SymbolName::from("cMyClass")),
-            Some(&IndexFileRef::from("test.pkg"))
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .class_lookup_table
+                    .get(&SymbolName::from("cMyClass"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\")] })"
         );
 
         Indexer::index_test_content(
@@ -150,18 +158,24 @@ mod tests {
             &index_ref,
         );
         assert_eq!(
-            index_ref
-                .get()
-                .class_lookup_table
-                .get(&SymbolName::from("cMyClass")),
-            Some(&IndexFileRef::from("test.pkg"))
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .class_lookup_table
+                    .get(&SymbolName::from("cMyClass"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\")] })"
         );
         assert_eq!(
-            index_ref
-                .get()
-                .class_lookup_table
-                .get(&SymbolName::from("cOtherClass")),
-            Some(&IndexFileRef::from("test.pkg"))
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .class_lookup_table
+                    .get(&SymbolName::from("cOtherClass"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cOtherClass\")] })"
         );
 
         Indexer::index_test_content(
@@ -170,25 +184,34 @@ mod tests {
             &index_ref,
         );
         assert_eq!(
-            index_ref
-                .get()
-                .class_lookup_table
-                .get(&SymbolName::from("cMyClass")),
-            None
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .class_lookup_table
+                    .get(&SymbolName::from("cMyClass"))
+            ),
+            "None"
         );
         assert_eq!(
-            index_ref
-                .get()
-                .class_lookup_table
-                .get(&SymbolName::from("cMyRenamedClass")),
-            Some(&IndexFileRef::from("test.pkg"))
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .class_lookup_table
+                    .get(&SymbolName::from("cMyRenamedClass"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyRenamedClass\")] })"
         );
         assert_eq!(
-            index_ref
-                .get()
-                .class_lookup_table
-                .get(&SymbolName::from("cOtherClass")),
-            Some(&IndexFileRef::from("test.pkg"))
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .class_lookup_table
+                    .get(&SymbolName::from("cOtherClass"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cOtherClass\")] })"
         );
     }
 }

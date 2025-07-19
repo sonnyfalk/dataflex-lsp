@@ -180,7 +180,7 @@ impl Indexer {
                             if let Some(class_symbol) = index_file
                                 .symbols
                                 .last_mut()
-                                .and_then(IndexSymbol::class_symbol_mut)
+                                .and_then(ClassSymbol::from_index_symbol_mut)
                             {
                                 let method_symbol = MethodSymbol {
                                     location: name_node.start_position(),
@@ -317,8 +317,10 @@ impl Index {
         let Some(old_index_file) = old_index_file else {
             // If there's no old index file, just add all symbols.
             for symbol in &new_index_file.symbols {
-                self.class_lookup_table
-                    .insert(symbol.name().clone(), file_ref.clone());
+                self.class_lookup_table.insert(
+                    symbol.name().clone(),
+                    IndexSymbolRef::new(file_ref.clone(), vec![symbol.name().clone()]),
+                );
             }
             return;
         };
@@ -330,8 +332,10 @@ impl Index {
             self.class_lookup_table.remove(symbol.name());
         }
         for symbol in symbols_diff.added_symbols {
-            self.class_lookup_table
-                .insert(symbol.name().clone(), file_ref.clone());
+            self.class_lookup_table.insert(
+                symbol.name().clone(),
+                IndexSymbolRef::new(file_ref.clone(), vec![symbol.name().clone()]),
+            );
         }
     }
 }
