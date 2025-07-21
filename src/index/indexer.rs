@@ -298,6 +298,38 @@ struct SymbolsDiff<'a> {
     removed_symbols: Vec<&'a IndexSymbol>,
 }
 
+impl<'a> SymbolsDiff<'a> {
+    fn diff_index_files(
+        old_index_file: Option<&'a IndexFile>,
+        new_index_file: Option<&'a IndexFile>,
+    ) -> SymbolsDiff<'a> {
+        match (old_index_file, new_index_file) {
+            (Some(old_index_file), Some(new_index_file)) => {
+                // If we have both an old index file and a new one, diff the symbols.
+                old_index_file.diff_symbols(new_index_file)
+            }
+            (Some(old_index_file), None) => {
+                // If there's no new index file, just remove all old symbols.
+                SymbolsDiff {
+                    added_symbols: vec![],
+                    removed_symbols: old_index_file.symbols.iter().collect(),
+                }
+            }
+            (None, Some(new_index_file)) => {
+                // If there's no old index file, just add all new symbols.
+                SymbolsDiff {
+                    added_symbols: new_index_file.symbols.iter().collect(),
+                    removed_symbols: vec![],
+                }
+            }
+            (None, None) => SymbolsDiff {
+                added_symbols: vec![],
+                removed_symbols: vec![],
+            },
+        }
+    }
+}
+
 impl Index {
     fn update_file(&mut self, file_name: String, index_file: IndexFile) {
         let file_ref = IndexFileRef::from(file_name);
@@ -306,36 +338,26 @@ impl Index {
     }
 
     fn update_lookup_tables(&mut self, file_ref: &IndexFileRef, old_index_file: Option<IndexFile>) {
-        let Some(new_index_file) = self.files.get(file_ref) else {
-            // If there's no new index file, just remove all old symbols.
-            for symbol in old_index_file.map_or(vec![], |index_file| index_file.symbols) {
-                // FIXME: This needs to be updated to support multiple classes with the same name.
-                self.class_lookup_table.remove(symbol.name());
-            }
-            return;
-        };
-        let Some(old_index_file) = old_index_file else {
-            // If there's no old index file, just add all symbols.
-            for symbol in &new_index_file.symbols {
-                self.class_lookup_table.insert(
-                    symbol.name().clone(),
-                    IndexSymbolRef::new(file_ref.clone(), vec![symbol.name().clone()]),
-                );
-            }
-            return;
-        };
+        let symbols_diff =
+            SymbolsDiff::diff_index_files(old_index_file.as_ref(), self.files.get(file_ref));
 
-        // If we have both an old index file and a new one, diff the symbols and update the lookup table accordingly.
-        let symbols_diff = old_index_file.diff_symbols(new_index_file);
         for symbol in symbols_diff.removed_symbols {
-            // FIXME: This needs to be updated to support multiple classes with the same name.
-            self.class_lookup_table.remove(symbol.name());
+            match symbol {
+                IndexSymbol::Class(class_symbol) => {
+                    // FIXME: This needs to be updated to support multiple classes with the same name.
+                    self.class_lookup_table.remove(&class_symbol.name);
+                }
+            }
         }
         for symbol in symbols_diff.added_symbols {
-            self.class_lookup_table.insert(
-                symbol.name().clone(),
-                IndexSymbolRef::new(file_ref.clone(), vec![symbol.name().clone()]),
-            );
+            match symbol {
+                IndexSymbol::Class(class_symbol) => {
+                    self.class_lookup_table.insert(
+                        class_symbol.name.clone(),
+                        IndexSymbolRef::new(file_ref.clone(), vec![class_symbol.name.clone()]),
+                    );
+                }
+            }
         }
     }
 }
