@@ -96,7 +96,11 @@ impl LanguageServer for DataFlexLanguageServer {
                 SemanticTokensOptions {
                     full: Some(SemanticTokensFullOptions::Bool(true)),
                     legend: SemanticTokensLegend {
-                        token_types: vec![SemanticTokenType::KEYWORD, SemanticTokenType::CLASS],
+                        token_types: vec![
+                            SemanticTokenType::KEYWORD,
+                            SemanticTokenType::CLASS,
+                            SemanticTokenType::METHOD,
+                        ],
                         token_modifiers: vec![],
                     },
                     ..Default::default()
@@ -226,7 +230,6 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        log::info!("completion request");
         let completions = self
             .inner
             .open_files

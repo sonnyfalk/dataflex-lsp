@@ -57,6 +57,10 @@ impl Index {
         self.class_lookup_table.keys().cloned().collect()
     }
 
+    pub fn is_known_method(&self, name: &SymbolName) -> bool {
+        self.method_lookup_table.get(name).is_some()
+    }
+
     pub fn all_known_methods(&self) -> Vec<SymbolName> {
         self.method_lookup_table.keys().cloned().collect()
     }
