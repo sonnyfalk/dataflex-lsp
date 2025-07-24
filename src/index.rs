@@ -1,7 +1,9 @@
 use std::{collections::HashMap, ffi::OsStr, path::PathBuf, str::FromStr};
 
+use multimap::MultiMap;
 use streaming_iterator::StreamingIterator;
 use strum::EnumString;
+use tree_sitter::Point;
 
 mod index_file;
 mod index_symbol;
@@ -14,13 +16,13 @@ pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
 use index_file::{IndexFile, IndexFileRef};
-use tree_sitter::Point;
 
 #[derive(Debug)]
 pub struct Index {
     workspace: WorkspaceInfo,
     files: HashMap<IndexFileRef, IndexFile>,
     class_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
+    method_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
 }
 
 #[allow(dead_code)]
@@ -35,6 +37,7 @@ impl Index {
             workspace,
             files: HashMap::new(),
             class_lookup_table: HashMap::new(),
+            method_lookup_table: MultiMap::new(),
         }
     }
 
@@ -212,6 +215,89 @@ mod tests {
                     .get(&SymbolName::from("cOtherClass"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cOtherClass\")] })"
+        );
+    }
+
+    #[test]
+    fn test_method_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .method_lookup_table
+                    .get(&SymbolName::from("SayHello"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")] })"
+        );
+
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .method_lookup_table
+                    .get(&SymbolName::from("SayHello"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")] })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .method_lookup_table
+                    .get(&SymbolName::from("SayBye"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")] })"
+        );
+
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHelloRenamed\n    End_Procedure\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .method_lookup_table
+                    .get(&SymbolName::from("SayHello"))
+            ),
+            "None"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .method_lookup_table
+                    .get(&SymbolName::from("SayHelloRenamed"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")] })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .method_lookup_table
+                    .get(&SymbolName::from("SayBye"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")] })"
         );
     }
 }

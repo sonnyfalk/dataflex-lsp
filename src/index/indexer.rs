@@ -184,10 +184,15 @@ impl Indexer {
                             {
                                 let method_symbol = MethodSymbol {
                                     location: name_node.start_position(),
-                                    name: SymbolName::from(name),
+                                    symbol_path: vec![
+                                        class_symbol.name.clone(),
+                                        SymbolName::from(name),
+                                    ],
                                     kind: MethodKind::Procedure,
                                 };
-                                class_symbol.methods.push(method_symbol);
+                                class_symbol
+                                    .methods
+                                    .push(IndexSymbol::Method(method_symbol));
                             }
                         }
                     }
@@ -344,8 +349,35 @@ impl Index {
         for symbol in symbols_diff.removed_symbols {
             match symbol {
                 IndexSymbol::Class(class_symbol) => {
+                    for symbol in &class_symbol.methods {
+                        if let IndexSymbol::Method(method_symbol) = symbol {
+                            if let Some(method_symbols) = self
+                                .method_lookup_table
+                                .get_vec_mut(method_symbol.symbol_path.last().unwrap())
+                            {
+                                method_symbols
+                                    .retain(|s| s.symbol_path != method_symbol.symbol_path);
+                                if method_symbols.is_empty() {
+                                    self.method_lookup_table
+                                        .remove(method_symbol.symbol_path.last().unwrap());
+                                }
+                            }
+                        }
+                    }
                     // FIXME: This needs to be updated to support multiple classes with the same name.
                     self.class_lookup_table.remove(&class_symbol.name);
+                }
+                IndexSymbol::Method(method_symbol) => {
+                    if let Some(method_symbols) = self
+                        .method_lookup_table
+                        .get_vec_mut(method_symbol.symbol_path.last().unwrap())
+                    {
+                        method_symbols.retain(|s| s.symbol_path != method_symbol.symbol_path);
+                        if method_symbols.is_empty() {
+                            self.method_lookup_table
+                                .remove(method_symbol.symbol_path.last().unwrap());
+                        }
+                    }
                 }
             }
         }
@@ -356,6 +388,26 @@ impl Index {
                         class_symbol.name.clone(),
                         IndexSymbolRef::new(file_ref.clone(), vec![class_symbol.name.clone()]),
                     );
+                    for symbol in &class_symbol.methods {
+                        if let IndexSymbol::Method(method_symbol) = symbol {
+                            self.method_lookup_table.insert(
+                                method_symbol.symbol_path.last().unwrap().clone(),
+                                IndexSymbolRef {
+                                    file_ref: file_ref.clone(),
+                                    symbol_path: method_symbol.symbol_path.clone(),
+                                },
+                            );
+                        }
+                    }
+                }
+                IndexSymbol::Method(method_symbol) => {
+                    self.method_lookup_table.insert(
+                        method_symbol.symbol_path.last().unwrap().clone(),
+                        IndexSymbolRef {
+                            file_ref: file_ref.clone(),
+                            symbol_path: method_symbol.symbol_path.clone(),
+                        },
+                    );
                 }
             }
         }
@@ -364,35 +416,63 @@ impl Index {
 
 impl IndexFile {
     fn diff_symbols<'a>(&'a self, other: &'a Self) -> SymbolsDiff<'a> {
-        let existing_symbols = self
-            .symbols
-            .iter()
-            .fold(HashMap::new(), |mut table, symbol| {
-                table.insert(symbol.name(), symbol);
-                table
-            });
-
-        let (added_symbols, removed_symbols) = other.symbols.iter().fold(
-            (Vec::new(), existing_symbols),
-            |(mut added_symbols, mut existing_symbols), symbol| {
-                if let Some(&existing_symbol) = existing_symbols.get(symbol.name()) {
-                    if existing_symbol.is_matching(symbol) {
-                        existing_symbols.remove(symbol.name());
-                    } else {
-                        added_symbols.push(symbol);
-                    }
-                } else {
-                    added_symbols.push(symbol);
-                }
-                return (added_symbols, existing_symbols);
-            },
-        );
-
-        SymbolsDiff {
-            added_symbols,
-            removed_symbols: removed_symbols.into_values().collect(),
-        }
+        diff_symbols(&self.symbols, &other.symbols)
     }
+}
+
+fn diff_symbols<'a>(
+    old_symbols: &'a Vec<IndexSymbol>,
+    new_symbols: &'a Vec<IndexSymbol>,
+) -> SymbolsDiff<'a> {
+    let existing_symbols = old_symbols
+        .iter()
+        .fold(HashMap::new(), |mut table, symbol| {
+            table.insert(symbol.name(), symbol);
+            table
+        });
+
+    let (mut symbols_diff, removed_symbols) = new_symbols.iter().fold(
+        (
+            SymbolsDiff {
+                added_symbols: vec![],
+                removed_symbols: vec![],
+            },
+            existing_symbols,
+        ),
+        |(mut symbols_diff, mut existing_symbols), symbol| {
+            if let Some(&existing_symbol) = existing_symbols.get(symbol.name()) {
+                if existing_symbol.is_matching(symbol) {
+                    match (existing_symbol, symbol) {
+                        (
+                            IndexSymbol::Class(old_class_symbol),
+                            IndexSymbol::Class(new_class_symbol),
+                        ) => {
+                            let mut inner_diff =
+                                diff_symbols(&old_class_symbol.methods, &new_class_symbol.methods);
+                            symbols_diff
+                                .added_symbols
+                                .append(&mut inner_diff.added_symbols);
+                            symbols_diff
+                                .removed_symbols
+                                .append(&mut inner_diff.removed_symbols);
+                        }
+                        _ => {}
+                    }
+                    existing_symbols.remove(symbol.name());
+                } else {
+                    symbols_diff.added_symbols.push(symbol);
+                }
+            } else {
+                symbols_diff.added_symbols.push(symbol);
+            }
+            (symbols_diff, existing_symbols)
+        },
+    );
+    symbols_diff
+        .removed_symbols
+        .append(&mut removed_symbols.into_values().collect());
+
+    symbols_diff
 }
 
 #[cfg(test)]
@@ -447,7 +527,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [MethodSymbol { location: Point { row: 1, column: 14 }, name: SymbolName(\"SayHello\"), kind: Procedure }] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")], kind: Procedure })] })]"
         );
     }
 
@@ -527,6 +607,102 @@ mod tests {
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_add_method() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_diff_symbols_remove_method() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 0);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_rename_method() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
             PathBuf::from_str("test.pkg").unwrap(),
             &new_index_ref,
         );
