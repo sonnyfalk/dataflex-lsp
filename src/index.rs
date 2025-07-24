@@ -64,9 +64,7 @@ impl Index {
         let Some(index_file) = self.files.get(&symbol_ref.file_ref) else {
             return None;
         };
-        let Some(name) = symbol_ref.symbol_path.first() else {
-            return None;
-        };
+        let name = symbol_ref.symbol_path.name();
 
         let symbol = index_file
             .symbols
@@ -152,7 +150,7 @@ mod tests {
                     .class_lookup_table
                     .get(&SymbolName::from("cMyClass"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
         );
 
         Indexer::index_test_content(
@@ -168,7 +166,7 @@ mod tests {
                     .class_lookup_table
                     .get(&SymbolName::from("cMyClass"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
         );
         assert_eq!(
             format!(
@@ -178,7 +176,7 @@ mod tests {
                     .class_lookup_table
                     .get(&SymbolName::from("cOtherClass"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cOtherClass\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cOtherClass\")]) })"
         );
 
         Indexer::index_test_content(
@@ -204,7 +202,7 @@ mod tests {
                     .class_lookup_table
                     .get(&SymbolName::from("cMyRenamedClass"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyRenamedClass\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyRenamedClass\")]) })"
         );
         assert_eq!(
             format!(
@@ -214,7 +212,7 @@ mod tests {
                     .class_lookup_table
                     .get(&SymbolName::from("cOtherClass"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cOtherClass\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cOtherClass\")]) })"
         );
     }
 
@@ -235,7 +233,7 @@ mod tests {
                     .method_lookup_table
                     .get(&SymbolName::from("SayHello"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
         );
 
         Indexer::index_test_content(
@@ -251,7 +249,7 @@ mod tests {
                     .method_lookup_table
                     .get(&SymbolName::from("SayHello"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
         );
         assert_eq!(
             format!(
@@ -261,7 +259,7 @@ mod tests {
                     .method_lookup_table
                     .get(&SymbolName::from("SayBye"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
         );
 
         Indexer::index_test_content(
@@ -287,7 +285,7 @@ mod tests {
                     .method_lookup_table
                     .get(&SymbolName::from("SayHelloRenamed"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")]) })"
         );
         assert_eq!(
             format!(
@@ -297,7 +295,7 @@ mod tests {
                     .method_lookup_table
                     .get(&SymbolName::from("SayBye"))
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")] })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
         );
     }
 }

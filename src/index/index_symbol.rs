@@ -19,7 +19,7 @@ pub struct ClassSymbol {
 #[allow(dead_code)]
 pub struct MethodSymbol {
     pub location: Point,
-    pub symbol_path: Vec<SymbolName>,
+    pub symbol_path: SymbolPath,
     pub kind: MethodKind,
 }
 
@@ -34,6 +34,9 @@ pub enum MethodKind {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SymbolName(String);
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SymbolPath(Vec<SymbolName>);
+
 #[derive(Debug)]
 pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
     pub path: &'a PathBuf,
@@ -45,14 +48,14 @@ pub type ClassSymbolSnapshot<'a> = IndexSymbolSnapshot<'a, ClassSymbol>;
 #[derive(Debug)]
 pub struct IndexSymbolRef {
     pub file_ref: IndexFileRef,
-    pub symbol_path: Vec<SymbolName>,
+    pub symbol_path: SymbolPath,
 }
 
 impl IndexSymbol {
     pub fn name(&self) -> &SymbolName {
         match self {
             Self::Class(class_symbol) => &class_symbol.name,
-            Self::Method(method_symbol) => method_symbol.symbol_path.last().unwrap(),
+            Self::Method(method_symbol) => method_symbol.symbol_path.name(),
         }
     }
 
@@ -87,6 +90,17 @@ impl ToString for SymbolName {
     }
 }
 
+impl SymbolPath {
+    pub fn new(path: Vec<SymbolName>) -> Self {
+        assert!(!path.is_empty());
+        Self(path)
+    }
+
+    pub fn name(&self) -> &SymbolName {
+        self.0.last().unwrap()
+    }
+}
+
 pub trait IndexSymbolType {
     fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self>;
     fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self>;
@@ -111,7 +125,7 @@ impl IndexSymbolType for ClassSymbol {
 }
 
 impl IndexSymbolRef {
-    pub fn new(file_ref: IndexFileRef, symbol_path: Vec<SymbolName>) -> Self {
+    pub fn new(file_ref: IndexFileRef, symbol_path: SymbolPath) -> Self {
         Self {
             file_ref,
             symbol_path,

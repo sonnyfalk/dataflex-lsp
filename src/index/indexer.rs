@@ -184,10 +184,10 @@ impl Indexer {
                             {
                                 let method_symbol = MethodSymbol {
                                     location: name_node.start_position(),
-                                    symbol_path: vec![
+                                    symbol_path: SymbolPath::new(vec![
                                         class_symbol.name.clone(),
                                         SymbolName::from(name),
-                                    ],
+                                    ]),
                                     kind: MethodKind::Procedure,
                                 };
                                 class_symbol
@@ -353,13 +353,13 @@ impl Index {
                         if let IndexSymbol::Method(method_symbol) = symbol {
                             if let Some(method_symbols) = self
                                 .method_lookup_table
-                                .get_vec_mut(method_symbol.symbol_path.last().unwrap())
+                                .get_vec_mut(method_symbol.symbol_path.name())
                             {
                                 method_symbols
                                     .retain(|s| s.symbol_path != method_symbol.symbol_path);
                                 if method_symbols.is_empty() {
                                     self.method_lookup_table
-                                        .remove(method_symbol.symbol_path.last().unwrap());
+                                        .remove(method_symbol.symbol_path.name());
                                 }
                             }
                         }
@@ -370,12 +370,12 @@ impl Index {
                 IndexSymbol::Method(method_symbol) => {
                     if let Some(method_symbols) = self
                         .method_lookup_table
-                        .get_vec_mut(method_symbol.symbol_path.last().unwrap())
+                        .get_vec_mut(method_symbol.symbol_path.name())
                     {
                         method_symbols.retain(|s| s.symbol_path != method_symbol.symbol_path);
                         if method_symbols.is_empty() {
                             self.method_lookup_table
-                                .remove(method_symbol.symbol_path.last().unwrap());
+                                .remove(method_symbol.symbol_path.name());
                         }
                     }
                 }
@@ -386,12 +386,15 @@ impl Index {
                 IndexSymbol::Class(class_symbol) => {
                     self.class_lookup_table.insert(
                         class_symbol.name.clone(),
-                        IndexSymbolRef::new(file_ref.clone(), vec![class_symbol.name.clone()]),
+                        IndexSymbolRef::new(
+                            file_ref.clone(),
+                            SymbolPath::new(vec![class_symbol.name.clone()]),
+                        ),
                     );
                     for symbol in &class_symbol.methods {
                         if let IndexSymbol::Method(method_symbol) = symbol {
                             self.method_lookup_table.insert(
-                                method_symbol.symbol_path.last().unwrap().clone(),
+                                method_symbol.symbol_path.name().clone(),
                                 IndexSymbolRef {
                                     file_ref: file_ref.clone(),
                                     symbol_path: method_symbol.symbol_path.clone(),
@@ -402,7 +405,7 @@ impl Index {
                 }
                 IndexSymbol::Method(method_symbol) => {
                     self.method_lookup_table.insert(
-                        method_symbol.symbol_path.last().unwrap().clone(),
+                        method_symbol.symbol_path.name().clone(),
                         IndexSymbolRef {
                             file_ref: file_ref.clone(),
                             symbol_path: method_symbol.symbol_path.clone(),
@@ -527,7 +530,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: [SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")], kind: Procedure })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
         );
     }
 
