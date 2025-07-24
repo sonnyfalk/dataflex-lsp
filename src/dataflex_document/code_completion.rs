@@ -14,11 +14,13 @@ pub struct CompletionItem {
 #[derive(Debug)]
 pub enum CompletionItemKind {
     Class,
+    Method,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum CodeCompletionContext {
     ClassReference,
+    MethodReference,
 }
 
 impl CodeCompletion {
@@ -29,6 +31,7 @@ impl CodeCompletion {
 
         let completions = match context {
             CodeCompletionContext::ClassReference => Some(Self::class_completions(doc)),
+            CodeCompletionContext::MethodReference => Some(Self::method_completions(doc)),
         };
 
         completions
@@ -42,6 +45,18 @@ impl CodeCompletion {
             .map(|class_name| CompletionItem {
                 label: class_name.to_string(),
                 kind: CompletionItemKind::Class,
+            })
+            .collect()
+    }
+
+    fn method_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+        doc.index
+            .get()
+            .all_known_methods()
+            .drain(..)
+            .map(|method_name| CompletionItem {
+                label: method_name.to_string(),
+                kind: CompletionItemKind::Method,
             })
             .collect()
     }
@@ -63,6 +78,7 @@ impl CodeCompletionContext {
 
         let context = match (kind, text.to_lowercase().as_str()) {
             ("keyword", "object") => Self::context_for_object(cursor, doc, position),
+            ("keyword", "send") => Self::context_for_send(cursor, doc, position),
             _ => None,
         };
 
@@ -97,6 +113,29 @@ impl CodeCompletionContext {
             return None;
         } else {
             return Some(Self::ClassReference);
+        }
+    }
+
+    fn context_for_send(
+        cursor: TreeCursor,
+        doc: &DataFlexDocument,
+        position: Point,
+    ) -> Option<Self> {
+        if position <= cursor.node().end_position() {
+            return None;
+        }
+
+        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
+
+        if cursor.goto_next_identifier_enclosing_position(&position) {
+            return Some(Self::MethodReference);
+        } else if cursor.goto_next_node() {
+            if cursor.node().start_position() > position {
+                return Some(Self::MethodReference);
+            }
+            return None;
+        } else {
+            return Some(Self::MethodReference);
         }
     }
 }
@@ -251,5 +290,24 @@ mod test {
         );
         let context = CodeCompletionContext::context(&doc, Point { row: 1, column: 18 });
         assert_eq!(context, Some(CodeCompletionContext::ClassReference));
+    }
+
+    #[test]
+    fn test_method_reference_context() {
+        let doc = DataFlexDocument::new("Send Foo\n", index::IndexRef::make_test_index_ref());
+        let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 5 });
+        assert_eq!(context, Some(CodeCompletionContext::MethodReference));
+
+        let doc = DataFlexDocument::new("Send Foo\n", index::IndexRef::make_test_index_ref());
+        let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 6 });
+        assert_eq!(context, Some(CodeCompletionContext::MethodReference));
+
+        let doc = DataFlexDocument::new("Send Foo 1\n", index::IndexRef::make_test_index_ref());
+        let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 9 });
+        assert_eq!(context, None);
+
+        let doc = DataFlexDocument::new("Send Foo 1\n", index::IndexRef::make_test_index_ref());
+        let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 4 });
+        assert_eq!(context, None);
     }
 }

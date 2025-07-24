@@ -57,6 +57,10 @@ impl Index {
         self.class_lookup_table.keys().cloned().collect()
     }
 
+    pub fn all_known_methods(&self) -> Vec<SymbolName> {
+        self.method_lookup_table.keys().cloned().collect()
+    }
+
     fn find_symbol_ref<'a, T: IndexSymbolType>(
         &'a self,
         symbol_ref: &IndexSymbolRef,
