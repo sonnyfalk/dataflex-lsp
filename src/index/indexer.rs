@@ -352,29 +352,35 @@ impl Index {
                     for symbol in &class_symbol.methods {
                         if let IndexSymbol::Method(method_symbol) = symbol {
                             if let Some(method_symbols) = self
-                                .method_lookup_table
+                                .lookup_tables
+                                .method_lookup_table_mut()
                                 .get_vec_mut(method_symbol.symbol_path.name())
                             {
                                 method_symbols
                                     .retain(|s| s.symbol_path != method_symbol.symbol_path);
                                 if method_symbols.is_empty() {
-                                    self.method_lookup_table
+                                    self.lookup_tables
+                                        .method_lookup_table_mut()
                                         .remove(method_symbol.symbol_path.name());
                                 }
                             }
                         }
                     }
                     // FIXME: This needs to be updated to support multiple classes with the same name.
-                    self.class_lookup_table.remove(&class_symbol.name);
+                    self.lookup_tables
+                        .class_lookup_table_mut()
+                        .remove(&class_symbol.name);
                 }
                 IndexSymbol::Method(method_symbol) => {
                     if let Some(method_symbols) = self
-                        .method_lookup_table
+                        .lookup_tables
+                        .method_lookup_table_mut()
                         .get_vec_mut(method_symbol.symbol_path.name())
                     {
                         method_symbols.retain(|s| s.symbol_path != method_symbol.symbol_path);
                         if method_symbols.is_empty() {
-                            self.method_lookup_table
+                            self.lookup_tables
+                                .method_lookup_table_mut()
                                 .remove(method_symbol.symbol_path.name());
                         }
                     }
@@ -384,7 +390,7 @@ impl Index {
         for symbol in symbols_diff.added_symbols {
             match symbol {
                 IndexSymbol::Class(class_symbol) => {
-                    self.class_lookup_table.insert(
+                    self.lookup_tables.class_lookup_table_mut().insert(
                         class_symbol.name.clone(),
                         IndexSymbolRef::new(
                             file_ref.clone(),
@@ -393,7 +399,7 @@ impl Index {
                     );
                     for symbol in &class_symbol.methods {
                         if let IndexSymbol::Method(method_symbol) = symbol {
-                            self.method_lookup_table.insert(
+                            self.lookup_tables.method_lookup_table_mut().insert(
                                 method_symbol.symbol_path.name().clone(),
                                 IndexSymbolRef {
                                     file_ref: file_ref.clone(),
@@ -404,7 +410,7 @@ impl Index {
                     }
                 }
                 IndexSymbol::Method(method_symbol) => {
-                    self.method_lookup_table.insert(
+                    self.lookup_tables.method_lookup_table_mut().insert(
                         method_symbol.symbol_path.name().clone(),
                         IndexSymbolRef {
                             file_ref: file_ref.clone(),

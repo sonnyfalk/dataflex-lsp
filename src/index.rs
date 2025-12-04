@@ -8,6 +8,7 @@ use tree_sitter::Point;
 mod index_file;
 mod index_symbol;
 mod indexer;
+mod lookup_tables;
 mod workspace;
 
 pub use index_symbol::*;
@@ -17,12 +18,13 @@ pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
 use index_file::{IndexFile, IndexFileRef};
 
+use crate::index::lookup_tables::LookupTables;
+
 #[derive(Debug)]
 pub struct Index {
     workspace: WorkspaceInfo,
     files: HashMap<IndexFileRef, IndexFile>,
-    class_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
-    method_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
+    lookup_tables: LookupTables,
 }
 
 #[allow(dead_code)]
@@ -36,13 +38,12 @@ impl Index {
         Self {
             workspace,
             files: HashMap::new(),
-            class_lookup_table: HashMap::new(),
-            method_lookup_table: MultiMap::new(),
+            lookup_tables: LookupTables::new(),
         }
     }
 
     pub fn find_class(&self, name: &SymbolName) -> Option<ClassSymbolSnapshot> {
-        if let Some(symbol_ref) = self.class_lookup_table.get(name) {
+        if let Some(symbol_ref) = self.lookup_tables.class_lookup_table().get(name) {
             self.find_symbol_ref(symbol_ref)
         } else {
             None
@@ -50,19 +51,27 @@ impl Index {
     }
 
     pub fn is_known_class(&self, name: &SymbolName) -> bool {
-        self.class_lookup_table.get(name).is_some()
+        self.lookup_tables.class_lookup_table().get(name).is_some()
     }
 
     pub fn all_known_classes(&self) -> Vec<SymbolName> {
-        self.class_lookup_table.keys().cloned().collect()
+        self.lookup_tables
+            .class_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
     }
 
     pub fn is_known_method(&self, name: &SymbolName) -> bool {
-        self.method_lookup_table.get(name).is_some()
+        self.lookup_tables.method_lookup_table().get(name).is_some()
     }
 
     pub fn all_known_methods(&self) -> Vec<SymbolName> {
-        self.method_lookup_table.keys().cloned().collect()
+        self.lookup_tables
+            .method_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
     }
 
     fn find_symbol_ref<'a, T: IndexSymbolType>(
@@ -155,7 +164,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .class_lookup_table
+                    .lookup_tables.class_lookup_table()
                     .get(&SymbolName::from("cMyClass"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
@@ -171,7 +180,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .class_lookup_table
+                    .lookup_tables.class_lookup_table()
                     .get(&SymbolName::from("cMyClass"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
@@ -181,7 +190,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .class_lookup_table
+                    .lookup_tables.class_lookup_table()
                     .get(&SymbolName::from("cOtherClass"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cOtherClass\")]) })"
@@ -197,7 +206,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .class_lookup_table
+                    .lookup_tables
+                    .class_lookup_table()
                     .get(&SymbolName::from("cMyClass"))
             ),
             "None"
@@ -207,7 +217,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .class_lookup_table
+                    .lookup_tables.class_lookup_table()
                     .get(&SymbolName::from("cMyRenamedClass"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyRenamedClass\")]) })"
@@ -217,7 +227,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .class_lookup_table
+                    .lookup_tables.class_lookup_table()
                     .get(&SymbolName::from("cOtherClass"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cOtherClass\")]) })"
@@ -238,7 +248,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .method_lookup_table
+                    .lookup_tables.method_lookup_table()
                     .get(&SymbolName::from("SayHello"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
@@ -254,7 +264,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .method_lookup_table
+                    .lookup_tables.method_lookup_table()
                     .get(&SymbolName::from("SayHello"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
@@ -264,7 +274,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .method_lookup_table
+                    .lookup_tables.method_lookup_table()
                     .get(&SymbolName::from("SayBye"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
@@ -280,7 +290,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .method_lookup_table
+                    .lookup_tables
+                    .method_lookup_table()
                     .get(&SymbolName::from("SayHello"))
             ),
             "None"
@@ -290,7 +301,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .method_lookup_table
+                    .lookup_tables.method_lookup_table()
                     .get(&SymbolName::from("SayHelloRenamed"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")]) })"
@@ -300,7 +311,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .method_lookup_table
+                    .lookup_tables.method_lookup_table()
                     .get(&SymbolName::from("SayBye"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
