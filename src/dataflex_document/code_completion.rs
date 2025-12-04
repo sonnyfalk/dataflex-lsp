@@ -31,7 +31,9 @@ impl CodeCompletion {
 
         let completions = match context {
             CodeCompletionContext::ClassReference => Some(Self::class_completions(doc)),
-            CodeCompletionContext::MethodReference => Some(Self::method_completions(doc)),
+            CodeCompletionContext::MethodReference => {
+                Some(Self::method_completions(doc, index::MethodKind::Procedure))
+            }
         };
 
         completions
@@ -49,10 +51,10 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn method_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+    fn method_completions(doc: &DataFlexDocument, kind: index::MethodKind) -> Vec<CompletionItem> {
         doc.index
             .get()
-            .all_known_methods()
+            .all_known_methods(kind)
             .drain(..)
             .map(|method_name| CompletionItem {
                 label: method_name.to_string(),

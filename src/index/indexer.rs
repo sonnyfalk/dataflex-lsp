@@ -353,14 +353,14 @@ impl Index {
                         if let IndexSymbol::Method(method_symbol) = symbol {
                             if let Some(method_symbols) = self
                                 .lookup_tables
-                                .method_lookup_table_mut()
+                                .method_lookup_table_mut(method_symbol.kind)
                                 .get_vec_mut(method_symbol.symbol_path.name())
                             {
                                 method_symbols
                                     .retain(|s| s.symbol_path != method_symbol.symbol_path);
                                 if method_symbols.is_empty() {
                                     self.lookup_tables
-                                        .method_lookup_table_mut()
+                                        .method_lookup_table_mut(method_symbol.kind)
                                         .remove(method_symbol.symbol_path.name());
                                 }
                             }
@@ -374,13 +374,13 @@ impl Index {
                 IndexSymbol::Method(method_symbol) => {
                     if let Some(method_symbols) = self
                         .lookup_tables
-                        .method_lookup_table_mut()
+                        .method_lookup_table_mut(method_symbol.kind)
                         .get_vec_mut(method_symbol.symbol_path.name())
                     {
                         method_symbols.retain(|s| s.symbol_path != method_symbol.symbol_path);
                         if method_symbols.is_empty() {
                             self.lookup_tables
-                                .method_lookup_table_mut()
+                                .method_lookup_table_mut(method_symbol.kind)
                                 .remove(method_symbol.symbol_path.name());
                         }
                     }
@@ -399,24 +399,28 @@ impl Index {
                     );
                     for symbol in &class_symbol.methods {
                         if let IndexSymbol::Method(method_symbol) = symbol {
-                            self.lookup_tables.method_lookup_table_mut().insert(
-                                method_symbol.symbol_path.name().clone(),
-                                IndexSymbolRef {
-                                    file_ref: file_ref.clone(),
-                                    symbol_path: method_symbol.symbol_path.clone(),
-                                },
-                            );
+                            self.lookup_tables
+                                .method_lookup_table_mut(method_symbol.kind)
+                                .insert(
+                                    method_symbol.symbol_path.name().clone(),
+                                    IndexSymbolRef {
+                                        file_ref: file_ref.clone(),
+                                        symbol_path: method_symbol.symbol_path.clone(),
+                                    },
+                                );
                         }
                     }
                 }
                 IndexSymbol::Method(method_symbol) => {
-                    self.lookup_tables.method_lookup_table_mut().insert(
-                        method_symbol.symbol_path.name().clone(),
-                        IndexSymbolRef {
-                            file_ref: file_ref.clone(),
-                            symbol_path: method_symbol.symbol_path.clone(),
-                        },
-                    );
+                    self.lookup_tables
+                        .method_lookup_table_mut(method_symbol.kind)
+                        .insert(
+                            method_symbol.symbol_path.name().clone(),
+                            IndexSymbolRef {
+                                file_ref: file_ref.clone(),
+                                symbol_path: method_symbol.symbol_path.clone(),
+                            },
+                        );
                 }
             }
         }

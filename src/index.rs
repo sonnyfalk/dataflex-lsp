@@ -63,12 +63,12 @@ impl Index {
     }
 
     pub fn is_known_method(&self, name: &SymbolName) -> bool {
-        self.lookup_tables.method_lookup_table().get(name).is_some()
+        self.lookup_tables.is_known_method(name)
     }
 
-    pub fn all_known_methods(&self) -> Vec<SymbolName> {
+    pub fn all_known_methods(&self, kind: MethodKind) -> Vec<SymbolName> {
         self.lookup_tables
-            .method_lookup_table()
+            .method_lookup_table(kind)
             .keys()
             .cloned()
             .collect()
@@ -248,7 +248,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table()
+                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
                     .get(&SymbolName::from("SayHello"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
@@ -264,7 +264,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table()
+                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
                     .get(&SymbolName::from("SayHello"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
@@ -274,7 +274,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table()
+                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
                     .get(&SymbolName::from("SayBye"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
@@ -291,7 +291,7 @@ mod tests {
                 index_ref
                     .get()
                     .lookup_tables
-                    .method_lookup_table()
+                    .method_lookup_table(MethodKind::Procedure)
                     .get(&SymbolName::from("SayHello"))
             ),
             "None"
@@ -301,7 +301,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table()
+                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
                     .get(&SymbolName::from("SayHelloRenamed"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")]) })"
@@ -311,7 +311,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table()
+                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
                     .get(&SymbolName::from("SayBye"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
