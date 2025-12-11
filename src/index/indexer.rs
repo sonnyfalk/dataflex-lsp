@@ -171,7 +171,7 @@ impl Indexer {
                         }
                     }
                 }
-                Some(TagsQueryIndexElement::MethodDefinition) => {
+                Some(TagsQueryIndexElement::MethodProcedureDefinition) => {
                     if let Some(name_node) = query_match
                         .nodes_for_capture_index(name_capture_index)
                         .next()
@@ -189,6 +189,32 @@ impl Indexer {
                                         SymbolName::from(name),
                                     ]),
                                     kind: MethodKind::Procedure,
+                                };
+                                class_symbol
+                                    .methods
+                                    .push(IndexSymbol::Method(method_symbol));
+                            }
+                        }
+                    }
+                }
+                Some(TagsQueryIndexElement::MethodFunctionDefinition) => {
+                    if let Some(name_node) = query_match
+                        .nodes_for_capture_index(name_capture_index)
+                        .next()
+                    {
+                        if let Some(name) = name_node.utf8_text(content).ok() {
+                            if let Some(class_symbol) = index_file
+                                .symbols
+                                .last_mut()
+                                .and_then(ClassSymbol::from_index_symbol_mut)
+                            {
+                                let method_symbol = MethodSymbol {
+                                    location: name_node.start_position(),
+                                    symbol_path: SymbolPath::new(vec![
+                                        class_symbol.name.clone(),
+                                        SymbolName::from(name),
+                                    ]),
+                                    kind: MethodKind::Function,
                                 };
                                 class_symbol
                                     .methods
@@ -295,7 +321,8 @@ impl IndexerConfig {
 enum TagsQueryIndexElement {
     FileDependency,
     ClassDefinition,
-    MethodDefinition,
+    MethodProcedureDefinition,
+    MethodFunctionDefinition,
 }
 
 struct SymbolsDiff<'a> {
@@ -530,7 +557,7 @@ mod tests {
     }
 
     #[test]
-    fn test_index_class_method() {
+    fn test_index_class_procedure_method() {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
@@ -541,6 +568,21 @@ mod tests {
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_class_function_method() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Function SayHello Returns String\n    End_Function\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })] })]"
         );
     }
 

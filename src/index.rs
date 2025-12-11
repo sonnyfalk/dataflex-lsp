@@ -281,7 +281,7 @@ mod tests {
         );
 
         Indexer::index_test_content(
-            "Class cMyClass is a cBaseClass\n    Procedure SayHelloRenamed\n    End_Procedure\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
+            "Class cMyClass is a cBaseClass\n    Procedure SayHelloRenamed\n    End_Procedure\n    Procedure SayBye\n    End_Procedure\n    Function Foo Returns String\n    End_Function\nEnd_Class\n",
             PathBuf::from_str("test.pkg").unwrap(),
             &index_ref,
         );
@@ -315,6 +315,16 @@ mod tests {
                     .get(&SymbolName::from("SayBye"))
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables.method_lookup_table(MethodKind::Function)
+                    .get(&SymbolName::from("Foo"))
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Foo\")]) })"
         );
     }
 }
