@@ -1,5 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
+use index::MethodKind;
+
 use super::*;
 use tree_sitter::{Node, TreeCursor};
 
@@ -20,7 +22,7 @@ pub enum CompletionItemKind {
 #[derive(Debug, Eq, PartialEq)]
 pub enum CodeCompletionContext {
     ClassReference,
-    MethodReference,
+    MethodReference(MethodKind),
 }
 
 impl CodeCompletion {
@@ -31,8 +33,8 @@ impl CodeCompletion {
 
         let completions = match context {
             CodeCompletionContext::ClassReference => Some(Self::class_completions(doc)),
-            CodeCompletionContext::MethodReference => {
-                Some(Self::method_completions(doc, index::MethodKind::Procedure))
+            CodeCompletionContext::MethodReference(kind) => {
+                Some(Self::method_completions(doc, kind))
             }
         };
 
@@ -81,6 +83,7 @@ impl CodeCompletionContext {
         let context = match (kind, text.to_lowercase().as_str()) {
             ("keyword", "object") => Self::context_for_object(cursor, doc, position),
             ("keyword", "send") => Self::context_for_send(cursor, doc, position),
+            ("keyword", "get") => Self::context_for_get(cursor, doc, position),
             _ => None,
         };
 
@@ -130,14 +133,37 @@ impl CodeCompletionContext {
         let mut cursor = DataFlexTreeCursor::new(cursor, doc);
 
         if cursor.goto_next_identifier_enclosing_position(&position) {
-            return Some(Self::MethodReference);
+            return Some(Self::MethodReference(MethodKind::Procedure));
         } else if cursor.goto_next_node() {
             if cursor.node().start_position() > position {
-                return Some(Self::MethodReference);
+                return Some(Self::MethodReference(MethodKind::Procedure));
             }
             return None;
         } else {
-            return Some(Self::MethodReference);
+            return Some(Self::MethodReference(MethodKind::Procedure));
+        }
+    }
+
+    fn context_for_get(
+        cursor: TreeCursor,
+        doc: &DataFlexDocument,
+        position: Point,
+    ) -> Option<Self> {
+        if position <= cursor.node().end_position() {
+            return None;
+        }
+
+        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
+
+        if cursor.goto_next_identifier_enclosing_position(&position) {
+            return Some(Self::MethodReference(MethodKind::Function));
+        } else if cursor.goto_next_node() {
+            if cursor.node().start_position() > position {
+                return Some(Self::MethodReference(MethodKind::Function));
+            }
+            return None;
+        } else {
+            return Some(Self::MethodReference(MethodKind::Function));
         }
     }
 }
@@ -298,11 +324,28 @@ mod test {
     fn test_method_reference_context() {
         let doc = DataFlexDocument::new("Send Foo\n", index::IndexRef::make_test_index_ref());
         let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 5 });
-        assert_eq!(context, Some(CodeCompletionContext::MethodReference));
+        assert_eq!(
+            context,
+            Some(CodeCompletionContext::MethodReference(
+                MethodKind::Procedure
+            ))
+        );
 
         let doc = DataFlexDocument::new("Send Foo\n", index::IndexRef::make_test_index_ref());
         let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 6 });
-        assert_eq!(context, Some(CodeCompletionContext::MethodReference));
+        assert_eq!(
+            context,
+            Some(CodeCompletionContext::MethodReference(
+                MethodKind::Procedure
+            ))
+        );
+
+        let doc = DataFlexDocument::new("Get Foo\n", index::IndexRef::make_test_index_ref());
+        let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 6 });
+        assert_eq!(
+            context,
+            Some(CodeCompletionContext::MethodReference(MethodKind::Function))
+        );
 
         let doc = DataFlexDocument::new("Send Foo 1\n", index::IndexRef::make_test_index_ref());
         let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 9 });

@@ -23,7 +23,7 @@ pub struct MethodSymbol {
     pub kind: MethodKind,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(dead_code)]
 pub enum MethodKind {
     Procedure,
