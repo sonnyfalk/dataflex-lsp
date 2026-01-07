@@ -18,3 +18,7 @@
     (function_header
       name: (identifier) @name) @definition.method
     (#set! index.element method_function_definition)))
+
+(property_definition
+  name: (identifier) @name
+  (#set! index.element property_definition)) @definition.property

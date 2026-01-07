@@ -166,6 +166,7 @@ impl Indexer {
                                 location: name_node.start_position(),
                                 name: SymbolName::from(name),
                                 methods: Vec::new(),
+                                properties: Vec::new(),
                             };
                             index_file.symbols.push(IndexSymbol::Class(class_symbol));
                         }
@@ -219,6 +220,31 @@ impl Indexer {
                                 class_symbol
                                     .methods
                                     .push(IndexSymbol::Method(method_symbol));
+                            }
+                        }
+                    }
+                }
+                Some(TagsQueryIndexElement::PropertyDefinition) => {
+                    if let Some(name_node) = query_match
+                        .nodes_for_capture_index(name_capture_index)
+                        .next()
+                    {
+                        if let Some(name) = name_node.utf8_text(content).ok() {
+                            if let Some(class_symbol) = index_file
+                                .symbols
+                                .last_mut()
+                                .and_then(ClassSymbol::from_index_symbol_mut)
+                            {
+                                let property_symbol = PropertySymbol {
+                                    location: name_node.start_position(),
+                                    symbol_path: SymbolPath::new(vec![
+                                        class_symbol.name.clone(),
+                                        SymbolName::from(name),
+                                    ]),
+                                };
+                                class_symbol
+                                    .properties
+                                    .push(IndexSymbol::Property(property_symbol));
                             }
                         }
                     }
@@ -323,6 +349,7 @@ enum TagsQueryIndexElement {
     ClassDefinition,
     MethodProcedureDefinition,
     MethodFunctionDefinition,
+    PropertyDefinition,
 }
 
 struct SymbolsDiff<'a> {
@@ -412,6 +439,20 @@ impl Index {
                         }
                     }
                 }
+                IndexSymbol::Property(property_symbol) => {
+                    if let Some(property_symbols) = self
+                        .lookup_tables
+                        .property_lookup_table_mut()
+                        .get_vec_mut(property_symbol.symbol_path.name())
+                    {
+                        property_symbols.retain(|s| s.symbol_path != property_symbol.symbol_path);
+                        if property_symbols.is_empty() {
+                            self.lookup_tables
+                                .property_lookup_table_mut()
+                                .remove(property_symbol.symbol_path.name());
+                        }
+                    }
+                }
             }
         }
         for symbol in symbols_diff.added_symbols {
@@ -448,6 +489,15 @@ impl Index {
                                 symbol_path: method_symbol.symbol_path.clone(),
                             },
                         );
+                }
+                IndexSymbol::Property(property_symbol) => {
+                    self.lookup_tables.property_lookup_table_mut().insert(
+                        property_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef {
+                            file_ref: file_ref.clone(),
+                            symbol_path: property_symbol.symbol_path.clone(),
+                        },
+                    );
                 }
             }
         }
@@ -552,7 +602,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [], properties: [] })]"
         );
     }
 
@@ -567,7 +617,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })], properties: [] })]"
         );
     }
 
@@ -582,7 +632,22 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })], properties: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_class_property() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piTest 0\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!("{:?}",index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Procedure })], properties: [Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
         );
     }
 

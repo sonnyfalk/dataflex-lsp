@@ -5,6 +5,7 @@ use super::*;
 pub enum IndexSymbol {
     Class(ClassSymbol),
     Method(MethodSymbol),
+    Property(PropertySymbol),
 }
 
 #[derive(Debug)]
@@ -13,6 +14,7 @@ pub struct ClassSymbol {
     pub location: Point,
     pub name: SymbolName,
     pub methods: Vec<IndexSymbol>,
+    pub properties: Vec<IndexSymbol>,
 }
 
 #[derive(Debug)]
@@ -29,6 +31,13 @@ pub enum MethodKind {
     Procedure,
     Function,
     Set,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct PropertySymbol {
+    pub location: Point,
+    pub symbol_path: SymbolPath,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -56,6 +65,7 @@ impl IndexSymbol {
         match self {
             Self::Class(class_symbol) => &class_symbol.name,
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
+            Self::Property(property_symbol) => property_symbol.symbol_path.name(),
         }
     }
 

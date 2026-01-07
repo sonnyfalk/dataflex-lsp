@@ -4,6 +4,7 @@ use super::*;
 pub struct LookupTables {
     class_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
     method_lookup_tables: [MultiMap<SymbolName, IndexSymbolRef>; 3],
+    property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
 }
 
 impl LookupTables {
@@ -11,6 +12,7 @@ impl LookupTables {
         Self {
             class_lookup_table: HashMap::new(),
             method_lookup_tables: [MultiMap::new(), MultiMap::new(), MultiMap::new()],
+            property_lookup_table: MultiMap::new(),
         }
     }
 
@@ -39,6 +41,14 @@ impl LookupTables {
             MethodKind::Function => &mut self.method_lookup_tables[MethodKind::Function as usize],
             MethodKind::Set => &mut self.method_lookup_tables[MethodKind::Set as usize],
         }
+    }
+
+    pub fn property_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
+        &self.property_lookup_table
+    }
+
+    pub fn property_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
+        &mut self.property_lookup_table
     }
 
     pub fn is_known_method(&self, name: &SymbolName) -> bool {
