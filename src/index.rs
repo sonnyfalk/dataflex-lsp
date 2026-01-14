@@ -42,7 +42,7 @@ impl Index {
         }
     }
 
-    pub fn find_class(&self, name: &SymbolName) -> Option<ClassSymbolSnapshot> {
+    pub fn find_class(&self, name: &SymbolName) -> Option<ClassSymbolSnapshot<'_>> {
         if let Some(symbol_ref) = self.lookup_tables.class_lookup_table().get(name) {
             self.find_symbol_ref(symbol_ref)
         } else {
@@ -112,13 +112,13 @@ impl IndexRef {
         }
     }
 
-    pub fn get(&self) -> std::sync::RwLockReadGuard<Index> {
+    pub fn get(&self) -> std::sync::RwLockReadGuard<'_, Index> {
         self.index
             .read()
             .expect("unable to acquire index read lock")
     }
 
-    pub fn get_mut(&self) -> std::sync::RwLockWriteGuard<Index> {
+    pub fn get_mut(&self) -> std::sync::RwLockWriteGuard<'_, Index> {
         self.index
             .write()
             .expect("unable to acquire index write lock")
