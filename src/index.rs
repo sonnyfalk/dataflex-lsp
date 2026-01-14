@@ -62,6 +62,14 @@ impl Index {
             .collect()
     }
 
+    pub fn all_known_properties(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .property_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
     pub fn is_known_method(&self, name: &SymbolName) -> bool {
         self.lookup_tables.is_known_method(name)
     }

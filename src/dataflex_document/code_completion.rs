@@ -17,6 +17,7 @@ pub struct CompletionItem {
 pub enum CompletionItemKind {
     Class,
     Method,
+    Property,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -54,15 +55,38 @@ impl CodeCompletion {
     }
 
     fn method_completions(doc: &DataFlexDocument, kind: index::MethodKind) -> Vec<CompletionItem> {
-        doc.index
-            .get()
-            .all_known_methods(kind)
-            .drain(..)
-            .map(|method_name| CompletionItem {
-                label: method_name.to_string(),
-                kind: CompletionItemKind::Method,
-            })
-            .collect()
+        match kind {
+            index::MethodKind::Procedure => doc
+                .index
+                .get()
+                .all_known_methods(kind)
+                .drain(..)
+                .map(|method_name| CompletionItem {
+                    label: method_name.to_string(),
+                    kind: CompletionItemKind::Method,
+                })
+                .collect(),
+            index::MethodKind::Function | index::MethodKind::Set => doc
+                .index
+                .get()
+                .all_known_methods(kind)
+                .drain(..)
+                .map(|method_name| CompletionItem {
+                    label: method_name.to_string(),
+                    kind: CompletionItemKind::Method,
+                })
+                .chain(
+                    doc.index
+                        .get()
+                        .all_known_properties()
+                        .drain(..)
+                        .map(|property_name| CompletionItem {
+                            label: property_name.to_string(),
+                            kind: CompletionItemKind::Property,
+                        }),
+                )
+                .collect(),
+        }
     }
 }
 

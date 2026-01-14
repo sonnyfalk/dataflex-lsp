@@ -167,6 +167,7 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
         match kind {
             code_completion::CompletionItemKind::Class => Self::CLASS,
             code_completion::CompletionItemKind::Method => Self::METHOD,
+            code_completion::CompletionItemKind::Property => Self::PROPERTY,
         }
     }
 }
