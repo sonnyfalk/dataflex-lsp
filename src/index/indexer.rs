@@ -420,6 +420,23 @@ impl Index {
                             }
                         }
                     }
+                    for symbol in &class_symbol.properties {
+                        if let IndexSymbol::Property(property_symbol) = symbol {
+                            if let Some(property_symbols) = self
+                                .lookup_tables
+                                .property_lookup_table_mut()
+                                .get_vec_mut(property_symbol.symbol_path.name())
+                            {
+                                property_symbols
+                                    .retain(|s| s.symbol_path != property_symbol.symbol_path);
+                                if property_symbols.is_empty() {
+                                    self.lookup_tables
+                                        .property_lookup_table_mut()
+                                        .remove(property_symbol.symbol_path.name());
+                                }
+                            }
+                        }
+                    }
                     // FIXME: This needs to be updated to support multiple classes with the same name.
                     self.lookup_tables
                         .class_lookup_table_mut()
@@ -476,6 +493,17 @@ impl Index {
                                         symbol_path: method_symbol.symbol_path.clone(),
                                     },
                                 );
+                        }
+                    }
+                    for symbol in &class_symbol.properties {
+                        if let IndexSymbol::Property(property_symbol) = symbol {
+                            self.lookup_tables.property_lookup_table_mut().insert(
+                                property_symbol.symbol_path.name().clone(),
+                                IndexSymbolRef {
+                                    file_ref: file_ref.clone(),
+                                    symbol_path: property_symbol.symbol_path.clone(),
+                                },
+                            );
                         }
                     }
                 }
@@ -537,14 +565,25 @@ fn diff_symbols<'a>(
                             IndexSymbol::Class(old_class_symbol),
                             IndexSymbol::Class(new_class_symbol),
                         ) => {
-                            let mut inner_diff =
+                            let mut method_diff =
                                 diff_symbols(&old_class_symbol.methods, &new_class_symbol.methods);
                             symbols_diff
                                 .added_symbols
-                                .append(&mut inner_diff.added_symbols);
+                                .append(&mut method_diff.added_symbols);
                             symbols_diff
                                 .removed_symbols
-                                .append(&mut inner_diff.removed_symbols);
+                                .append(&mut method_diff.removed_symbols);
+
+                            let mut property_diff = diff_symbols(
+                                &old_class_symbol.properties,
+                                &new_class_symbol.properties,
+                            );
+                            symbols_diff
+                                .added_symbols
+                                .append(&mut property_diff.added_symbols);
+                            symbols_diff
+                                .removed_symbols
+                                .append(&mut property_diff.removed_symbols);
                         }
                         _ => {}
                     }
