@@ -108,6 +108,7 @@ impl CodeCompletionContext {
             ("keyword", "object") => Self::context_for_object(cursor, doc, position),
             ("keyword", "send") => Self::context_for_send(cursor, doc, position),
             ("keyword", "get") => Self::context_for_get(cursor, doc, position),
+            ("keyword", "set") => Self::context_for_set(cursor, doc, position),
             _ => None,
         };
 
@@ -188,6 +189,29 @@ impl CodeCompletionContext {
             return None;
         } else {
             return Some(Self::MethodReference(MethodKind::Function));
+        }
+    }
+
+    fn context_for_set(
+        cursor: TreeCursor,
+        doc: &DataFlexDocument,
+        position: Point,
+    ) -> Option<Self> {
+        if position <= cursor.node().end_position() {
+            return None;
+        }
+
+        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
+
+        if cursor.goto_next_identifier_enclosing_position(&position) {
+            return Some(Self::MethodReference(MethodKind::Set));
+        } else if cursor.goto_next_node() {
+            if cursor.node().start_position() > position {
+                return Some(Self::MethodReference(MethodKind::Set));
+            }
+            return None;
+        } else {
+            return Some(Self::MethodReference(MethodKind::Set));
         }
     }
 }
@@ -369,6 +393,13 @@ mod test {
         assert_eq!(
             context,
             Some(CodeCompletionContext::MethodReference(MethodKind::Function))
+        );
+
+        let doc = DataFlexDocument::new("Set Foo\n", index::IndexRef::make_test_index_ref());
+        let context = CodeCompletionContext::context(&doc, Point { row: 0, column: 6 });
+        assert_eq!(
+            context,
+            Some(CodeCompletionContext::MethodReference(MethodKind::Set))
         );
 
         let doc = DataFlexDocument::new("Send Foo 1\n", index::IndexRef::make_test_index_ref());
