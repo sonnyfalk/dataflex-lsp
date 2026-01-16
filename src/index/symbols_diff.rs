@@ -70,25 +70,14 @@ fn diff_symbols<'a>(
                             IndexSymbol::Class(old_class_symbol),
                             IndexSymbol::Class(new_class_symbol),
                         ) => {
-                            let mut method_diff =
-                                diff_symbols(&old_class_symbol.methods, &new_class_symbol.methods);
+                            let mut inner_diff =
+                                diff_symbols(&old_class_symbol.members, &new_class_symbol.members);
                             symbols_diff
                                 .added_symbols
-                                .append(&mut method_diff.added_symbols);
+                                .append(&mut inner_diff.added_symbols);
                             symbols_diff
                                 .removed_symbols
-                                .append(&mut method_diff.removed_symbols);
-
-                            let mut property_diff = diff_symbols(
-                                &old_class_symbol.properties,
-                                &new_class_symbol.properties,
-                            );
-                            symbols_diff
-                                .added_symbols
-                                .append(&mut property_diff.added_symbols);
-                            symbols_diff
-                                .removed_symbols
-                                .append(&mut property_diff.removed_symbols);
+                                .append(&mut inner_diff.removed_symbols);
                         }
                         _ => {}
                     }

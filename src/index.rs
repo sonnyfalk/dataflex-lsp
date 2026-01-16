@@ -155,7 +155,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().find_class(&SymbolName::from("cMyClass"))),
-             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), methods: [], properties: [] } })"
+             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), members: [] } })"
         );
     }
 }

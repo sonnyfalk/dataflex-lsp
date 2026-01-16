@@ -13,8 +13,7 @@ pub enum IndexSymbol {
 pub struct ClassSymbol {
     pub location: Point,
     pub name: SymbolName,
-    pub methods: Vec<IndexSymbol>,
-    pub properties: Vec<IndexSymbol>,
+    pub members: Vec<IndexSymbol>,
 }
 
 #[derive(Debug)]
