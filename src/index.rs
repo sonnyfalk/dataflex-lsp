@@ -9,6 +9,7 @@ mod index_file;
 mod index_symbol;
 mod indexer;
 mod lookup_tables;
+mod symbols_diff;
 mod workspace;
 
 pub use index_symbol::*;

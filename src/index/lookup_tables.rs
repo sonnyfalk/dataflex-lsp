@@ -1,4 +1,5 @@
 use super::*;
+use symbols_diff::SymbolsDiff;
 
 #[derive(Debug)]
 pub struct LookupTables {
@@ -56,6 +57,124 @@ impl LookupTables {
             .iter()
             .find_map(|t| t.get(name))
             .is_some()
+    }
+
+    pub fn update(&mut self, symbols_diff: SymbolsDiff, file_ref: IndexFileRef) {
+        for symbol in symbols_diff.removed_symbols {
+            match symbol {
+                IndexSymbol::Class(class_symbol) => {
+                    for symbol in &class_symbol.methods {
+                        if let IndexSymbol::Method(method_symbol) = symbol {
+                            if let Some(method_symbols) = self
+                                .method_lookup_table_mut(method_symbol.kind)
+                                .get_vec_mut(method_symbol.symbol_path.name())
+                            {
+                                method_symbols
+                                    .retain(|s| s.symbol_path != method_symbol.symbol_path);
+                                if method_symbols.is_empty() {
+                                    self.method_lookup_table_mut(method_symbol.kind)
+                                        .remove(method_symbol.symbol_path.name());
+                                }
+                            }
+                        }
+                    }
+                    for symbol in &class_symbol.properties {
+                        if let IndexSymbol::Property(property_symbol) = symbol {
+                            if let Some(property_symbols) = self
+                                .property_lookup_table_mut()
+                                .get_vec_mut(property_symbol.symbol_path.name())
+                            {
+                                property_symbols
+                                    .retain(|s| s.symbol_path != property_symbol.symbol_path);
+                                if property_symbols.is_empty() {
+                                    self.property_lookup_table_mut()
+                                        .remove(property_symbol.symbol_path.name());
+                                }
+                            }
+                        }
+                    }
+                    // FIXME: This needs to be updated to support multiple classes with the same name.
+                    self.class_lookup_table_mut().remove(&class_symbol.name);
+                }
+                IndexSymbol::Method(method_symbol) => {
+                    if let Some(method_symbols) = self
+                        .method_lookup_table_mut(method_symbol.kind)
+                        .get_vec_mut(method_symbol.symbol_path.name())
+                    {
+                        method_symbols.retain(|s| s.symbol_path != method_symbol.symbol_path);
+                        if method_symbols.is_empty() {
+                            self.method_lookup_table_mut(method_symbol.kind)
+                                .remove(method_symbol.symbol_path.name());
+                        }
+                    }
+                }
+                IndexSymbol::Property(property_symbol) => {
+                    if let Some(property_symbols) = self
+                        .property_lookup_table_mut()
+                        .get_vec_mut(property_symbol.symbol_path.name())
+                    {
+                        property_symbols.retain(|s| s.symbol_path != property_symbol.symbol_path);
+                        if property_symbols.is_empty() {
+                            self.property_lookup_table_mut()
+                                .remove(property_symbol.symbol_path.name());
+                        }
+                    }
+                }
+            }
+        }
+        for symbol in symbols_diff.added_symbols {
+            match symbol {
+                IndexSymbol::Class(class_symbol) => {
+                    self.class_lookup_table_mut().insert(
+                        class_symbol.name.clone(),
+                        IndexSymbolRef::new(
+                            file_ref.clone(),
+                            SymbolPath::new(vec![class_symbol.name.clone()]),
+                        ),
+                    );
+                    for symbol in &class_symbol.methods {
+                        if let IndexSymbol::Method(method_symbol) = symbol {
+                            self.method_lookup_table_mut(method_symbol.kind).insert(
+                                method_symbol.symbol_path.name().clone(),
+                                IndexSymbolRef {
+                                    file_ref: file_ref.clone(),
+                                    symbol_path: method_symbol.symbol_path.clone(),
+                                },
+                            );
+                        }
+                    }
+                    for symbol in &class_symbol.properties {
+                        if let IndexSymbol::Property(property_symbol) = symbol {
+                            self.property_lookup_table_mut().insert(
+                                property_symbol.symbol_path.name().clone(),
+                                IndexSymbolRef {
+                                    file_ref: file_ref.clone(),
+                                    symbol_path: property_symbol.symbol_path.clone(),
+                                },
+                            );
+                        }
+                    }
+                }
+                IndexSymbol::Method(method_symbol) => {
+                    self.method_lookup_table_mut(method_symbol.kind).insert(
+                        method_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef {
+                            file_ref: file_ref.clone(),
+                            symbol_path: method_symbol.symbol_path.clone(),
+                        },
+                    );
+                }
+                IndexSymbol::Property(property_symbol) => {
+                    self.property_lookup_table_mut().insert(
+                        property_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef {
+                            file_ref: file_ref.clone(),
+                            symbol_path: property_symbol.symbol_path.clone(),
+                        },
+                    );
+                }
+            }
+        }
     }
 }
 
