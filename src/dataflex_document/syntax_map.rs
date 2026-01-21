@@ -129,12 +129,43 @@ impl SyntaxMap {
                                         None
                                     }
                                 }
-                                "entity.name.function" => {
+                                "entity.name.function.dataflex.send" => {
                                     let name = doc.line_map.text_in_range(start, end);
-                                    if doc
+                                    if doc.index.get().is_known_method(
+                                        &index::SymbolName::from(name),
+                                        index::MethodKind::Procedure,
+                                    ) {
+                                        Some(SyntaxToken {
+                                            delta_start: if start.row == prev_pos.row {
+                                                (start.column - prev_pos.column) as u32
+                                            } else {
+                                                start.column as u32
+                                            },
+                                            length: (end.column - start.column) as u32,
+                                            kind: 2,
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                }
+                                "entity.name.function.dataflex.get" => {
+                                    let name = index::SymbolName::from(
+                                        doc.line_map.text_in_range(start, end),
+                                    );
+                                    if doc.index.get().is_known_property(&name) {
+                                        Some(SyntaxToken {
+                                            delta_start: if start.row == prev_pos.row {
+                                                (start.column - prev_pos.column) as u32
+                                            } else {
+                                                start.column as u32
+                                            },
+                                            length: (end.column - start.column) as u32,
+                                            kind: 3,
+                                        })
+                                    } else if doc
                                         .index
                                         .get()
-                                        .is_known_method(&index::SymbolName::from(name))
+                                        .is_known_method(&name, index::MethodKind::Function)
                                     {
                                         Some(SyntaxToken {
                                             delta_start: if start.row == prev_pos.row {
@@ -144,6 +175,29 @@ impl SyntaxMap {
                                             },
                                             length: (end.column - start.column) as u32,
                                             kind: 2,
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                }
+                                "entity.name.function.dataflex.set" => {
+                                    let name = index::SymbolName::from(
+                                        doc.line_map.text_in_range(start, end),
+                                    );
+                                    if doc.index.get().is_known_property(&name)
+                                        || doc
+                                            .index
+                                            .get()
+                                            .is_known_method(&name, index::MethodKind::Set)
+                                    {
+                                        Some(SyntaxToken {
+                                            delta_start: if start.row == prev_pos.row {
+                                                (start.column - prev_pos.column) as u32
+                                            } else {
+                                                start.column as u32
+                                            },
+                                            length: (end.column - start.column) as u32,
+                                            kind: 3,
                                         })
                                     } else {
                                         None

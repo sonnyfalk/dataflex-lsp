@@ -63,6 +63,13 @@ impl Index {
             .collect()
     }
 
+    pub fn is_known_property(&self, name: &SymbolName) -> bool {
+        self.lookup_tables
+            .property_lookup_table()
+            .get(name)
+            .is_some()
+    }
+
     pub fn all_known_properties(&self) -> Vec<SymbolName> {
         self.lookup_tables
             .property_lookup_table()
@@ -71,8 +78,11 @@ impl Index {
             .collect()
     }
 
-    pub fn is_known_method(&self, name: &SymbolName) -> bool {
-        self.lookup_tables.is_known_method(name)
+    pub fn is_known_method(&self, name: &SymbolName, kind: MethodKind) -> bool {
+        self.lookup_tables
+            .method_lookup_table(kind)
+            .get(name)
+            .is_some()
     }
 
     pub fn all_known_methods(&self, kind: MethodKind) -> Vec<SymbolName> {

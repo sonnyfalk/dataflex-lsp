@@ -52,13 +52,6 @@ impl LookupTables {
         &mut self.property_lookup_table
     }
 
-    pub fn is_known_method(&self, name: &SymbolName) -> bool {
-        self.method_lookup_tables
-            .iter()
-            .find_map(|t| t.get(name))
-            .is_some()
-    }
-
     pub fn update(&mut self, symbols_diff: SymbolsDiff, file_ref: IndexFileRef) {
         self.remove_symols(symbols_diff.removed_symbols.into_iter());
         self.add_symbols(symbols_diff.added_symbols.into_iter(), &file_ref);
