@@ -4,6 +4,7 @@ use tower_lsp::lsp_types::SemanticToken;
 use tree_sitter::{Point, Query, QueryCursor};
 
 use super::*;
+use index::{MethodKind, SymbolName};
 
 pub struct SyntaxMap {
     lines: Vec<Line>,
@@ -19,6 +20,20 @@ struct SyntaxToken {
     delta_start: u32,
     length: u32,
     kind: u32,
+}
+
+impl SyntaxToken {
+    fn new(start: Point, end: Point, kind: u32, prev: Point) -> Self {
+        Self {
+            delta_start: if start.row == prev.row {
+                (start.column - prev.column) as u32
+            } else {
+                start.column as u32
+            },
+            length: (end.column - start.column) as u32,
+            kind: kind,
+        }
+    }
 }
 
 impl SyntaxMap {
@@ -90,6 +105,8 @@ impl SyntaxMap {
         let mut lines = Vec::with_capacity(doc.line_map.line_count());
         lines.resize_with(doc.line_map.line_count(), || Line { tokens: Vec::new() });
 
+        let index = doc.index.get();
+
         let (lines, _) = captures.fold(
             (lines, Point { row: 0, column: 0 }),
             |(lines, prev_pos), query_match| {
@@ -100,105 +117,43 @@ impl SyntaxMap {
                         let end = capture.node.end_position();
                         if start.row == end.row {
                             let token = match capture_names[capture.index as usize] {
-                                "keyword" => Some(SyntaxToken {
-                                    delta_start: if start.row == prev_pos.row {
-                                        (start.column - prev_pos.column) as u32
-                                    } else {
-                                        start.column as u32
-                                    },
-                                    length: (end.column - start.column) as u32,
-                                    kind: 0,
-                                }),
+                                "keyword" => Some(SyntaxToken::new(start, end, 0, prev_pos)),
                                 "entity.other.inherited-class" => {
-                                    let name = doc.line_map.text_in_range(start, end);
-                                    if doc
-                                        .index
-                                        .get()
-                                        .is_known_class(&index::SymbolName::from(name))
-                                    {
-                                        Some(SyntaxToken {
-                                            delta_start: if start.row == prev_pos.row {
-                                                (start.column - prev_pos.column) as u32
-                                            } else {
-                                                start.column as u32
-                                            },
-                                            length: (end.column - start.column) as u32,
-                                            kind: 1,
-                                        })
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_class(&name) {
+                                        Some(SyntaxToken::new(start, end, 1, prev_pos))
                                     } else {
                                         None
                                     }
                                 }
                                 "entity.name.function.dataflex.send" => {
-                                    let name = doc.line_map.text_in_range(start, end);
-                                    if doc.index.get().is_known_method(
-                                        &index::SymbolName::from(name),
-                                        index::MethodKind::Procedure,
-                                    ) {
-                                        Some(SyntaxToken {
-                                            delta_start: if start.row == prev_pos.row {
-                                                (start.column - prev_pos.column) as u32
-                                            } else {
-                                                start.column as u32
-                                            },
-                                            length: (end.column - start.column) as u32,
-                                            kind: 2,
-                                        })
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_method(&name, MethodKind::Procedure) {
+                                        Some(SyntaxToken::new(start, end, 2, prev_pos))
                                     } else {
                                         None
                                     }
                                 }
                                 "entity.name.function.dataflex.get" => {
-                                    let name = index::SymbolName::from(
-                                        doc.line_map.text_in_range(start, end),
-                                    );
-                                    if doc.index.get().is_known_property(&name) {
-                                        Some(SyntaxToken {
-                                            delta_start: if start.row == prev_pos.row {
-                                                (start.column - prev_pos.column) as u32
-                                            } else {
-                                                start.column as u32
-                                            },
-                                            length: (end.column - start.column) as u32,
-                                            kind: 3,
-                                        })
-                                    } else if doc
-                                        .index
-                                        .get()
-                                        .is_known_method(&name, index::MethodKind::Function)
-                                    {
-                                        Some(SyntaxToken {
-                                            delta_start: if start.row == prev_pos.row {
-                                                (start.column - prev_pos.column) as u32
-                                            } else {
-                                                start.column as u32
-                                            },
-                                            length: (end.column - start.column) as u32,
-                                            kind: 2,
-                                        })
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_property(&name) {
+                                        Some(SyntaxToken::new(start, end, 3, prev_pos))
+                                    } else if index.is_known_method(&name, MethodKind::Function) {
+                                        Some(SyntaxToken::new(start, end, 2, prev_pos))
                                     } else {
                                         None
                                     }
                                 }
                                 "entity.name.function.dataflex.set" => {
-                                    let name = index::SymbolName::from(
-                                        doc.line_map.text_in_range(start, end),
-                                    );
-                                    if doc.index.get().is_known_property(&name)
-                                        || doc
-                                            .index
-                                            .get()
-                                            .is_known_method(&name, index::MethodKind::Set)
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_property(&name)
+                                        || index.is_known_method(&name, MethodKind::Set)
                                     {
-                                        Some(SyntaxToken {
-                                            delta_start: if start.row == prev_pos.row {
-                                                (start.column - prev_pos.column) as u32
-                                            } else {
-                                                start.column as u32
-                                            },
-                                            length: (end.column - start.column) as u32,
-                                            kind: 3,
-                                        })
+                                        Some(SyntaxToken::new(start, end, 3, prev_pos))
                                     } else {
                                         None
                                     }
