@@ -2,8 +2,9 @@ use tower_lsp::lsp_types;
 use tree_sitter::{InputEdit, Parser, Point, Tree};
 
 use crate::index;
-
+use document_context::DocumentContext;
 mod code_completion;
+mod document_context;
 mod line_map;
 mod syntax_map;
 
