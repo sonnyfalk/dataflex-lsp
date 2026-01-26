@@ -109,35 +109,43 @@ impl DataFlexDocument {
         let Some(tree) = self.tree.as_ref() else {
             return None;
         };
-        let start = Point {
+        let position = Point {
             row: position.line as usize,
             column: position.character as usize,
         };
-        let Some(node) = tree.root_node().descendant_for_point_range(start, start) else {
+        let Some(node) = tree
+            .root_node()
+            .descendant_for_point_range(position, position)
+        else {
             return None;
         };
-        let name = self
-            .line_map
-            .text_in_range(node.start_position(), node.end_position());
+        let name = index::SymbolName::from(
+            self.line_map
+                .text_in_range(node.start_position(), node.end_position()),
+        );
 
-        let index = self.index.get();
-        let Some(class_symbol) = index.find_class(&index::SymbolName::from(name)) else {
-            return None;
-        };
-
-        Some(lsp_types::Location::new(
-            lsp_types::Url::from_file_path(class_symbol.path).unwrap(),
-            lsp_types::Range::new(
-                lsp_types::Position {
-                    line: class_symbol.symbol.location.row as u32,
-                    character: class_symbol.symbol.location.column as u32,
-                },
-                lsp_types::Position {
-                    line: class_symbol.symbol.location.row as u32,
-                    character: class_symbol.symbol.location.column as u32,
-                },
-            ),
-        ))
+        match DocumentContext::context(&self, position) {
+            Some(DocumentContext::ClassReference) => {
+                if let Some(class_symbol) = self.index.get().find_class(&name) {
+                    Some(lsp_types::Location::new(
+                        lsp_types::Url::from_file_path(class_symbol.path).unwrap(),
+                        lsp_types::Range::new(
+                            lsp_types::Position {
+                                line: class_symbol.symbol.location.row as u32,
+                                character: class_symbol.symbol.location.column as u32,
+                            },
+                            lsp_types::Position {
+                                line: class_symbol.symbol.location.row as u32,
+                                character: class_symbol.symbol.location.column as u32,
+                            },
+                        ),
+                    ))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
     pub fn code_completion(
