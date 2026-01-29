@@ -105,7 +105,10 @@ impl DataFlexDocument {
         Some(syntax_map.get_all_tokens())
     }
 
-    pub fn find_definition(&self, position: lsp_types::Position) -> Option<lsp_types::Location> {
+    pub fn find_definition(
+        &self,
+        position: lsp_types::Position,
+    ) -> Option<Vec<lsp_types::Location>> {
         let Some(tree) = self.tree.as_ref() else {
             return None;
         };
@@ -124,22 +127,38 @@ impl DataFlexDocument {
                 .text_in_range(node.start_position(), node.end_position()),
         );
 
+        let index = self.index.get();
+
         match DocumentContext::context(&self, position) {
             Some(DocumentContext::ClassReference) => {
-                if let Some(class_symbol) = self.index.get().find_class(&name) {
-                    Some(lsp_types::Location::new(
-                        lsp_types::Url::from_file_path(class_symbol.path).unwrap(),
-                        lsp_types::Range::new(
-                            lsp_types::Position {
-                                line: class_symbol.symbol.location.row as u32,
-                                character: class_symbol.symbol.location.column as u32,
-                            },
-                            lsp_types::Position {
-                                line: class_symbol.symbol.location.row as u32,
-                                character: class_symbol.symbol.location.column as u32,
-                            },
-                        ),
-                    ))
+                let locations: Vec<lsp_types::Location> = index
+                    .find_class(&name)
+                    .iter()
+                    .filter_map(|s| index.symbol_snapshot(s))
+                    .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
+                    .collect();
+                if !locations.is_empty() {
+                    Some(locations)
+                } else {
+                    None
+                }
+            }
+            Some(DocumentContext::MethodReference(kind)) => {
+                let mut locations: Vec<lsp_types::Location> = index
+                    .find_methods(&name, kind)
+                    .filter_map(|s| index.symbol_snapshot(s))
+                    .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
+                    .collect();
+                if kind == index::MethodKind::Function || kind == index::MethodKind::Set {
+                    locations.extend(
+                        index
+                            .find_properties(&name)
+                            .filter_map(|s| index.symbol_snapshot(s))
+                            .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot)),
+                    );
+                }
+                if !locations.is_empty() {
+                    Some(locations)
                 } else {
                     None
                 }
@@ -178,6 +197,25 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
             code_completion::CompletionItemKind::Method => Self::METHOD,
             code_completion::CompletionItemKind::Property => Self::PROPERTY,
         }
+    }
+}
+
+impl From<&index::IndexSymbolSnapshot<'_, index::IndexSymbol>> for lsp_types::Location {
+    fn from(symbol_snapshot: &index::IndexSymbolSnapshot<index::IndexSymbol>) -> Self {
+        let location = symbol_snapshot.symbol.location();
+        lsp_types::Location::new(
+            lsp_types::Url::from_file_path(symbol_snapshot.path).unwrap(),
+            lsp_types::Range::new(
+                lsp_types::Position {
+                    line: location.row as u32,
+                    character: location.column as u32,
+                },
+                lsp_types::Position {
+                    line: location.row as u32,
+                    character: location.column as u32,
+                },
+            ),
+        )
     }
 }
 

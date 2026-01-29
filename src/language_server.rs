@@ -217,14 +217,14 @@ impl LanguageServer for DataFlexLanguageServer {
         &self,
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
-        let location = self
+        let locations = self
             .inner
             .open_files
             .get(&params.text_document_position_params.text_document.uri)
             .unwrap()
             .find_definition(params.text_document_position_params.position);
-        if let Some(location) = location {
-            Ok(Some(GotoDefinitionResponse::Scalar(location)))
+        if let Some(locations) = locations {
+            Ok(Some(GotoDefinitionResponse::Array(locations)))
         } else {
             Ok(None)
         }

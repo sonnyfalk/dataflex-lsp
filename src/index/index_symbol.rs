@@ -51,8 +51,6 @@ pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
     pub symbol: &'a IndexSymbolType,
 }
 
-pub type ClassSymbolSnapshot<'a> = IndexSymbolSnapshot<'a, ClassSymbol>;
-
 #[derive(Debug)]
 pub struct IndexSymbolRef {
     pub file_ref: IndexFileRef,
@@ -68,6 +66,14 @@ impl IndexSymbol {
         }
     }
 
+    pub fn location(&self) -> Point {
+        match self {
+            Self::Class(class_symbol) => class_symbol.location,
+            Self::Method(method_symbol) => method_symbol.location,
+            Self::Property(property_symbol) => property_symbol.location,
+        }
+    }
+
     pub fn is_matching(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Class(class_symbol), Self::Class(other_class_symbol)) => {
@@ -77,6 +83,22 @@ impl IndexSymbol {
                 method_symbol.symbol_path == other_method_symbol.symbol_path
             }
             _ => false,
+        }
+    }
+
+    pub fn child(&self, name: &SymbolName) -> Option<&Self> {
+        match self {
+            Self::Class(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
+            Self::Method(_) => None,
+            _ => None,
+        }
+    }
+
+    pub fn resolve(&self, mut sym_path_it: core::slice::Iter<SymbolName>) -> Option<&Self> {
+        if let Some(name) = sym_path_it.next() {
+            self.child(name).map(|s| s.resolve(sym_path_it)).flatten()
+        } else {
+            Some(self)
         }
     }
 }
@@ -108,9 +130,14 @@ impl SymbolPath {
     pub fn name(&self) -> &SymbolName {
         self.0.last().unwrap()
     }
+
+    pub fn components(&self) -> core::slice::Iter<'_, SymbolName> {
+        self.0.iter()
+    }
 }
 
 pub trait IndexSymbolType {
+    #[allow(dead_code)]
     fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self>;
     fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self>;
 }
@@ -127,6 +154,24 @@ impl IndexSymbolType for ClassSymbol {
     fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
         if let IndexSymbol::Class(class_symbol) = index_symbol {
             Some(class_symbol)
+        } else {
+            None
+        }
+    }
+}
+
+impl IndexSymbolType for MethodSymbol {
+    fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self> {
+        if let IndexSymbol::Method(method_symbol) = index_symbol {
+            Some(method_symbol)
+        } else {
+            None
+        }
+    }
+
+    fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
+        if let IndexSymbol::Method(method_symbol) = index_symbol {
+            Some(method_symbol)
         } else {
             None
         }

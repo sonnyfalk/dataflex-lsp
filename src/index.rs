@@ -43,12 +43,8 @@ impl Index {
         }
     }
 
-    pub fn find_class(&self, name: &SymbolName) -> Option<ClassSymbolSnapshot<'_>> {
-        if let Some(symbol_ref) = self.lookup_tables.class_lookup_table().get(name) {
-            self.find_symbol_ref(symbol_ref)
-        } else {
-            None
-        }
+    pub fn find_class(&self, name: &SymbolName) -> Option<&IndexSymbolRef> {
+        self.lookup_tables.class_lookup_table().get(name)
     }
 
     pub fn is_known_class(&self, name: &SymbolName) -> bool {
@@ -78,6 +74,14 @@ impl Index {
             .collect()
     }
 
+    pub fn find_properties(&self, name: &SymbolName) -> core::slice::Iter<'_, IndexSymbolRef> {
+        self.lookup_tables
+            .property_lookup_table()
+            .get_vec(name)
+            .map(|v| v.iter())
+            .unwrap_or_default()
+    }
+
     pub fn is_known_method(&self, name: &SymbolName, kind: MethodKind) -> bool {
         self.lookup_tables
             .method_lookup_table(kind)
@@ -93,26 +97,32 @@ impl Index {
             .collect()
     }
 
-    fn find_symbol_ref<'a, T: IndexSymbolType>(
-        &'a self,
+    pub fn find_methods(
+        &self,
+        name: &SymbolName,
+        kind: MethodKind,
+    ) -> core::slice::Iter<'_, IndexSymbolRef> {
+        self.lookup_tables
+            .method_lookup_table(kind)
+            .get_vec(name)
+            .map(|v| v.iter())
+            .unwrap_or_default()
+    }
+
+    pub fn symbol_snapshot(
+        &self,
         symbol_ref: &IndexSymbolRef,
-    ) -> Option<IndexSymbolSnapshot<'a, T>> {
-        let Some(index_file) = self.files.get(&symbol_ref.file_ref) else {
-            return None;
-        };
-        let name = symbol_ref.symbol_path.name();
-
-        let symbol = index_file
-            .symbols
-            .iter()
-            .filter(|sym| sym.name() == name)
-            .filter_map(|sym| T::from_index_symbol(sym))
-            .next();
-
-        symbol.map(|symbol| IndexSymbolSnapshot {
-            path: &index_file.path,
-            symbol,
-        })
+    ) -> Option<IndexSymbolSnapshot<'_, IndexSymbol>> {
+        if let Some(index_file) = self.files.get(&symbol_ref.file_ref) {
+            index_file
+                .resolve(&symbol_ref.symbol_path)
+                .map(|index_symbol| IndexSymbolSnapshot {
+                    path: &index_file.path,
+                    symbol: index_symbol,
+                })
+        } else {
+            None
+        }
     }
 }
 
@@ -165,7 +175,48 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().find_class(&SymbolName::from("cMyClass"))),
-             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), members: [] } })"
+             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
+        );
+    }
+
+    #[test]
+    fn test_find_methods() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .find_methods(&SymbolName::from("SayHello"), MethodKind::Procedure).next()
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
+        );
+    }
+
+    #[test]
+    fn test_find_properties() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piTest 0\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .find_properties(&SymbolName::from("piTest"))
+                    .next()
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })"
         );
     }
 }
