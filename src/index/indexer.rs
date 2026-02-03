@@ -1,3 +1,5 @@
+use crate::dataflex_parser::DataFlexTreeParser;
+
 use super::*;
 use symbols_diff::SymbolsDiff;
 
@@ -104,7 +106,7 @@ impl Indexer {
 
     fn index_file_content(content: &[u8], path: PathBuf, index: &IndexRef) {
         log::trace!("Indexing file content for {:?}", path);
-        let mut parser = Self::make_parser();
+        let mut parser = DataFlexTreeParser::new();
 
         let Some(tree) = parser.parse(content, None) else {
             return;
@@ -259,14 +261,6 @@ impl Indexer {
 
     fn watch_and_index_changed_files(_index: &IndexRef) {
         log::trace!("Watching workspace files");
-    }
-
-    fn make_parser() -> tree_sitter::Parser {
-        let mut parser = tree_sitter::Parser::new();
-        parser
-            .set_language(&tree_sitter_dataflex::LANGUAGE.into())
-            .expect("Error loading DataFlex grammar");
-        parser
     }
 
     fn should_index_file(path: &PathBuf) -> bool {

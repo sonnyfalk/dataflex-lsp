@@ -1,7 +1,7 @@
 use tower_lsp::lsp_types;
-use tree_sitter::{InputEdit, Parser, Point, Tree};
+use tree_sitter::{InputEdit, Point, Tree};
 
-use crate::index;
+use crate::{dataflex_parser::DataFlexTreeParser, index};
 use document_context::DocumentContext;
 mod code_completion;
 mod document_context;
@@ -11,7 +11,7 @@ mod syntax_map;
 #[allow(dead_code)]
 pub struct DataFlexDocument {
     line_map: line_map::LineMap,
-    parser: Parser,
+    parser: DataFlexTreeParser,
     index: index::IndexRef,
     tree: Option<Tree>,
     syntax_map: Option<syntax_map::SyntaxMap>,
@@ -21,21 +21,13 @@ impl DataFlexDocument {
     pub fn new(text: &str, index_ref: index::IndexRef) -> Self {
         let mut doc = Self {
             line_map: line_map::LineMap::new(text),
-            parser: Self::make_parser(),
+            parser: DataFlexTreeParser::new(),
             index: index_ref,
             tree: None,
             syntax_map: None,
         };
         doc.update();
         doc
-    }
-
-    fn make_parser() -> Parser {
-        let mut parser = Parser::new();
-        parser
-            .set_language(&tree_sitter_dataflex::LANGUAGE.into())
-            .expect("Error loading DataFlex grammar");
-        parser
     }
 
     fn update(&mut self) {
