@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use serde::Deserialize;
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct WorkspaceInfo {
@@ -35,6 +37,12 @@ pub struct ProjectInfo {
     main_file: PathBuf,
 }
 
+#[derive(Deserialize)]
+struct RawWorkspaceFile {
+    df: serde_json::Number,
+    projects: Option<Vec<String>>,
+}
+
 impl WorkspaceInfo {
     pub fn new() -> Self {
         Self {
@@ -51,7 +59,25 @@ impl WorkspaceInfo {
             }
         }
 
-        if let Some(ini_file) = ini::Ini::load_from_file(path).ok() {
+        let content = std::fs::read_to_string(path).unwrap_or_default();
+
+        if let Some(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content).ok() {
+            let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+            let dataflex_version = Some(DataFlexVersion::from(raw_workspace_file.df.to_string()));
+            let projects: Vec<ProjectInfo> = raw_workspace_file
+                .projects
+                .unwrap_or_default()
+                .iter()
+                .map(|f| ProjectInfo {
+                    main_file: root_folder.join("AppSrc").join(f),
+                })
+                .collect();
+            Self {
+                root_folder,
+                dataflex_version,
+                projects,
+            }
+        } else if let Some(ini_file) = ini::Ini::load_from_str(&content).ok() {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
             let dataflex_version = ini_file
                 .section(Some("Properties"))
@@ -74,6 +100,7 @@ impl WorkspaceInfo {
                 projects,
             }
         } else {
+            log::warn!("Unable to load workspace information from {:?}", path);
             Self {
                 root_folder: path.clone(),
                 dataflex_version: None,
