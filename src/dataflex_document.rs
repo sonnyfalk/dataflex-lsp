@@ -3,10 +3,13 @@ use tree_sitter::{InputEdit, Point, Tree};
 
 use crate::{dataflex_parser::DataFlexTreeParser, index};
 use document_context::DocumentContext;
+use tree_cursor::{DataFlexTreeCursor, TreeCursorExt};
+
 mod code_completion;
 mod document_context;
 mod line_map;
 mod syntax_map;
+mod tree_cursor;
 
 #[allow(dead_code)]
 pub struct DataFlexDocument {
