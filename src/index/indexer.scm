@@ -4,7 +4,8 @@
 
 (class_definition
   (class_header
-    name: (identifier) @name) @definition.class
+    name: (identifier) @name
+    superclass: (identifier) @superclass) @definition.class
   (#set! index.element class_definition))
 
 (class_definition

@@ -142,6 +142,7 @@ impl Indexer {
             })
             .collect();
         let name_capture_index = query.capture_index_for_name("name").unwrap();
+        let superclass_capture_index = query.capture_index_for_name("superclass").unwrap();
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, tree.root_node(), content);
 
@@ -165,9 +166,15 @@ impl Indexer {
                         .next()
                     {
                         if let Some(name) = name_node.utf8_text(content).ok() {
+                            let superclass = query_match
+                                .nodes_for_capture_index(superclass_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                                .unwrap_or_default();
                             let class_symbol = ClassSymbol {
                                 location: name_node.start_position(),
                                 name: SymbolName::from(name),
+                                superclass: SymbolName::from(superclass),
                                 members: Vec::new(),
                             };
                             index_file.symbols.push(IndexSymbol::Class(class_symbol));
@@ -393,7 +400,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), members: [] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
         );
     }
 
@@ -408,7 +415,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
         );
     }
 
@@ -423,7 +430,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })] })]"
         );
     }
 
@@ -438,7 +445,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}",index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Procedure }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Procedure }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
         );
     }
 }
