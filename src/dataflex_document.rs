@@ -35,6 +35,20 @@ impl DataFlexDocument {
         doc
     }
 
+    pub fn root_node(&self) -> Option<tree_sitter::Node<'_>> {
+        self.tree.as_ref().map(|tree| tree.root_node())
+    }
+
+    pub fn node_at_position(&self, position: Point) -> Option<tree_sitter::Node<'_>> {
+        self.root_node()
+            .and_then(|root_node| root_node.descendant_for_point_range(position, position))
+    }
+
+    pub fn symbol_at_position(&self, position: Point) -> Option<index::SymbolName> {
+        self.node_at_position(position)
+            .map(|node| index::SymbolName::from(self.line_map.text_for_node(&node)))
+    }
+
     fn update(&mut self) {
         self.tree = self.parser.parse_with_options(
             &mut |_, point| {
@@ -185,11 +199,11 @@ mod tests {
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
-        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+        assert_eq!(doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
 
         doc.replace_content(&"Procedure test\nEnd_Procedure\n".to_string());
-        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+        assert_eq!(doc.root_node().unwrap().to_sexp(),
             "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))");
     }
 
@@ -199,7 +213,7 @@ mod tests {
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
-        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+        assert_eq!(doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
 
         doc.edit_content(&vec![lsp_types::TextDocumentContentChangeEvent {
@@ -217,7 +231,7 @@ mod tests {
             range_length: None,
         }]);
 
-        assert_eq!(doc.tree.as_ref().unwrap().root_node().to_sexp(),
+        assert_eq!(doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))");
     }
 }

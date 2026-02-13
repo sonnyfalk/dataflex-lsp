@@ -11,7 +11,7 @@ pub enum DocumentContext {
 
 impl DocumentContext {
     pub fn context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
-        let Some(root_node) = doc.tree.as_ref().map(Tree::root_node) else {
+        let Some(root_node) = doc.root_node() else {
             return None;
         };
         let start_of_line = Point::new(position.row, 0);

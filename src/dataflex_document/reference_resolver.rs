@@ -15,20 +15,9 @@ impl<'a> ReferenceResolver<'a> {
     }
 
     pub fn resolve_reference(&self, position: Point) -> IndexSymbolIter<'_> {
-        let Some(tree) = self.doc.tree.as_ref() else {
+        let Some(name) = self.doc.symbol_at_position(position) else {
             return IndexSymbolIter::empty();
         };
-        let Some(node) = tree
-            .root_node()
-            .descendant_for_point_range(position, position)
-        else {
-            return IndexSymbolIter::empty();
-        };
-        let name = index::SymbolName::from(
-            self.doc
-                .line_map
-                .text_in_range(node.start_position(), node.end_position()),
-        );
 
         match DocumentContext::context(self.doc, position) {
             Some(DocumentContext::ClassReference) => IndexSymbolIter::new(

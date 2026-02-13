@@ -96,10 +96,12 @@ impl SyntaxMap {
         )
         .expect("Error loading HIGHLIGHTS_QUERY");
 
-        let tree = doc.tree.as_ref().unwrap();
         let mut query_cursor = QueryCursor::new();
-        let captures =
-            query_cursor.captures(&query, tree.root_node(), doc.line_map.text_provider());
+        let captures = query_cursor.captures(
+            &query,
+            doc.root_node().unwrap(),
+            doc.line_map.text_provider(),
+        );
         let capture_names = query.capture_names();
 
         let mut lines = Vec::with_capacity(doc.line_map.line_count());
