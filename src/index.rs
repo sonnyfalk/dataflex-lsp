@@ -34,6 +34,9 @@ pub struct IndexRef {
     index: std::sync::Arc<std::sync::RwLock<Index>>,
 }
 
+pub type ReadableIndexRef<'a> = std::sync::RwLockReadGuard<'a, Index>;
+pub type WriteableIndexRef<'a> = std::sync::RwLockWriteGuard<'a, Index>;
+
 impl Index {
     pub fn new(workspace: WorkspaceInfo) -> Self {
         Self {
@@ -126,6 +129,30 @@ impl Index {
     }
 }
 
+pub struct IndexSymbolIter<'a> {
+    inner: Box<dyn Iterator<Item = IndexSymbolSnapshot<'a, IndexSymbol>> + 'a>,
+}
+
+impl<'a> IndexSymbolIter<'a> {
+    pub fn new(inner: impl Iterator<Item = IndexSymbolSnapshot<'a, IndexSymbol>> + 'a) -> Self {
+        Self {
+            inner: Box::new(inner),
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self::new(std::iter::empty())
+    }
+}
+
+impl<'a> Iterator for IndexSymbolIter<'a> {
+    type Item = IndexSymbolSnapshot<'a, IndexSymbol>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
 impl IndexRef {
     pub fn new(index: Index) -> Self {
         Self {
@@ -133,13 +160,13 @@ impl IndexRef {
         }
     }
 
-    pub fn get(&self) -> std::sync::RwLockReadGuard<'_, Index> {
+    pub fn get(&self) -> ReadableIndexRef<'_> {
         self.index
             .read()
             .expect("unable to acquire index read lock")
     }
 
-    pub fn get_mut(&self) -> std::sync::RwLockWriteGuard<'_, Index> {
+    pub fn get_mut(&self) -> WriteableIndexRef<'_> {
         self.index
             .write()
             .expect("unable to acquire index write lock")

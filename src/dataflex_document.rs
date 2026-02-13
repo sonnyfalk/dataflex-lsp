@@ -3,11 +3,13 @@ use tree_sitter::{InputEdit, Point, Tree};
 
 use crate::{dataflex_parser::DataFlexTreeParser, index};
 use document_context::DocumentContext;
+use reference_resolver::ReferenceResolver;
 use tree_cursor::{DataFlexTreeCursor, TreeCursorExt};
 
 mod code_completion;
 mod document_context;
 mod line_map;
+mod reference_resolver;
 mod syntax_map;
 mod tree_cursor;
 
@@ -104,61 +106,20 @@ impl DataFlexDocument {
         &self,
         position: lsp_types::Position,
     ) -> Option<Vec<lsp_types::Location>> {
-        let Some(tree) = self.tree.as_ref() else {
-            return None;
-        };
         let position = Point {
             row: position.line as usize,
             column: position.character as usize,
         };
-        let Some(node) = tree
-            .root_node()
-            .descendant_for_point_range(position, position)
-        else {
-            return None;
-        };
-        let name = index::SymbolName::from(
-            self.line_map
-                .text_in_range(node.start_position(), node.end_position()),
-        );
+        let reference_resolver = ReferenceResolver::new(self);
+        let symbols = reference_resolver.resolve_reference(position);
 
-        let index = self.index.get();
-
-        match DocumentContext::context(&self, position) {
-            Some(DocumentContext::ClassReference) => {
-                let locations: Vec<lsp_types::Location> = index
-                    .find_class(&name)
-                    .iter()
-                    .filter_map(|s| index.symbol_snapshot(s))
-                    .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
-                    .collect();
-                if !locations.is_empty() {
-                    Some(locations)
-                } else {
-                    None
-                }
-            }
-            Some(DocumentContext::MethodReference(kind)) => {
-                let mut locations: Vec<lsp_types::Location> = index
-                    .find_methods(&name, kind)
-                    .filter_map(|s| index.symbol_snapshot(s))
-                    .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
-                    .collect();
-                if kind == index::MethodKind::Function || kind == index::MethodKind::Set {
-                    locations.extend(
-                        index
-                            .find_properties(&name)
-                            .filter_map(|s| index.symbol_snapshot(s))
-                            .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot)),
-                    );
-                }
-                if !locations.is_empty() {
-                    Some(locations)
-                } else {
-                    None
-                }
-            }
-            _ => None,
+        let locations: Vec<lsp_types::Location> = symbols
+            .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
+            .collect();
+        if !locations.is_empty() {
+            Some(locations)
+        } else {
+            None
         }
     }
 
