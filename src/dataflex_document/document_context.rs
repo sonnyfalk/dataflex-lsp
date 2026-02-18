@@ -24,7 +24,8 @@ impl DocumentContext {
         let text = doc.line_map.text_for_node(&node);
 
         let context = match (kind, text.to_lowercase().as_str()) {
-            ("keyword", "object") => Self::context_for_object(cursor, doc, position),
+            ("keyword", "object") => Self::context_for_object_or_class(cursor, doc, position),
+            ("keyword", "class") => Self::context_for_object_or_class(cursor, doc, position),
             ("keyword", "send") => Self::context_for_send(cursor, doc, position),
             ("keyword", "get") => Self::context_for_get(cursor, doc, position),
             ("keyword", "set") => Self::context_for_set(cursor, doc, position),
@@ -34,7 +35,7 @@ impl DocumentContext {
         context
     }
 
-    fn context_for_object(
+    fn context_for_object_or_class(
         cursor: TreeCursor,
         doc: &DataFlexDocument,
         position: Point,
@@ -174,6 +175,13 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 18 });
+        assert_eq!(context, Some(DocumentContext::ClassReference));
+
+        let doc = DataFlexDocument::new(
+            "Class cTest is a cBase\nEnd_Class\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
     }
 
