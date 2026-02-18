@@ -112,6 +112,13 @@ impl Index {
             .unwrap_or_default()
     }
 
+    pub fn class_hierarchy<'a>(&'a self, class: &'a ClassSymbol) -> ClassHierarchyIter<'a> {
+        ClassHierarchyIter {
+            index: self,
+            current: Some(class),
+        }
+    }
+
     pub fn symbol_snapshot(
         &self,
         symbol_ref: &IndexSymbolRef,
@@ -125,6 +132,28 @@ impl Index {
                 })
         } else {
             None
+        }
+    }
+}
+
+pub struct ClassHierarchyIter<'a> {
+    index: &'a Index,
+    current: Option<&'a ClassSymbol>,
+}
+
+impl<'a> Iterator for ClassHierarchyIter<'a> {
+    type Item = &'a ClassSymbol;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self
+            .current
+            .and_then(|class| self.index.find_class(&class.superclass))
+            .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol));
+        if let Some(next) = next {
+            self.current.replace(next)
+        } else {
+            self.current.take()
         }
     }
 }
@@ -245,5 +274,22 @@ mod tests {
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })"
         );
+    }
+
+    #[test]
+    fn test_class_hierarchy() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content("Class cMyBaseClass is a cBaseClass\nEnd_Class\nClass cMySubClass is a cMyBaseClass\nEnd_Class\n", PathBuf::from_str("test.pkg").unwrap(), &index_ref);
+        let index = index_ref.get();
+        let class = index
+            .find_class(&SymbolName::from("cMySubClass"))
+            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol))
+            .unwrap();
+
+        let mut class_hierarchy = index.class_hierarchy(class);
+        assert_eq!(format!("{:?}", class_hierarchy.next()), "Some(ClassSymbol { location: Point { row: 2, column: 6 }, name: SymbolName(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), members: [] })");
+        assert_eq!(format!("{:?}", class_hierarchy.next()), "Some(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })");
+        assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }
 }
