@@ -112,6 +112,19 @@ impl Index {
             .unwrap_or_default()
     }
 
+    pub fn find_members(
+        &self,
+        name: &SymbolName,
+        kind: MethodKind,
+    ) -> impl Iterator<Item = &IndexSymbolRef> {
+        let methods = self.find_methods(name, kind);
+        let properties = match kind {
+            MethodKind::Function | MethodKind::Set => Some(self.find_properties(name)),
+            MethodKind::Procedure => None,
+        };
+        methods.chain(properties.unwrap_or_default())
+    }
+
     pub fn class_hierarchy<'a>(&'a self, class: &'a ClassSymbol) -> ClassHierarchyIter<'a> {
         ClassHierarchyIter {
             index: self,

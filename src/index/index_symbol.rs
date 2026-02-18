@@ -132,6 +132,10 @@ impl SymbolPath {
         self.0.last().unwrap()
     }
 
+    pub fn parent_name(&self) -> Option<&SymbolName> {
+        self.0.iter().rev().nth(1)
+    }
+
     pub fn components(&self) -> core::slice::Iter<'_, SymbolName> {
         self.0.iter()
     }

@@ -51,6 +51,18 @@ impl<'a> DataFlexTreeCursor<'a> {
             false
         }
     }
+
+    pub fn goto_enclosing_method_call(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["send_statement", "get_statement", "set_statement"])
+    }
+
+    pub fn goto_enclosing_object_or_class(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["object_definition", "class_definition"])
+    }
+
+    pub fn is_object_definition(&self) -> bool {
+        self.node().kind() == "object_definition"
+    }
 }
 
 impl<'a> Deref for DataFlexTreeCursor<'a> {
@@ -67,10 +79,18 @@ impl<'a> DerefMut for DataFlexTreeCursor<'a> {
     }
 }
 
+impl DataFlexDocument {
+    pub fn cursor(&self) -> Option<DataFlexTreeCursor<'_>> {
+        self.root_node()
+            .map(|root_node| DataFlexTreeCursor::new(root_node.walk(), self))
+    }
+}
+
 pub trait TreeCursorExt {
     fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool;
     fn goto_next_node(&mut self) -> bool;
     fn goto_next_node_if<P: FnMut(&Node) -> bool>(&mut self, pred: P) -> bool;
+    fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool;
 }
 
 impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
@@ -110,5 +130,17 @@ impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
             self.reset_to(&current);
             false
         }
+    }
+
+    fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool {
+        let current = self.clone();
+        while self.goto_parent() {
+            if kinds.contains(&self.node().kind()) {
+                return true;
+            }
+        }
+
+        self.reset_to(&current);
+        false
     }
 }

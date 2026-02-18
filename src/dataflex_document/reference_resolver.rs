@@ -1,5 +1,7 @@
 use super::*;
-use index::{IndexSymbolIter, MethodKind, ReadableIndexRef};
+use index::{
+    ClassSymbol, IndexSymbolIter, IndexSymbolType, MethodKind, ReadableIndexRef, SymbolName,
+};
 
 pub struct ReferenceResolver<'a> {
     doc: &'a DataFlexDocument,
@@ -42,18 +44,84 @@ impl<'a> ReferenceResolver<'a> {
             return IndexSymbolIter::empty();
         };
 
-        let methods = self.index.find_methods(&name, kind);
-        if kind == index::MethodKind::Function || kind == index::MethodKind::Set {
-            let properties = self.index.find_properties(&name);
+        if let Some(class) = self.resolve_call_receiver(position) {
+            let members: Vec<&index::IndexSymbolRef> =
+                self.index.find_members(&name, kind).collect();
+            let member = self
+                .index
+                .class_hierarchy(class)
+                .find_map(|class| {
+                    members.iter().find(|member| {
+                        member
+                            .symbol_path
+                            .parent_name()
+                            .is_some_and(|name| *name == class.name)
+                    })
+                })
+                .cloned();
             IndexSymbolIter::new(
-                methods
-                    .chain(properties)
-                    .filter_map(|symbol_ref| self.index.symbol_snapshot(symbol_ref)),
+                member
+                    .into_iter()
+                    .filter_map(|member_ref| self.index.symbol_snapshot(&member_ref)),
             )
         } else {
+            let members = self.index.find_members(&name, kind);
             IndexSymbolIter::new(
-                methods.filter_map(|symbol_ref| self.index.symbol_snapshot(symbol_ref)),
+                members.filter_map(|member_ref| self.index.symbol_snapshot(member_ref)),
             )
+        }
+    }
+
+    fn resolve_call_receiver(&self, position: Point) -> Option<&ClassSymbol> {
+        let mut cursor = self.doc.cursor()?;
+        cursor
+            .goto_first_leaf_node_for_point(position)
+            .then(|| cursor.goto_enclosing_method_call());
+
+        let receiver = cursor
+            .node()
+            .child_by_field_name("receiver")
+            .map(|n| self.doc.line_map.text_for_node(&n))
+            .unwrap_or(String::from("self"));
+
+        if receiver.eq_ignore_ascii_case("self") {
+            cursor
+                .goto_enclosing_object_or_class()
+                .then(|| {
+                    if cursor.is_object_definition() {
+                        cursor
+                            .node()
+                            .child(0)
+                            .and_then(|n| n.child_by_field_name("superclass"))
+                            .and_then(|n| {
+                                self.index.find_class(&SymbolName::from(
+                                    self.doc.line_map.text_for_node(&n),
+                                ))
+                            })
+                            .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+                            .and_then(|symbol_snapshot| {
+                                ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
+                            })
+                    } else {
+                        cursor
+                            .node()
+                            .child(0)
+                            .and_then(|n| n.child_by_field_name("name"))
+                            .and_then(|n| {
+                                self.index.find_class(&SymbolName::from(
+                                    self.doc.line_map.text_for_node(&n),
+                                ))
+                            })
+                            .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+                            .and_then(|symbol_snapshot| {
+                                ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
+                            })
+                    }
+                })
+                .flatten()
+        } else {
+            // FIXME: Handle non-self receiver.
+            None
         }
     }
 }
@@ -96,6 +164,11 @@ End_Object
         index::Indexer::index_test_content(
             r#"
 Class cMyClass is a cBaseClass
+    Procedure testIt
+    End_Procedure
+End_Class
+
+Class cMyOtherClass is a cBaseClass
     Procedure testIt
     End_Procedure
 End_Class
