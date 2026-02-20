@@ -9,6 +9,10 @@
   (#set! index.element class_definition))
 
 (class_definition
+  (class_footer) @definition.class
+  (#set! index.element pop_stack_symbol))
+
+(class_definition
   (procedure_definition
     (procedure_header
       name: (identifier) @name) @definition.method
