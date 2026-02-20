@@ -52,10 +52,7 @@ impl<'a> ReferenceResolver<'a> {
                 .class_hierarchy(class)
                 .find_map(|class| {
                     members.iter().find(|member| {
-                        member
-                            .symbol_path
-                            .parent_name()
-                            .is_some_and(|name| *name == class.name)
+                        member.symbol_path.parent_slice() == class.symbol_path.as_slice()
                     })
                 })
                 .cloned();
@@ -154,7 +151,7 @@ End_Object
 
         let reference_resolver = ReferenceResolver::new(&doc);
         let mut symbol = reference_resolver.resolve_class_reference(Point::new(2, 25));
-        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: Point { row: 1, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] }) })");
+        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: Point { row: 1, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [] }) })");
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
 

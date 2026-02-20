@@ -173,7 +173,7 @@ impl Indexer {
                                 .unwrap_or_default();
                             let class_symbol = ClassSymbol {
                                 location: name_node.start_position(),
-                                name: SymbolName::from(name),
+                                symbol_path: SymbolPath::new(vec![SymbolName::from(name)]),
                                 superclass: SymbolName::from(superclass),
                                 members: Vec::new(),
                             };
@@ -194,10 +194,10 @@ impl Indexer {
                             {
                                 let method_symbol = MethodSymbol {
                                     location: name_node.start_position(),
-                                    symbol_path: SymbolPath::new(vec![
-                                        class_symbol.name.clone(),
+                                    symbol_path: SymbolPath::with_parent_and_name(
+                                        &class_symbol.symbol_path,
                                         SymbolName::from(name),
-                                    ]),
+                                    ),
                                     kind: MethodKind::Procedure,
                                 };
                                 class_symbol
@@ -220,10 +220,10 @@ impl Indexer {
                             {
                                 let method_symbol = MethodSymbol {
                                     location: name_node.start_position(),
-                                    symbol_path: SymbolPath::new(vec![
-                                        class_symbol.name.clone(),
+                                    symbol_path: SymbolPath::with_parent_and_name(
+                                        &class_symbol.symbol_path,
                                         SymbolName::from(name),
-                                    ]),
+                                    ),
                                     kind: MethodKind::Function,
                                 };
                                 class_symbol
@@ -246,10 +246,10 @@ impl Indexer {
                             {
                                 let property_symbol = PropertySymbol {
                                     location: name_node.start_position(),
-                                    symbol_path: SymbolPath::new(vec![
-                                        class_symbol.name.clone(),
+                                    symbol_path: SymbolPath::with_parent_and_name(
+                                        &class_symbol.symbol_path,
                                         SymbolName::from(name),
-                                    ]),
+                                    ),
                                 };
                                 class_symbol
                                     .members
@@ -400,7 +400,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
         );
     }
 
@@ -415,7 +415,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
         );
     }
 
@@ -430,7 +430,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Function })] })]"
         );
     }
 
@@ -445,7 +445,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}",index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Procedure }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Procedure }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
         );
     }
 }

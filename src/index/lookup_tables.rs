@@ -63,7 +63,8 @@ impl LookupTables {
                 IndexSymbol::Class(class_symbol) => {
                     self.remove_symols(class_symbol.members.iter());
                     // FIXME: This needs to be updated to support multiple classes with the same name.
-                    self.class_lookup_table_mut().remove(&class_symbol.name);
+                    self.class_lookup_table_mut()
+                        .remove(class_symbol.symbol_path.name());
                 }
                 IndexSymbol::Method(method_symbol) => {
                     if let Some(method_symbols) = self
@@ -102,11 +103,8 @@ impl LookupTables {
             match symbol {
                 IndexSymbol::Class(class_symbol) => {
                     self.class_lookup_table_mut().insert(
-                        class_symbol.name.clone(),
-                        IndexSymbolRef::new(
-                            file_ref.clone(),
-                            SymbolPath::new(vec![class_symbol.name.clone()]),
-                        ),
+                        class_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef::new(file_ref.clone(), class_symbol.symbol_path.clone()),
                     );
                     self.add_symbols(class_symbol.members.iter(), file_ref);
                 }

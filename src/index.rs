@@ -301,8 +301,8 @@ mod tests {
             .unwrap();
 
         let mut class_hierarchy = index.class_hierarchy(class);
-        assert_eq!(format!("{:?}", class_hierarchy.next()), "Some(ClassSymbol { location: Point { row: 2, column: 6 }, name: SymbolName(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), members: [] })");
-        assert_eq!(format!("{:?}", class_hierarchy.next()), "Some(ClassSymbol { location: Point { row: 0, column: 6 }, name: SymbolName(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })");
+        assert_eq!(format!("{:?}", class_hierarchy.next()), "Some(ClassSymbol { location: Point { row: 2, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMySubClass\")]), superclass: SymbolName(\"cMyBaseClass\"), members: [] })");
+        assert_eq!(format!("{:?}", class_hierarchy.next()), "Some(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyBaseClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })");
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }
 }

@@ -12,7 +12,7 @@ pub enum IndexSymbol {
 #[allow(dead_code)]
 pub struct ClassSymbol {
     pub location: Point,
-    pub name: SymbolName,
+    pub symbol_path: SymbolPath,
     pub superclass: SymbolName,
     pub members: Vec<IndexSymbol>,
 }
@@ -61,7 +61,7 @@ pub struct IndexSymbolRef {
 impl IndexSymbol {
     pub fn name(&self) -> &SymbolName {
         match self {
-            Self::Class(class_symbol) => &class_symbol.name,
+            Self::Class(class_symbol) => class_symbol.symbol_path.name(),
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
             Self::Property(property_symbol) => property_symbol.symbol_path.name(),
         }
@@ -78,12 +78,17 @@ impl IndexSymbol {
     pub fn is_matching(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Class(class_symbol), Self::Class(other_class_symbol)) => {
-                class_symbol.name == other_class_symbol.name
+                class_symbol.symbol_path == other_class_symbol.symbol_path
             }
             (Self::Method(method_symbol), Self::Method(other_method_symbol)) => {
                 method_symbol.symbol_path == other_method_symbol.symbol_path
             }
-            _ => false,
+            (Self::Property(property_symbol), Self::Property(other_property_symbol)) => {
+                property_symbol.symbol_path == other_property_symbol.symbol_path
+            }
+            (Self::Class(_), _) => false,
+            (Self::Method(_), _) => false,
+            (Self::Property(_), _) => false,
         }
     }
 
@@ -91,7 +96,7 @@ impl IndexSymbol {
         match self {
             Self::Class(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
             Self::Method(_) => None,
-            _ => None,
+            Self::Property(_) => None,
         }
     }
 
@@ -128,16 +133,27 @@ impl SymbolPath {
         Self(path)
     }
 
+    pub fn with_parent_and_name(parent: &SymbolPath, name: SymbolName) -> Self {
+        let mut path = Vec::with_capacity(parent.0.len() + 1);
+        path.extend_from_slice(&parent.0);
+        path.push(name);
+        Self::new(path)
+    }
+
     pub fn name(&self) -> &SymbolName {
         self.0.last().unwrap()
     }
 
-    pub fn parent_name(&self) -> Option<&SymbolName> {
-        self.0.iter().rev().nth(1)
+    pub fn as_slice(&self) -> &[SymbolName] {
+        self.0.as_slice()
     }
 
-    pub fn components(&self) -> core::slice::Iter<'_, SymbolName> {
-        self.0.iter()
+    pub fn parent_slice(&self) -> &[SymbolName] {
+        self.0
+            .as_slice()
+            .split_last()
+            .map(|(_, parent)| parent)
+            .unwrap_or_default()
     }
 }
 
