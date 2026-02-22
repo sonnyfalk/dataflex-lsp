@@ -46,7 +46,7 @@ impl DataFlexDocument {
 
     pub fn symbol_at_position(&self, position: Point) -> Option<index::SymbolName> {
         self.node_at_position(position)
-            .map(|node| index::SymbolName::from(self.line_map.text_for_node(&node)))
+            .map(|node| self.line_map.text_for_node(&node).into())
     }
 
     fn update(&mut self) {

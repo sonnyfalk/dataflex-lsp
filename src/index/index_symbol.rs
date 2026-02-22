@@ -136,16 +136,15 @@ impl ToString for SymbolName {
 }
 
 impl SymbolPath {
-    pub fn new(path: Vec<SymbolName>) -> Self {
-        assert!(!path.is_empty());
-        Self(path)
+    pub fn with_name<T: Into<SymbolName>>(name: T) -> Self {
+        Self(vec![name.into()])
     }
 
-    pub fn with_parent_and_name(parent: &SymbolPath, name: SymbolName) -> Self {
+    pub fn with_parent_and_name<T: Into<SymbolName>>(parent: &SymbolPath, name: T) -> Self {
         let mut path = Vec::with_capacity(parent.0.len() + 1);
         path.extend_from_slice(&parent.0);
-        path.push(name);
-        Self::new(path)
+        path.push(name.into());
+        Self(path)
     }
 
     pub fn name(&self) -> &SymbolName {

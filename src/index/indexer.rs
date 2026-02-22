@@ -175,8 +175,8 @@ impl Indexer {
                                     .unwrap_or_default();
                                 let class_symbol = ClassSymbol {
                                     location: name_node.start_position(),
-                                    symbol_path: SymbolPath::new(vec![SymbolName::from(name)]),
-                                    superclass: SymbolName::from(superclass),
+                                    symbol_path: SymbolPath::with_name(name),
+                                    superclass: superclass.into(),
                                     members: Vec::new(),
                                 };
                                 stack.push(IndexSymbol::Class(class_symbol));
@@ -201,13 +201,11 @@ impl Indexer {
                                         .map(|parent| {
                                             SymbolPath::with_parent_and_name(
                                                 &parent.symbol_path,
-                                                SymbolName::from(name),
+                                                name,
                                             )
                                         })
-                                        .unwrap_or_else(|| {
-                                            SymbolPath::new(vec![SymbolName::from(name)])
-                                        }),
-                                    superclass: SymbolName::from(superclass),
+                                        .unwrap_or_else(|| SymbolPath::with_name(name)),
+                                    superclass: superclass.into(),
                                     members: Vec::new(),
                                 };
                                 stack.push(IndexSymbol::Object(class_symbol));
@@ -228,7 +226,7 @@ impl Indexer {
                                         location: name_node.start_position(),
                                         symbol_path: SymbolPath::with_parent_and_name(
                                             &class_symbol.symbol_path,
-                                            SymbolName::from(name),
+                                            name,
                                         ),
                                         kind: MethodKind::Procedure,
                                     };
@@ -253,7 +251,7 @@ impl Indexer {
                                         location: name_node.start_position(),
                                         symbol_path: SymbolPath::with_parent_and_name(
                                             &class_symbol.symbol_path,
-                                            SymbolName::from(name),
+                                            name,
                                         ),
                                         kind: MethodKind::Function,
                                     };
@@ -278,7 +276,7 @@ impl Indexer {
                                         location: name_node.start_position(),
                                         symbol_path: SymbolPath::with_parent_and_name(
                                             &class_symbol.symbol_path,
-                                            SymbolName::from(name),
+                                            name,
                                         ),
                                     };
                                     class_symbol

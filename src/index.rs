@@ -243,7 +243,7 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().find_class(&SymbolName::from("cMyClass"))),
+            format!("{:?}", index_ref.get().find_class(&"cMyClass".into())),
              "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
         );
     }
@@ -262,7 +262,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .find_methods(&SymbolName::from("SayHello"), MethodKind::Procedure).next()
+                    .find_methods(&"SayHello".into(), MethodKind::Procedure).next()
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
         );
@@ -282,7 +282,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .find_properties(&SymbolName::from("piTest"))
+                    .find_properties(&"piTest".into())
                     .next()
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })"
@@ -295,7 +295,7 @@ mod tests {
         Indexer::index_test_content("Class cMyBaseClass is a cBaseClass\nEnd_Class\nClass cMySubClass is a cMyBaseClass\nEnd_Class\n", PathBuf::from_str("test.pkg").unwrap(), &index_ref);
         let index = index_ref.get();
         let class = index
-            .find_class(&SymbolName::from("cMySubClass"))
+            .find_class(&"cMySubClass".into())
             .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
             .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol))
             .unwrap();

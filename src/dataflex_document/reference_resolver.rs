@@ -1,7 +1,5 @@
 use super::*;
-use index::{
-    ClassSymbol, IndexSymbolIter, IndexSymbolType, MethodKind, ReadableIndexRef, SymbolName,
-};
+use index::{ClassSymbol, IndexSymbolIter, IndexSymbolType, MethodKind, ReadableIndexRef};
 
 pub struct ReferenceResolver<'a> {
     doc: &'a DataFlexDocument,
@@ -91,9 +89,8 @@ impl<'a> ReferenceResolver<'a> {
                             .child(0)
                             .and_then(|n| n.child_by_field_name("superclass"))
                             .and_then(|n| {
-                                self.index.find_class(&SymbolName::from(
-                                    self.doc.line_map.text_for_node(&n),
-                                ))
+                                self.index
+                                    .find_class(&self.doc.line_map.text_for_node(&n).into())
                             })
                             .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
                             .and_then(|symbol_snapshot| {
@@ -105,9 +102,8 @@ impl<'a> ReferenceResolver<'a> {
                             .child(0)
                             .and_then(|n| n.child_by_field_name("name"))
                             .and_then(|n| {
-                                self.index.find_class(&SymbolName::from(
-                                    self.doc.line_map.text_for_node(&n),
-                                ))
+                                self.index
+                                    .find_class(&self.doc.line_map.text_for_node(&n).into())
                             })
                             .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
                             .and_then(|symbol_snapshot| {
