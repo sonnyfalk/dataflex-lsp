@@ -4,6 +4,7 @@ use super::*;
 #[allow(dead_code)]
 pub enum IndexSymbol {
     Class(ClassSymbol),
+    Object(ClassSymbol),
     Method(MethodSymbol),
     Property(PropertySymbol),
 }
@@ -62,6 +63,7 @@ impl IndexSymbol {
     pub fn name(&self) -> &SymbolName {
         match self {
             Self::Class(class_symbol) => class_symbol.symbol_path.name(),
+            Self::Object(class_symbol) => class_symbol.symbol_path.name(),
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
             Self::Property(property_symbol) => property_symbol.symbol_path.name(),
         }
@@ -70,6 +72,7 @@ impl IndexSymbol {
     pub fn location(&self) -> Point {
         match self {
             Self::Class(class_symbol) => class_symbol.location,
+            Self::Object(class_symbol) => class_symbol.location,
             Self::Method(method_symbol) => method_symbol.location,
             Self::Property(property_symbol) => property_symbol.location,
         }
@@ -80,6 +83,9 @@ impl IndexSymbol {
             (Self::Class(class_symbol), Self::Class(other_class_symbol)) => {
                 class_symbol.symbol_path == other_class_symbol.symbol_path
             }
+            (Self::Object(class_symbol), Self::Object(other_class_symbol)) => {
+                class_symbol.symbol_path == other_class_symbol.symbol_path
+            }
             (Self::Method(method_symbol), Self::Method(other_method_symbol)) => {
                 method_symbol.symbol_path == other_method_symbol.symbol_path
             }
@@ -87,6 +93,7 @@ impl IndexSymbol {
                 property_symbol.symbol_path == other_property_symbol.symbol_path
             }
             (Self::Class(_), _) => false,
+            (Self::Object(_), _) => false,
             (Self::Method(_), _) => false,
             (Self::Property(_), _) => false,
         }
@@ -95,6 +102,7 @@ impl IndexSymbol {
     pub fn child(&self, name: &SymbolName) -> Option<&Self> {
         match self {
             Self::Class(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
+            Self::Object(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
             Self::Method(_) => None,
             Self::Property(_) => None,
         }
@@ -167,6 +175,8 @@ impl IndexSymbolType for ClassSymbol {
     fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self> {
         if let IndexSymbol::Class(class_symbol) = index_symbol {
             Some(class_symbol)
+        } else if let IndexSymbol::Object(class_symbol) = index_symbol {
+            Some(class_symbol)
         } else {
             None
         }
@@ -174,6 +184,8 @@ impl IndexSymbolType for ClassSymbol {
 
     fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
         if let IndexSymbol::Class(class_symbol) = index_symbol {
+            Some(class_symbol)
+        } else if let IndexSymbol::Object(class_symbol) = index_symbol {
             Some(class_symbol)
         } else {
             None

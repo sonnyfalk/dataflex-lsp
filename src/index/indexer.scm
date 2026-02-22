@@ -12,6 +12,16 @@
   (class_footer) @definition.class
   (#set! index.element pop_stack_symbol))
 
+(object_definition
+  (object_header
+    name: (identifier) @name
+    superclass: (identifier) @superclass) @definition.object
+  (#set! index.element object_definition))
+
+(object_definition
+  (object_footer) @definition.object
+  (#set! index.element pop_stack_symbol))
+
 (class_definition
   (procedure_definition
     (procedure_header
@@ -19,6 +29,18 @@
     (#set! index.element method_procedure_definition)))
 
 (class_definition
+  (function_definition
+    (function_header
+      name: (identifier) @name) @definition.method
+    (#set! index.element method_function_definition)))
+
+(object_definition
+  (procedure_definition
+    (procedure_header
+      name: (identifier) @name) @definition.method
+    (#set! index.element method_procedure_definition)))
+
+(object_definition
   (function_definition
     (function_header
       name: (identifier) @name) @definition.method

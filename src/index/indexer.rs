@@ -183,6 +183,37 @@ impl Indexer {
                             }
                         }
                     }
+                    Some(TagsQueryIndexElement::ObjectDefinition) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                        {
+                            if let Some(name) = name_node.utf8_text(content).ok() {
+                                let superclass = query_match
+                                    .nodes_for_capture_index(superclass_capture_index)
+                                    .next()
+                                    .and_then(|n| n.utf8_text(content).ok())
+                                    .unwrap_or_default();
+                                let parent = stack.last().and_then(ClassSymbol::from_index_symbol);
+                                let class_symbol = ClassSymbol {
+                                    location: name_node.start_position(),
+                                    symbol_path: parent
+                                        .map(|parent| {
+                                            SymbolPath::with_parent_and_name(
+                                                &parent.symbol_path,
+                                                SymbolName::from(name),
+                                            )
+                                        })
+                                        .unwrap_or_else(|| {
+                                            SymbolPath::new(vec![SymbolName::from(name)])
+                                        }),
+                                    superclass: SymbolName::from(superclass),
+                                    members: Vec::new(),
+                                };
+                                stack.push(IndexSymbol::Object(class_symbol));
+                            }
+                        }
+                    }
                     Some(TagsQueryIndexElement::MethodProcedureDefinition) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
@@ -259,7 +290,17 @@ impl Indexer {
                     }
                     Some(TagsQueryIndexElement::PopStackSymbol) => {
                         if let Some(symbol) = stack.pop() {
-                            index_file.symbols.push(symbol);
+                            match stack.last_mut() {
+                                Some(IndexSymbol::Object(class_symbol)) => {
+                                    class_symbol.members.push(symbol);
+                                }
+                                Some(IndexSymbol::Class(_))
+                                | Some(IndexSymbol::Method(_))
+                                | Some(IndexSymbol::Property(_))
+                                | None => {
+                                    index_file.symbols.push(symbol);
+                                }
+                            }
                         }
                     }
                     _ => {}
@@ -353,6 +394,7 @@ impl IndexerConfig {
 enum TagsQueryIndexElement {
     FileDependency,
     ClassDefinition,
+    ObjectDefinition,
     MethodProcedureDefinition,
     MethodFunctionDefinition,
     PropertyDefinition,
@@ -452,6 +494,60 @@ mod tests {
         assert_eq!(
             format!("{:?}",index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Procedure }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_object() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj is a cBaseClass\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_nested_object() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj is a cBaseClass\n    Object oMyInner is a cBaseClass\n    End_Object\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\")]), superclass: SymbolName(\"cBaseClass\"), members: [Object(ClassSymbol { location: Point { row: 1, column: 11 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\"), SymbolName(\"oMyInner\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_object_method() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\"), SymbolName(\"SayHello\")]), kind: Procedure })] })]"
         );
     }
 }

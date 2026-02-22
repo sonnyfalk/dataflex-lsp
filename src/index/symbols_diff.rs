@@ -65,21 +65,33 @@ fn diff_symbols<'a>(
         |(mut symbols_diff, mut existing_symbols), symbol| {
             if let Some(&existing_symbol) = existing_symbols.get(symbol.name()) {
                 if existing_symbol.is_matching(symbol) {
-                    match (existing_symbol, symbol) {
+                    let inner_diff = match (existing_symbol, symbol) {
                         (
                             IndexSymbol::Class(old_class_symbol),
                             IndexSymbol::Class(new_class_symbol),
-                        ) => {
-                            let mut inner_diff =
-                                diff_symbols(&old_class_symbol.members, &new_class_symbol.members);
-                            symbols_diff
-                                .added_symbols
-                                .append(&mut inner_diff.added_symbols);
-                            symbols_diff
-                                .removed_symbols
-                                .append(&mut inner_diff.removed_symbols);
-                        }
-                        _ => {}
+                        ) => Some(diff_symbols(
+                            &old_class_symbol.members,
+                            &new_class_symbol.members,
+                        )),
+                        (
+                            IndexSymbol::Object(old_class_symbol),
+                            IndexSymbol::Object(new_class_symbol),
+                        ) => Some(diff_symbols(
+                            &old_class_symbol.members,
+                            &new_class_symbol.members,
+                        )),
+                        (IndexSymbol::Class(_), _) => None,
+                        (IndexSymbol::Object(_), _) => None,
+                        (IndexSymbol::Method(_), _) => None,
+                        (IndexSymbol::Property(_), _) => None,
+                    };
+                    if let Some(mut inner_diff) = inner_diff {
+                        symbols_diff
+                            .added_symbols
+                            .append(&mut inner_diff.added_symbols);
+                        symbols_diff
+                            .removed_symbols
+                            .append(&mut inner_diff.removed_symbols);
                     }
                     existing_symbols.remove(symbol.name());
                 } else {
@@ -274,6 +286,102 @@ mod tests {
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_add_object() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj1 is a cBaseClass\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj1 is a cBaseClass\nEnd_Object\nObject oMyObj2 is a cBaseClass\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_diff_symbols_remove_object() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+           "Object oMyObj1 is a cBaseClass\nEnd_Object\nObject oMyObj2 is a cBaseClass\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj1 is a cBaseClass\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 0);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_rename_object() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj1 is a cBaseClass\nEnd_Object\n",
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObjRenamed is a cBaseClass\nEnd_Object\n",
             PathBuf::from_str("test.pkg").unwrap(),
             &new_index_ref,
         );
