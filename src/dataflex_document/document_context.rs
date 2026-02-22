@@ -78,14 +78,14 @@ impl DocumentContext {
         let mut cursor = DataFlexTreeCursor::new(cursor, doc);
 
         if cursor.goto_next_identifier_enclosing_position(&position) {
-            return Some(Self::MethodReference(MethodKind::Procedure));
+            return Some(Self::MethodReference(MethodKind::Msg));
         } else if cursor.goto_next_node() {
             if cursor.node().start_position() > position {
-                return Some(Self::MethodReference(MethodKind::Procedure));
+                return Some(Self::MethodReference(MethodKind::Msg));
             }
             return None;
         } else {
-            return Some(Self::MethodReference(MethodKind::Procedure));
+            return Some(Self::MethodReference(MethodKind::Msg));
         }
     }
 
@@ -101,14 +101,14 @@ impl DocumentContext {
         let mut cursor = DataFlexTreeCursor::new(cursor, doc);
 
         if cursor.goto_next_identifier_enclosing_position(&position) {
-            return Some(Self::MethodReference(MethodKind::Function));
+            return Some(Self::MethodReference(MethodKind::Get));
         } else if cursor.goto_next_node() {
             if cursor.node().start_position() > position {
-                return Some(Self::MethodReference(MethodKind::Function));
+                return Some(Self::MethodReference(MethodKind::Get));
             }
             return None;
         } else {
-            return Some(Self::MethodReference(MethodKind::Function));
+            return Some(Self::MethodReference(MethodKind::Get));
         }
     }
 
@@ -191,21 +191,21 @@ mod test {
         let context = DocumentContext::context(&doc, Point { row: 0, column: 5 });
         assert_eq!(
             context,
-            Some(DocumentContext::MethodReference(MethodKind::Procedure))
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
         );
 
         let doc = DataFlexDocument::new("Send Foo\n", index::IndexRef::make_test_index_ref());
         let context = DocumentContext::context(&doc, Point { row: 0, column: 6 });
         assert_eq!(
             context,
-            Some(DocumentContext::MethodReference(MethodKind::Procedure))
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
         );
 
         let doc = DataFlexDocument::new("Get Foo\n", index::IndexRef::make_test_index_ref());
         let context = DocumentContext::context(&doc, Point { row: 0, column: 6 });
         assert_eq!(
             context,
-            Some(DocumentContext::MethodReference(MethodKind::Function))
+            Some(DocumentContext::MethodReference(MethodKind::Get))
         );
 
         let doc = DataFlexDocument::new("Set Foo\n", index::IndexRef::make_test_index_ref());

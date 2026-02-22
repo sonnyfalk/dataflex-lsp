@@ -119,8 +119,8 @@ impl Index {
     ) -> impl Iterator<Item = &IndexSymbolRef> {
         let methods = self.find_methods(name, kind);
         let properties = match kind {
-            MethodKind::Function | MethodKind::Set => Some(self.find_properties(name)),
-            MethodKind::Procedure => None,
+            MethodKind::Get | MethodKind::Set => Some(self.find_properties(name)),
+            MethodKind::Msg => None,
         };
         methods.chain(properties.unwrap_or_default())
     }
@@ -262,7 +262,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .find_methods(&"SayHello".into(), MethodKind::Procedure).next()
+                    .find_methods(&"SayHello".into(), MethodKind::Msg).next()
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
         );

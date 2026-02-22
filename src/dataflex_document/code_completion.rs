@@ -44,7 +44,7 @@ impl CodeCompletion {
 
     fn method_completions(doc: &DataFlexDocument, kind: index::MethodKind) -> Vec<CompletionItem> {
         match kind {
-            MethodKind::Procedure => doc
+            MethodKind::Msg => doc
                 .index
                 .get()
                 .all_known_methods(kind)
@@ -54,7 +54,7 @@ impl CodeCompletion {
                     kind: CompletionItemKind::Method,
                 })
                 .collect(),
-            MethodKind::Function | MethodKind::Set => doc
+            MethodKind::Get | MethodKind::Set => doc
                 .index
                 .get()
                 .all_known_methods(kind)

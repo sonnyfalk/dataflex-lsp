@@ -132,7 +132,7 @@ impl SyntaxMap {
                                 "entity.name.function.dataflex.send" => {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
-                                    if index.is_known_method(&name, MethodKind::Procedure) {
+                                    if index.is_known_method(&name, MethodKind::Msg) {
                                         Some(SyntaxToken::new(start, end, 2, prev_pos))
                                     } else {
                                         None
@@ -143,7 +143,7 @@ impl SyntaxMap {
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_property(&name) {
                                         Some(SyntaxToken::new(start, end, 3, prev_pos))
-                                    } else if index.is_known_method(&name, MethodKind::Function) {
+                                    } else if index.is_known_method(&name, MethodKind::Get) {
                                         Some(SyntaxToken::new(start, end, 2, prev_pos))
                                     } else {
                                         None

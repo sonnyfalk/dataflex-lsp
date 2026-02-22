@@ -29,8 +29,8 @@ pub struct MethodSymbol {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(dead_code)]
 pub enum MethodKind {
-    Procedure,
-    Function,
+    Msg,
+    Get,
     Set,
 }
 

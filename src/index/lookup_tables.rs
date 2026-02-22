@@ -38,8 +38,8 @@ impl LookupTables {
 
     pub fn method_lookup_table(&self, kind: MethodKind) -> &MultiMap<SymbolName, IndexSymbolRef> {
         match kind {
-            MethodKind::Procedure => &self.method_lookup_tables[MethodKind::Procedure as usize],
-            MethodKind::Function => &self.method_lookup_tables[MethodKind::Function as usize],
+            MethodKind::Msg => &self.method_lookup_tables[MethodKind::Msg as usize],
+            MethodKind::Get => &self.method_lookup_tables[MethodKind::Get as usize],
             MethodKind::Set => &self.method_lookup_tables[MethodKind::Set as usize],
         }
     }
@@ -49,8 +49,8 @@ impl LookupTables {
         kind: MethodKind,
     ) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         match kind {
-            MethodKind::Procedure => &mut self.method_lookup_tables[MethodKind::Procedure as usize],
-            MethodKind::Function => &mut self.method_lookup_tables[MethodKind::Function as usize],
+            MethodKind::Msg => &mut self.method_lookup_tables[MethodKind::Msg as usize],
+            MethodKind::Get => &mut self.method_lookup_tables[MethodKind::Get as usize],
             MethodKind::Set => &mut self.method_lookup_tables[MethodKind::Set as usize],
         }
     }
@@ -277,7 +277,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
+                    .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
@@ -293,7 +293,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
+                    .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
@@ -303,7 +303,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
+                    .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayBye".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
@@ -320,7 +320,7 @@ mod tests {
                 index_ref
                     .get()
                     .lookup_tables
-                    .method_lookup_table(MethodKind::Procedure)
+                    .method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
             "None"
@@ -330,7 +330,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
+                    .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayHelloRenamed".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")]) })"
@@ -340,7 +340,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Procedure)
+                    .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayBye".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
@@ -350,7 +350,7 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Function)
+                    .lookup_tables.method_lookup_table(MethodKind::Get)
                     .get(&"Foo".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Foo\")]) })"

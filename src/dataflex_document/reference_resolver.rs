@@ -183,8 +183,8 @@ End_Object
 
         let reference_resolver = ReferenceResolver::new(&doc);
         let mut symbol =
-            reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Procedure);
-        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"testIt\")]), kind: Procedure }) })");
+            reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
+        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"testIt\")]), kind: Msg }) })");
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
 }
