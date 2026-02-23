@@ -196,7 +196,7 @@ mod tests {
                     .lookup_tables.class_lookup_table()
                     .get(&"cMyClass".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
         );
 
         Indexer::index_test_content(
@@ -212,7 +212,7 @@ mod tests {
                     .lookup_tables.class_lookup_table()
                     .get(&"cMyClass".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
         );
         assert_eq!(
             format!(
@@ -222,7 +222,7 @@ mod tests {
                     .lookup_tables.class_lookup_table()
                     .get(&"cOtherClass".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cOtherClass\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cOtherClass\") })"
         );
 
         Indexer::index_test_content(
@@ -249,7 +249,7 @@ mod tests {
                     .lookup_tables.class_lookup_table()
                     .get(&"cMyRenamedClass".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyRenamedClass\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyRenamedClass\") })"
         );
         assert_eq!(
             format!(
@@ -259,7 +259,7 @@ mod tests {
                     .lookup_tables.class_lookup_table()
                     .get(&"cOtherClass".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cOtherClass\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cOtherClass\") })"
         );
     }
 
@@ -280,7 +280,7 @@ mod tests {
                     .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHello\") })"
         );
 
         Indexer::index_test_content(
@@ -296,7 +296,7 @@ mod tests {
                     .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHello\") })"
         );
         assert_eq!(
             format!(
@@ -306,7 +306,7 @@ mod tests {
                     .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayBye".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayBye\") })"
         );
 
         Indexer::index_test_content(
@@ -333,7 +333,7 @@ mod tests {
                     .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayHelloRenamed".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHelloRenamed\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHelloRenamed\") })"
         );
         assert_eq!(
             format!(
@@ -343,7 +343,7 @@ mod tests {
                     .lookup_tables.method_lookup_table(MethodKind::Msg)
                     .get(&"SayBye".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayBye\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayBye\") })"
         );
         assert_eq!(
             format!(
@@ -353,7 +353,7 @@ mod tests {
                     .lookup_tables.method_lookup_table(MethodKind::Get)
                     .get(&"Foo".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Foo\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.Foo\") })"
         );
     }
 
@@ -374,7 +374,7 @@ mod tests {
                     .lookup_tables.property_lookup_table()
                     .get(&"piTest".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piTest\") })"
         );
 
         Indexer::index_test_content(
@@ -390,7 +390,7 @@ mod tests {
                     .lookup_tables.property_lookup_table()
                     .get(&"piTest".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piTest\") })"
         );
         assert_eq!(
             format!(
@@ -400,7 +400,7 @@ mod tests {
                     .lookup_tables.property_lookup_table()
                     .get(&"piOtherTest".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piOtherTest\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piOtherTest\") })"
         );
 
         Indexer::index_test_content(
@@ -427,7 +427,7 @@ mod tests {
                     .lookup_tables.property_lookup_table()
                     .get(&"piRenamedTest".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piRenamedTest\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piRenamedTest\") })"
         );
         assert_eq!(
             format!(
@@ -437,7 +437,7 @@ mod tests {
                     .lookup_tables.property_lookup_table()
                     .get(&"piOtherTest".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piOtherTest\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piOtherTest\") })"
         );
     }
 
@@ -459,7 +459,7 @@ mod tests {
                     .object_lookup_table()
                     .get(&"oMyObj".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"oMyObj\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"oMyObj\") })"
         );
 
         Indexer::index_test_content(
@@ -476,7 +476,7 @@ mod tests {
                     .object_lookup_table()
                     .get(&"oMyObj".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"oMyObj\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"oMyObj\") })"
         );
         assert_eq!(
             format!(
@@ -487,7 +487,7 @@ mod tests {
                     .object_lookup_table()
                     .get(&"oMyInner".into())
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath([SymbolName(\"oMyObj\"), SymbolName(\"oMyInner\")]) })"
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"oMyObj.oMyInner\") })"
         );
     }
 }

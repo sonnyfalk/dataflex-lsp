@@ -147,7 +147,7 @@ End_Object
 
         let reference_resolver = ReferenceResolver::new(&doc);
         let mut symbol = reference_resolver.resolve_class_reference(Point::new(2, 25));
-        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: Point { row: 1, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [] }) })");
+        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: Point { row: 1, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] }) })");
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
 
@@ -184,7 +184,7 @@ End_Object
         let reference_resolver = ReferenceResolver::new(&doc);
         let mut symbol =
             reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
-        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"testIt\")]), kind: Msg }) })");
+        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg }) })");
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
 }

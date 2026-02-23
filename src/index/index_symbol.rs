@@ -44,7 +44,7 @@ pub struct PropertySymbol {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SymbolName(String);
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SymbolPath(Vec<SymbolName>);
 
 #[derive(Debug)]
@@ -161,6 +161,18 @@ impl SymbolPath {
             .split_last()
             .map(|(_, parent)| parent)
             .unwrap_or_default()
+    }
+}
+
+impl std::fmt::Debug for SymbolPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let formatted_path = self
+            .0
+            .iter()
+            .map(SymbolName::to_string)
+            .collect::<Vec<String>>()
+            .join(".");
+        write!(f, "SymbolPath(\"{formatted_path}\")")
     }
 }
 

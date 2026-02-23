@@ -446,7 +446,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
         );
     }
 
@@ -461,7 +461,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Msg })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg })] })]"
         );
     }
 
@@ -476,7 +476,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"SayHello\")]), kind: Get })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get })] })]"
         );
     }
 
@@ -491,7 +491,7 @@ mod tests {
 
         assert_eq!(
             format!("{:?}",index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"Construct_Object\")]), kind: Msg }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath([SymbolName(\"cMyClass\"), SymbolName(\"piTest\")]) })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\") })] })]"
         );
     }
 
@@ -509,7 +509,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
         );
     }
 
@@ -527,7 +527,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\")]), superclass: SymbolName(\"cBaseClass\"), members: [Object(ClassSymbol { location: Point { row: 1, column: 11 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\"), SymbolName(\"oMyInner\")]), superclass: SymbolName(\"cBaseClass\"), members: [] })] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [Object(ClassSymbol { location: Point { row: 1, column: 11 }, symbol_path: SymbolPath(\"oMyObj.oMyInner\"), superclass: SymbolName(\"cBaseClass\"), members: [] })] })]"
         );
     }
 
@@ -545,7 +545,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\")]), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath([SymbolName(\"oMyObj\"), SymbolName(\"SayHello\")]), kind: Msg })] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg })] })]"
         );
     }
 }
