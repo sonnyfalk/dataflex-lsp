@@ -1,5 +1,5 @@
 use std::ops::{Deref, DerefMut};
-use tree_sitter::{Node, TreeCursor};
+use tree_sitter::TreeCursor;
 
 use super::*;
 
@@ -13,45 +13,6 @@ impl<'a> DataFlexTreeCursor<'a> {
         Self { cursor, doc }
     }
 
-    pub fn goto_next_identifier_before_position(&mut self, position: &Point) -> bool {
-        if self
-            .cursor
-            .goto_next_node_if(|n| n.kind() == "identifier" && n.end_position() < *position)
-        {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn goto_next_keyword_before_position(&mut self, keyword: &str, position: &Point) -> bool {
-        if self.cursor.goto_next_node_if(|n| {
-            n.kind() == "keyword"
-                && n.end_position() < *position
-                && self
-                    .doc
-                    .line_map
-                    .text_for_node(n)
-                    .eq_ignore_ascii_case(keyword)
-        }) {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn goto_next_identifier_enclosing_position(&mut self, position: &Point) -> bool {
-        if self.cursor.goto_next_node_if(|n| {
-            n.kind() == "identifier"
-                && n.start_position() <= *position
-                && n.end_position() >= *position
-        }) {
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn goto_enclosing_method_call(&mut self) -> bool {
         self.goto_enclosing_node_kind(&["send_statement", "get_statement", "set_statement"])
     }
@@ -62,6 +23,15 @@ impl<'a> DataFlexTreeCursor<'a> {
 
     pub fn is_object_definition(&self) -> bool {
         self.node().kind() == "object_definition"
+    }
+
+    pub fn is_keyword(&self, keyword: &str) -> bool {
+        self.node().kind() == "keyword"
+            && self.doc.line_map.text_for_node(&self.node()).to_lowercase() == keyword
+    }
+
+    pub fn is_identifier(&self) -> bool {
+        self.node().kind() == "identifier"
     }
 }
 
@@ -89,7 +59,6 @@ impl DataFlexDocument {
 pub trait TreeCursorExt {
     fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool;
     fn goto_next_node(&mut self) -> bool;
-    fn goto_next_node_if<P: FnMut(&Node) -> bool>(&mut self, pred: P) -> bool;
     fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool;
 }
 
@@ -120,16 +89,6 @@ impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
 
         self.reset_to(&current);
         false
-    }
-
-    fn goto_next_node_if<P: FnMut(&Node) -> bool>(&mut self, mut pred: P) -> bool {
-        let current = self.clone();
-        if self.goto_next_node() && pred(&self.node()) {
-            true
-        } else {
-            self.reset_to(&current);
-            false
-        }
     }
 
     fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool {

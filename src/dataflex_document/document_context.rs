@@ -40,30 +40,37 @@ impl DocumentContext {
         doc: &DataFlexDocument,
         position: Point,
     ) -> Option<Self> {
-        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
-
-        if !cursor.goto_next_identifier_before_position(&position) {
+        if position <= cursor.node().end_position() {
             return None;
         }
 
-        if !cursor.goto_next_keyword_before_position("is", &position) {
+        let mut scanner = ContextScanner::new(DataFlexTreeCursor::new(cursor, doc), position);
+        if matches!(
+            scanner.accept_identifier().ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
             return None;
         }
-
-        if !cursor.goto_next_keyword_before_position("a", &position) {
+        if matches!(
+            scanner.accept_keyword("is").ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
             return None;
         }
-
-        if cursor.goto_next_identifier_enclosing_position(&position) {
+        if matches!(
+            scanner.accept_keyword("a").ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
+            return None;
+        }
+        if matches!(
+            scanner.accept_identifier().ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
             return Some(Self::ClassReference);
-        } else if cursor.goto_next_node() {
-            if cursor.node().start_position() > position {
-                return Some(Self::ClassReference);
-            }
-            return None;
-        } else {
-            return Some(Self::ClassReference);
         }
+
+        None
     }
 
     fn context_for_send(
@@ -75,18 +82,15 @@ impl DocumentContext {
             return None;
         }
 
-        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
-
-        if cursor.goto_next_identifier_enclosing_position(&position) {
-            return Some(Self::MethodReference(MethodKind::Msg));
-        } else if cursor.goto_next_node() {
-            if cursor.node().start_position() > position {
-                return Some(Self::MethodReference(MethodKind::Msg));
-            }
-            return None;
-        } else {
+        let mut scanner = ContextScanner::new(DataFlexTreeCursor::new(cursor, doc), position);
+        if matches!(
+            scanner.accept_identifier().ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
             return Some(Self::MethodReference(MethodKind::Msg));
         }
+
+        None
     }
 
     fn context_for_get(
@@ -98,18 +102,15 @@ impl DocumentContext {
             return None;
         }
 
-        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
-
-        if cursor.goto_next_identifier_enclosing_position(&position) {
-            return Some(Self::MethodReference(MethodKind::Get));
-        } else if cursor.goto_next_node() {
-            if cursor.node().start_position() > position {
-                return Some(Self::MethodReference(MethodKind::Get));
-            }
-            return None;
-        } else {
+        let mut scanner = ContextScanner::new(DataFlexTreeCursor::new(cursor, doc), position);
+        if matches!(
+            scanner.accept_identifier().ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
             return Some(Self::MethodReference(MethodKind::Get));
         }
+
+        None
     }
 
     fn context_for_set(
@@ -121,18 +122,64 @@ impl DocumentContext {
             return None;
         }
 
-        let mut cursor = DataFlexTreeCursor::new(cursor, doc);
-
-        if cursor.goto_next_identifier_enclosing_position(&position) {
-            return Some(Self::MethodReference(MethodKind::Set));
-        } else if cursor.goto_next_node() {
-            if cursor.node().start_position() > position {
-                return Some(Self::MethodReference(MethodKind::Set));
-            }
-            return None;
-        } else {
+        let mut scanner = ContextScanner::new(DataFlexTreeCursor::new(cursor, doc), position);
+        if matches!(
+            scanner.accept_identifier().ok()?,
+            ContextScannerStatus::AtEnd
+        ) {
             return Some(Self::MethodReference(MethodKind::Set));
         }
+
+        None
+    }
+}
+
+struct ContextScanner<'a> {
+    cursor: DataFlexTreeCursor<'a>,
+    end: Point,
+}
+
+enum ContextScannerStatus {
+    Success,
+    AtEnd,
+}
+
+enum ContextScannerError {
+    UnexpectedToken,
+}
+
+impl<'a> ContextScanner<'a> {
+    fn new(cursor: DataFlexTreeCursor<'a>, end: Point) -> Self {
+        Self { cursor, end }
+    }
+
+    fn accept_keyword(
+        &mut self,
+        keyword: &str,
+    ) -> Result<ContextScannerStatus, ContextScannerError> {
+        if !self.cursor.goto_next_node() || self.cursor.node().start_position() > self.end {
+            return Ok(ContextScannerStatus::AtEnd);
+        }
+        if !self.cursor.is_keyword(keyword) {
+            return Err(ContextScannerError::UnexpectedToken);
+        }
+        if self.cursor.node().end_position() >= self.end {
+            return Ok(ContextScannerStatus::AtEnd);
+        }
+        Ok(ContextScannerStatus::Success)
+    }
+
+    fn accept_identifier(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
+        if !self.cursor.goto_next_node() || self.cursor.node().start_position() > self.end {
+            return Ok(ContextScannerStatus::AtEnd);
+        }
+        if !self.cursor.is_identifier() {
+            return Err(ContextScannerError::UnexpectedToken);
+        }
+        if self.cursor.node().end_position() >= self.end {
+            return Ok(ContextScannerStatus::AtEnd);
+        }
+        Ok(ContextScannerStatus::Success)
     }
 }
 
