@@ -25,13 +25,18 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.node().kind() == "object_definition"
     }
 
-    pub fn is_keyword(&self, keyword: &str) -> bool {
-        self.node().kind() == "keyword"
-            && self.doc.line_map.text_for_node(&self.node()).to_lowercase() == keyword
-    }
-
     pub fn is_identifier(&self) -> bool {
         self.node().kind() == "identifier"
+    }
+
+    pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
+        if self.node().kind() == "keyword" {
+            let mut keyword = self.doc.line_map.text_for_node(&self.node());
+            keyword.make_ascii_lowercase();
+            pred(&keyword)
+        } else {
+            false
+        }
     }
 }
 
