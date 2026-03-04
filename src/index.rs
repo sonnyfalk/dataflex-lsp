@@ -125,6 +125,14 @@ impl Index {
         methods.chain(properties.unwrap_or_default())
     }
 
+    pub fn all_known_objects(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .object_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
     pub fn class_hierarchy<'a>(&'a self, class: &'a ClassSymbol) -> ClassHierarchyIter<'a> {
         ClassHierarchyIter {
             index: self,

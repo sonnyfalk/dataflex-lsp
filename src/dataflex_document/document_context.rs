@@ -5,6 +5,7 @@ use index::MethodKind;
 pub enum DocumentContext {
     ClassReference,
     MethodReference(MethodKind),
+    CallReceiverReference,
 }
 
 struct ContextScanner<'a> {
@@ -72,13 +73,13 @@ impl DocumentContext {
                 context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference,)
             }
             ("keyword", "send") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg),)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), "to" | "of", identifier -> Self::CallReceiverReference,)
             }
             ("keyword", "get") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get),)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), "of", identifier -> Self::CallReceiverReference,)
             }
             ("keyword", "set") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set),)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), "of", identifier -> Self::CallReceiverReference,)
             }
             _ => None,
         };
@@ -208,5 +209,36 @@ mod test {
         let doc = DataFlexDocument::new("Send Foo 1\n", index::IndexRef::make_test_index_ref());
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
         assert_eq!(context, None);
+    }
+
+    #[test]
+    fn test_call_receiver_reference_context() {
+        let doc = DataFlexDocument::new(
+            "Send Foo to oMyObj\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+
+        let doc = DataFlexDocument::new(
+            "Send Foo of oMyObj\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+
+        let doc = DataFlexDocument::new(
+            "Get Foo of oMyObj\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+
+        let doc = DataFlexDocument::new(
+            "Set Foo of oMyObj\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
     }
 }

@@ -12,6 +12,7 @@ pub struct CompletionItem {
 #[derive(Debug)]
 pub enum CompletionItemKind {
     Class,
+    Object,
     Method,
     Property,
 }
@@ -25,6 +26,7 @@ impl CodeCompletion {
         let completions = match context {
             DocumentContext::ClassReference => Some(Self::class_completions(doc)),
             DocumentContext::MethodReference(kind) => Some(Self::method_completions(doc, kind)),
+            DocumentContext::CallReceiverReference => Some(Self::call_receiver_completions(doc)),
         };
 
         completions
@@ -75,5 +77,17 @@ impl CodeCompletion {
                 )
                 .collect(),
         }
+    }
+
+    fn call_receiver_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+        doc.index
+            .get()
+            .all_known_objects()
+            .drain(..)
+            .map(|object_name| CompletionItem {
+                label: object_name.to_string(),
+                kind: CompletionItemKind::Object,
+            })
+            .collect()
     }
 }

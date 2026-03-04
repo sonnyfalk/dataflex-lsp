@@ -20,7 +20,8 @@ impl<'a> ReferenceResolver<'a> {
             Some(DocumentContext::MethodReference(kind)) => {
                 self.resolve_method_reference(position, kind)
             }
-            _ => IndexSymbolIter::empty(),
+            Some(DocumentContext::CallReceiverReference) => IndexSymbolIter::empty(),
+            None => IndexSymbolIter::empty(),
         }
     }
 
