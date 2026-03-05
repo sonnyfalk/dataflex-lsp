@@ -20,7 +20,7 @@ impl<'a> ReferenceResolver<'a> {
             Some(DocumentContext::MethodReference(kind)) => {
                 self.resolve_method_reference(position, kind)
             }
-            Some(DocumentContext::CallReceiverReference) => IndexSymbolIter::empty(),
+            Some(DocumentContext::CallReceiverReference) => self.resolve_object_reference(position),
             None => IndexSymbolIter::empty(),
         }
     }
@@ -118,6 +118,17 @@ impl<'a> ReferenceResolver<'a> {
             None
         }
     }
+
+    fn resolve_object_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+        let Some(name) = self.doc.symbol_at_position(position) else {
+            return IndexSymbolIter::empty();
+        };
+        IndexSymbolIter::new(
+            self.index
+                .find_objects(&name)
+                .filter_map(|s| self.index.symbol_snapshot(s)),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -186,6 +197,30 @@ End_Object
         let mut symbol =
             reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
         assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg }) })");
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+    }
+
+    #[test]
+    fn test_resolve_object_reference() {
+        let test_content = r#"
+            Object oMyObject is a cObject
+                Procedure foo
+                End_Procedure
+            End_Object
+
+            Send foo of oMyObject
+            "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(
+            test_content,
+            PathBuf::from_str("test.pkg").unwrap(),
+            &index,
+        );
+        let doc = DataFlexDocument::new(test_content, index.clone());
+
+        let reference_resolver = ReferenceResolver::new(&doc);
+        let mut symbol = reference_resolver.resolve_object_reference(Point::new(6, 27));
+        assert_eq!(format!("{:?}", symbol.next()), "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Object(ClassSymbol { location: Point { row: 1, column: 19 }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), members: [Method(MethodSymbol { location: Point { row: 2, column: 26 }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg })] }) })");
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
 }

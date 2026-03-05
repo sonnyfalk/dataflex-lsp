@@ -133,6 +133,14 @@ impl Index {
             .collect()
     }
 
+    pub fn find_objects(&self, name: &SymbolName) -> core::slice::Iter<'_, IndexSymbolRef> {
+        self.lookup_tables
+            .object_lookup_table()
+            .get_vec(name)
+            .map(|v| v.iter())
+            .unwrap_or_default()
+    }
+
     pub fn class_hierarchy<'a>(&'a self, class: &'a ClassSymbol) -> ClassHierarchyIter<'a> {
         ClassHierarchyIter {
             index: self,
