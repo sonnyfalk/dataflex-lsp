@@ -39,6 +39,11 @@ macro_rules! context_scanner_match {
         }
         context_scanner_match!(@rules $scanner, $($rest)*);
     };
+    (@rules $scanner:ident, identifier -> $action:expr) => {
+        if matches!($scanner.accept_identifier().ok()?, ContextScannerStatus::Stop) {
+            return Some($action);
+        }
+    };
     (@rules $scanner:ident, identifier, $($rest:tt)*) => {
         if matches!($scanner.accept_identifier().ok()?,  ContextScannerStatus::Stop) {
             return None;
@@ -67,19 +72,19 @@ impl DocumentContext {
         let mut scanner = ContextScanner::new(cursor, position);
         let context = match (kind, text.to_lowercase().as_str()) {
             ("keyword", "object") => {
-                context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference,)
+                context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference)
             }
             ("keyword", "class") => {
-                context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference,)
+                context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference)
             }
             ("keyword", "send") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), "to" | "of", identifier -> Self::CallReceiverReference,)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), "to" | "of", identifier -> Self::CallReceiverReference)
             }
             ("keyword", "get") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), "of", identifier -> Self::CallReceiverReference,)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), "of", identifier -> Self::CallReceiverReference)
             }
             ("keyword", "set") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), "of", identifier -> Self::CallReceiverReference,)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), "of", identifier -> Self::CallReceiverReference)
             }
             _ => None,
         };
