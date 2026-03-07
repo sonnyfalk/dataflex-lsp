@@ -119,14 +119,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -151,14 +151,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -183,14 +183,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -215,14 +215,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -247,14 +247,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -279,14 +279,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -311,14 +311,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj1 is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj1 is a cBaseClass\nEnd_Object\nObject oMyObj2 is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -343,14 +343,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
            "Object oMyObj1 is a cBaseClass\nEnd_Object\nObject oMyObj2 is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj1 is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 
@@ -375,14 +375,14 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj1 is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObjRenamed is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &new_index_ref,
         );
 

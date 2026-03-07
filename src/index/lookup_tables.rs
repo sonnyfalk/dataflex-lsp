@@ -185,7 +185,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -201,7 +201,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -227,7 +227,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyRenamedClass is a cBaseClass\nEnd_Class\n\nClass cOtherClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -269,7 +269,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -285,7 +285,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\n    Procedure SayBye\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -311,7 +311,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHelloRenamed\n    End_Procedure\n    Procedure SayBye\n    End_Procedure\n    Function Foo Returns String\n    End_Function\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -363,7 +363,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piTest 0\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -379,7 +379,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piTest 0\n        Property Integer piOtherTest 0\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -405,7 +405,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piRenamedTest 0\n        Property Integer piOtherTest 0\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -447,7 +447,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Object oMyObj is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(
@@ -464,7 +464,7 @@ mod tests {
 
         Indexer::index_test_content(
             "Object oMyObj is a cBaseClass\n    Object oMyInner is a cBaseClass\n    End_Object\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
         assert_eq!(

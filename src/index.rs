@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::OsStr, path::PathBuf, str::FromStr};
+use std::{collections::HashMap, ffi::OsStr, path::PathBuf};
 
 use multimap::MultiMap;
 use streaming_iterator::StreamingIterator;
@@ -254,7 +254,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -269,7 +269,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -289,7 +289,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piTest 0\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn test_class_hierarchy() {
         let index_ref = IndexRef::make_test_index_ref();
-        Indexer::index_test_content("Class cMyBaseClass is a cBaseClass\nEnd_Class\nClass cMySubClass is a cMyBaseClass\nEnd_Class\n", PathBuf::from_str("test.pkg").unwrap(), &index_ref);
+        Indexer::index_test_content("Class cMyBaseClass is a cBaseClass\nEnd_Class\nClass cMySubClass is a cMyBaseClass\nEnd_Class\n", "test.pkg".into(), &index_ref);
         let index = index_ref.get();
         let class = index
             .find_class(&"cMySubClass".into())

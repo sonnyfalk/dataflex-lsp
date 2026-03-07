@@ -135,7 +135,6 @@ impl<'a> ReferenceResolver<'a> {
 mod tests {
     use super::*;
     use crate::index;
-    use std::{path::PathBuf, str::FromStr};
 
     #[test]
     fn test_resolve_class_reference() {
@@ -145,7 +144,7 @@ mod tests {
 Class cMyClass is a cBaseClass
 End_Class
             "#,
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index,
         );
         let doc = DataFlexDocument::new(
@@ -178,7 +177,7 @@ Class cMyOtherClass is a cBaseClass
     End_Procedure
 End_Class
             "#,
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index,
         );
         let doc = DataFlexDocument::new(
@@ -211,11 +210,7 @@ End_Object
             Send foo of oMyObject
             "#;
         let index = index::IndexRef::make_test_index_ref();
-        index::Indexer::index_test_content(
-            test_content,
-            PathBuf::from_str("test.pkg").unwrap(),
-            &index,
-        );
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new(test_content, index.clone());
 
         let reference_resolver = ReferenceResolver::new(&doc);

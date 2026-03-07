@@ -129,18 +129,17 @@ impl Indexer {
         )
         .expect("Error loading indexer query");
 
-        let pattern_index_element_map: Vec<Option<TagsQueryIndexElement>> = (0..query
-            .pattern_count())
-            .map(|pattern_index| {
-                query
-                    .property_settings(pattern_index)
-                    .iter()
-                    .find_map(|p| match p.key.as_ref() {
-                        "index.element" => TagsQueryIndexElement::from_str(p.value.as_ref()?).ok(),
-                        _ => None,
+        let pattern_index_element_map: Vec<Option<TagsQueryIndexElement>> =
+            (0..query.pattern_count())
+                .map(|pattern_index| {
+                    query.property_settings(pattern_index).iter().find_map(|p| {
+                        match p.key.as_ref() {
+                            "index.element" => p.value.as_ref()?.parse().ok(),
+                            _ => None,
+                        }
                     })
-            })
-            .collect();
+                })
+                .collect();
         let name_capture_index = query.capture_index_for_name("name").unwrap();
         let superclass_capture_index = query.capture_index_for_name("superclass").unwrap();
         let mut query_cursor = tree_sitter::QueryCursor::new();
@@ -423,11 +422,7 @@ mod tests {
     #[test]
     fn test_index_file_dependency() {
         let index_ref = IndexRef::make_test_index_ref();
-        Indexer::index_test_content(
-            "Use cWebView.pkg\n",
-            PathBuf::from_str("test.vw").unwrap(),
-            &index_ref,
-        );
+        Indexer::index_test_content("Use cWebView.pkg\n", "test.vw".into(), &index_ref);
 
         assert_eq!(
             index_ref.get().files[&IndexFileRef::from("test.vw")].dependencies,
@@ -440,7 +435,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -455,7 +450,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -470,7 +465,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Function SayHello Returns String\n    End_Function\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -485,7 +480,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\n    Procedure Construct_Object\n        Property Integer piTest 0\n    End_Procedure\nEnd_Class\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -500,7 +495,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj is a cBaseClass\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -518,7 +513,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj is a cBaseClass\n    Object oMyInner is a cBaseClass\n    End_Object\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
@@ -536,7 +531,7 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObj is a cBaseClass\n    Procedure SayHello\n    End_Procedure\nEnd_Object\n",
-            PathBuf::from_str("test.pkg").unwrap(),
+            "test.pkg".into(),
             &index_ref,
         );
 
