@@ -148,6 +148,7 @@ End_Class
             &index,
         );
         let doc = DataFlexDocument::new(
+            "other.pkg".into(),
             r#"
 Use test.pkg
 Object oMyObject is a cMyClass
@@ -181,6 +182,7 @@ End_Class
             &index,
         );
         let doc = DataFlexDocument::new(
+            "other.pkg".into(),
             r#"
 Use test.pkg
 Object oMyObject is a cMyClass
@@ -211,7 +213,7 @@ End_Object
             "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new(test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
 
         let reference_resolver = ReferenceResolver::new(&doc);
         let mut symbol = reference_resolver.resolve_object_reference(Point::new(6, 27));

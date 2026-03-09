@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use tower_lsp::lsp_types;
 use tree_sitter::{InputEdit, Point, Tree};
 
@@ -15,6 +17,7 @@ mod tree_cursor;
 
 #[allow(dead_code)]
 pub struct DataFlexDocument {
+    file_path: PathBuf,
     line_map: line_map::LineMap,
     parser: DataFlexTreeParser,
     index: index::IndexRef,
@@ -23,8 +26,9 @@ pub struct DataFlexDocument {
 }
 
 impl DataFlexDocument {
-    pub fn new(text: &str, index_ref: index::IndexRef) -> Self {
+    pub fn new(path: PathBuf, text: &str, index_ref: index::IndexRef) -> Self {
         let mut doc = Self {
+            file_path: path,
             line_map: line_map::LineMap::new(text),
             parser: DataFlexTreeParser::new(),
             index: index_ref,
@@ -197,6 +201,7 @@ mod tests {
     #[test]
     fn test_replace_content() {
         let mut doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
@@ -211,6 +216,7 @@ mod tests {
     #[test]
     fn test_edit_content() {
         let mut doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );

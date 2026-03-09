@@ -163,9 +163,11 @@ impl LanguageServer for DataFlexLanguageServer {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         log::info!("Start tracking {}", params.text_document.uri);
+        let file_path = params.text_document.uri.to_file_path().unwrap_or_default();
         self.inner.open_files.insert(
             params.text_document.uri,
             DataFlexDocument::new(
+                file_path,
                 &params.text_document.text,
                 self.inner.indexer.get().unwrap().get_index().clone(),
             ),

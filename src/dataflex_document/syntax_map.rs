@@ -188,6 +188,7 @@ mod tests {
     #[test]
     fn test_lines() {
         let doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
@@ -228,6 +229,7 @@ mod tests {
     #[test]
     fn test_get_all_tokens() {
         let doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
@@ -270,6 +272,7 @@ mod tests {
     #[test]
     fn test_get_tokens_for_lines() {
         let doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
