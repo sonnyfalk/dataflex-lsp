@@ -8,7 +8,7 @@ pub struct IndexFile {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct IndexFileRef(String);
+pub struct IndexFileRef(std::ffi::OsString);
 
 impl IndexFile {
     pub fn new(path: PathBuf) -> Self {
@@ -33,14 +33,14 @@ impl IndexFile {
     }
 }
 
-impl From<String> for IndexFileRef {
-    fn from(value: String) -> Self {
-        Self(value)
+impl From<&PathBuf> for IndexFileRef {
+    fn from(value: &PathBuf) -> Self {
+        Self(value.file_name().unwrap_or_default().into())
     }
 }
 
 impl From<&str> for IndexFileRef {
     fn from(value: &str) -> Self {
-        Self::from(String::from(value))
+        Self(value.into())
     }
 }

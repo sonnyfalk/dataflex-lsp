@@ -116,11 +116,6 @@ impl Indexer {
     }
 
     fn index_parse_tree(tree: &tree_sitter::Tree, content: &[u8], path: PathBuf, index: &IndexRef) {
-        let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
-            return;
-        };
-        let file_name = String::from(file_name);
-
         log::trace!("Indexing file parse tree for {:?}", path);
 
         let query = tree_sitter::Query::new(
@@ -306,7 +301,7 @@ impl Indexer {
             },
         );
 
-        index.get_mut().update_file(file_name, index_file);
+        index.get_mut().update_file(index_file);
     }
 
     fn watch_and_index_changed_files(_index: &IndexRef) {
@@ -399,8 +394,8 @@ enum TagsQueryIndexElement {
 }
 
 impl Index {
-    fn update_file(&mut self, file_name: String, index_file: IndexFile) {
-        let file_ref = IndexFileRef::from(file_name);
+    fn update_file(&mut self, index_file: IndexFile) {
+        let file_ref = IndexFileRef::from(&index_file.path);
         let old_index_file = self.files.insert(file_ref.clone(), index_file);
         let symbols_diff =
             SymbolsDiff::diff_index_files(old_index_file.as_ref(), self.files.get(&file_ref));
