@@ -17,7 +17,7 @@ pub use index_symbol::*;
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
-use index_file::{IndexFile, IndexFileRef};
+pub use index_file::{IndexFile, IndexFileRef};
 
 use lookup_tables::LookupTables;
 

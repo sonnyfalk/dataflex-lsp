@@ -1,5 +1,7 @@
 use super::*;
-use index::{ClassSymbol, IndexSymbolIter, IndexSymbolType, MethodKind, ReadableIndexRef};
+use index::{
+    ClassSymbol, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind, ReadableIndexRef,
+};
 
 pub struct ReferenceResolver<'a> {
     doc: &'a DataFlexDocument,
@@ -123,9 +125,11 @@ impl<'a> ReferenceResolver<'a> {
         let Some(name) = self.doc.symbol_at_position(position) else {
             return IndexSymbolIter::empty();
         };
+        let file_ref = IndexFileRef::from(&self.doc.file_path);
         IndexSymbolIter::new(
             self.index
                 .find_objects(&name)
+                .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
                 .filter_map(|s| self.index.symbol_snapshot(s)),
         )
     }

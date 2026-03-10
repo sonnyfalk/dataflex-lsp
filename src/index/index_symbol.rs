@@ -151,6 +151,10 @@ impl SymbolPath {
         self.0.last().unwrap()
     }
 
+    pub fn is_top_level(&self) -> bool {
+        self.0.len() == 1
+    }
+
     pub fn as_slice(&self) -> &[SymbolName] {
         self.0.as_slice()
     }
