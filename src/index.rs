@@ -125,6 +125,10 @@ impl Index {
         methods.chain(properties.unwrap_or_default())
     }
 
+    pub fn is_known_object(&self, name: &SymbolName) -> bool {
+        self.lookup_tables.object_lookup_table().get(name).is_some()
+    }
+
     pub fn all_known_objects(&self) -> Vec<SymbolName> {
         self.lookup_tables
             .object_lookup_table()

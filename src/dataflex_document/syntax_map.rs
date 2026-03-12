@@ -160,6 +160,24 @@ impl SyntaxMap {
                                         None
                                     }
                                 }
+                                "entity.name.tag.object" => {
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_object(&name) {
+                                        Some(SyntaxToken::new(start, end, 4, prev_pos))
+                                    } else {
+                                        None
+                                    }
+                                }
+                                "entity.name.tag.class" => {
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_class(&name) {
+                                        Some(SyntaxToken::new(start, end, 1, prev_pos))
+                                    } else {
+                                        None
+                                    }
+                                }
                                 _ => None,
                             };
                             if let Some(token) = token {
