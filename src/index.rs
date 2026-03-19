@@ -116,7 +116,7 @@ impl Index {
         &self,
         name: &SymbolName,
         kind: MethodKind,
-    ) -> impl Iterator<Item = &IndexSymbolRef> {
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
         let methods = self.find_methods(name, kind);
         let properties = match kind {
             MethodKind::Get | MethodKind::Set => Some(self.find_properties(name)),
