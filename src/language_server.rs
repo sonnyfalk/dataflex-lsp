@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock, Weak};
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 
 use dashmap::DashMap;
 use tower_lsp::jsonrpc::Result;
@@ -15,40 +15,21 @@ pub struct DataFlexLanguageServer {
 
 struct DataFlexLanguageServerInner {
     client: Client,
-    open_files: DashMap<Url, DataFlexDocument>,
+    open_files: DashMap<Url, OpenFile>,
     workspace_root: OnceLock<PathBuf>,
     indexer: OnceLock<index::Indexer>,
+    edited_files_notification: tokio::sync::Notify,
 }
 
-struct IndexerObserver {
+struct OpenFile {
+    doc: DataFlexDocument,
+    modified: bool,
+}
+
+struct IndexerCoordinator {
     inner: Weak<DataFlexLanguageServerInner>,
     runtime: tokio::runtime::Handle,
-}
-
-impl index::IndexerObserver for IndexerObserver {
-    fn state_transition(&self, old_state: index::IndexerState, new_state: index::IndexerState) {
-        let Some(inner) = self.inner.upgrade() else {
-            return;
-        };
-
-        log::info!(
-            "Indexing state changed from {:?} to {:?}",
-            old_state,
-            new_state
-        );
-        match (old_state, new_state) {
-            (index::IndexerState::InitialIndexing, index::IndexerState::Inactive) => {
-                for mut file in inner.open_files.iter_mut() {
-                    file.update_syntax_map();
-                }
-
-                self.runtime.spawn(async move {
-                    _ = inner.client.semantic_tokens_refresh().await;
-                });
-            }
-            _ => (),
-        }
-    }
+    tasks: Mutex<tokio::task::JoinSet<()>>,
 }
 
 impl DataFlexLanguageServer {
@@ -59,6 +40,7 @@ impl DataFlexLanguageServer {
                 open_files: DashMap::new(),
                 workspace_root: OnceLock::new(),
                 indexer: OnceLock::new(),
+                edited_files_notification: tokio::sync::Notify::new(),
             }),
         }
     }
@@ -147,9 +129,10 @@ impl LanguageServer for DataFlexLanguageServer {
             .indexer
             .get()
             .unwrap()
-            .start_indexing(IndexerObserver {
+            .start_indexing(IndexerCoordinator {
                 inner: Arc::downgrade(&self.inner),
                 runtime: tokio::runtime::Handle::current(),
+                tasks: Mutex::new(tokio::task::JoinSet::new()),
             });
 
         self.inner
@@ -159,6 +142,10 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 
     async fn shutdown(&self) -> Result<()> {
+        self.inner
+            .indexer
+            .get()
+            .map(|indexer| indexer.stop_indexing());
         Ok(())
     }
 
@@ -167,11 +154,11 @@ impl LanguageServer for DataFlexLanguageServer {
         let file_path = params.text_document.uri.to_file_path().unwrap_or_default();
         self.inner.open_files.insert(
             params.text_document.uri,
-            DataFlexDocument::new(
+            OpenFile::new(DataFlexDocument::new(
                 file_path,
                 &params.text_document.text,
                 self.inner.indexer.get().unwrap().get_index().clone(),
-            ),
+            )),
         );
     }
 
@@ -181,16 +168,16 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        log::trace!(
+        log::info!(
             "Got a textDocument/didChange notification for {}",
             params.text_document.uri.as_str()
         );
 
-        self.inner
-            .open_files
-            .get_mut(&params.text_document.uri)
-            .unwrap()
-            .edit_content(&params.content_changes);
+        if let Some(mut open_file) = self.inner.open_files.get_mut(&params.text_document.uri) {
+            open_file.doc.edit_content(&params.content_changes);
+            open_file.modified = true;
+            self.inner.edited_files_notification.notify_one();
+        }
     }
 
     async fn semantic_tokens_full(
@@ -207,6 +194,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .open_files
             .get(&params.text_document.uri)
             .unwrap()
+            .doc
             .semantic_tokens_full()
             .unwrap();
 
@@ -225,6 +213,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .open_files
             .get(&params.text_document_position_params.text_document.uri)
             .unwrap()
+            .doc
             .find_definition(params.text_document_position_params.position);
         if let Some(locations) = locations {
             Ok(Some(GotoDefinitionResponse::Array(locations)))
@@ -239,6 +228,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .open_files
             .get(&params.text_document_position.text_document.uri)
             .unwrap()
+            .doc
             .code_completion(params.text_document_position.position);
         if let Some(completions) = completions {
             Ok(Some(CompletionResponse::List(CompletionList {
@@ -248,5 +238,92 @@ impl LanguageServer for DataFlexLanguageServer {
         } else {
             Ok(None)
         }
+    }
+}
+
+impl OpenFile {
+    fn new(doc: DataFlexDocument) -> Self {
+        Self {
+            doc,
+            modified: false,
+        }
+    }
+}
+
+impl IndexerCoordinator {
+    async fn watch_and_index_edited_files(inner: Arc<DataFlexLanguageServerInner>) {
+        loop {
+            inner
+                .edited_files_notification
+                .notified_debounce(std::time::Duration::from_secs(2))
+                .await;
+
+            inner
+                .open_files
+                .iter_mut()
+                .filter(|open_file| open_file.modified)
+                .for_each(|mut open_file| {
+                    let Some(tree) = open_file.doc.tree().cloned() else {
+                        return;
+                    };
+                    let Some(file_path) = open_file.key().to_file_path().ok() else {
+                        return;
+                    };
+                    let Some(indexer) = inner.indexer.get() else {
+                        return;
+                    };
+
+                    let content = open_file.doc.text_content();
+                    indexer.index_modified_file_buffer(file_path, tree, content);
+                    open_file.modified = false;
+                });
+        }
+    }
+}
+
+impl index::IndexerObserver for IndexerCoordinator {
+    fn state_transition(&self, old_state: index::IndexerState, new_state: index::IndexerState) {
+        let Some(inner) = self.inner.upgrade() else {
+            return;
+        };
+
+        log::info!(
+            "Indexing state changed from {:?} to {:?}",
+            old_state,
+            new_state
+        );
+        match (old_state, new_state) {
+            (index::IndexerState::InitialIndexing, index::IndexerState::Inactive) => {
+                for mut file in inner.open_files.iter_mut() {
+                    file.doc.update_syntax_map();
+                }
+
+                self.tasks.lock().unwrap().spawn_on(
+                    async move {
+                        _ = inner.client.semantic_tokens_refresh().await;
+                        Self::watch_and_index_edited_files(inner).await;
+                    },
+                    &self.runtime,
+                );
+            }
+            (_, index::IndexerState::Stopped) => {
+                self.tasks.lock().unwrap().abort_all();
+            }
+            _ => (),
+        }
+    }
+}
+
+trait NotifyDebounce {
+    async fn notified_debounce(&self, duration: std::time::Duration);
+}
+
+impl NotifyDebounce for tokio::sync::Notify {
+    async fn notified_debounce(&self, duration: std::time::Duration) {
+        self.notified().await;
+        while tokio::time::timeout(duration, self.notified())
+            .await
+            .is_ok()
+        {}
     }
 }

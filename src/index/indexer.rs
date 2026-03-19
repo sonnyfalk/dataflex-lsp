@@ -1,3 +1,5 @@
+use std::sync::{mpsc, OnceLock};
+
 use crate::dataflex_parser::DataFlexTreeParser;
 
 use super::*;
@@ -7,6 +9,7 @@ pub struct Indexer {
     index: IndexRef,
     config: IndexerConfig,
     dataflex_version: Option<DataFlexVersion>,
+    channel: OnceLock<mpsc::Sender<IndexerMessage>>,
 }
 
 #[derive(Debug)]
@@ -20,6 +23,13 @@ pub enum IndexerState {
     Initializing,
     InitialIndexing,
     Inactive,
+    Stopped,
+}
+
+#[derive(Debug)]
+enum IndexerMessage {
+    IndexModifiedFileBuffer(PathBuf, tree_sitter::Tree, String),
+    StopIndexing,
 }
 
 pub trait IndexerObserver {
@@ -33,6 +43,7 @@ impl Indexer {
             index: IndexRef::new(Index::new(workspace)),
             config,
             dataflex_version,
+            channel: OnceLock::new(),
         }
     }
 
@@ -41,6 +52,12 @@ impl Indexer {
     }
 
     pub fn start_indexing<T: IndexerObserver + Send + 'static>(&self, observer: T) {
+        let (sender, receiver) = mpsc::channel();
+        if self.channel.set(sender).is_err() {
+            log::error!("Indexer::start_indexing() should only be called once");
+            return;
+        }
+
         let index = self.index.clone();
         let system_paths = self
             .config
@@ -57,8 +74,31 @@ impl Indexer {
             log::info!("Finished indexing: {} files", index.get().files.len());
             log::trace!("{:#?}", index.get());
             observer.state_transition(IndexerState::InitialIndexing, IndexerState::Inactive);
-            Self::watch_and_index_changed_files(&index);
+            Self::watch_and_index_changed_files(&index, receiver);
+            observer.state_transition(IndexerState::Inactive, IndexerState::Stopped);
+            log::info!("Indexer exiting");
         });
+    }
+
+    pub fn stop_indexing(&self) {
+        let Some(channel) = self.channel.get() else {
+            log::error!("Indexer::stop_indexing() cannot be called before indexer is started with Indexer::start_indexing()");
+            return;
+        };
+        _ = channel.send(IndexerMessage::StopIndexing);
+    }
+
+    pub fn index_modified_file_buffer(
+        &self,
+        path: PathBuf,
+        tree: tree_sitter::Tree,
+        content: String,
+    ) {
+        let Some(channel) = self.channel.get() else {
+            log::error!("Indexer::index_modified_file_buffer() cannot be called before indexer is started with Indexer::start_indexing()");
+            return;
+        };
+        _ = channel.send(IndexerMessage::IndexModifiedFileBuffer(path, tree, content));
     }
 
     fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
@@ -304,8 +344,19 @@ impl Indexer {
         index.get_mut().update_file(index_file);
     }
 
-    fn watch_and_index_changed_files(_index: &IndexRef) {
-        log::trace!("Watching workspace files");
+    fn watch_and_index_changed_files(index: &IndexRef, channel: mpsc::Receiver<IndexerMessage>) {
+        log::info!("Watching workspace files");
+        for msg in channel {
+            match msg {
+                IndexerMessage::IndexModifiedFileBuffer(path, tree, content) => {
+                    log::info!("Request to index file buffer for {path:?}");
+                    Self::index_parse_tree(&tree, content.as_bytes(), path, index);
+                }
+                IndexerMessage::StopIndexing => {
+                    break;
+                }
+            }
+        }
     }
 
     fn should_index_file(path: &PathBuf) -> bool {

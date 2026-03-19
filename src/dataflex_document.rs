@@ -39,6 +39,10 @@ impl DataFlexDocument {
         doc
     }
 
+    pub fn tree(&self) -> Option<&Tree> {
+        self.tree.as_ref()
+    }
+
     pub fn root_node(&self) -> Option<tree_sitter::Node<'_>> {
         self.tree.as_ref().map(|tree| tree.root_node())
     }
@@ -51,6 +55,10 @@ impl DataFlexDocument {
     pub fn symbol_at_position(&self, position: Point) -> Option<index::SymbolName> {
         self.node_at_position(position)
             .map(|node| self.line_map.text_for_node(&node).into())
+    }
+
+    pub fn text_content(&self) -> String {
+        self.line_map.text()
     }
 
     fn update(&mut self) {

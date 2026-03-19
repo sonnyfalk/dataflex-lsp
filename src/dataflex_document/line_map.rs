@@ -127,7 +127,6 @@ impl LineMap {
         }
     }
 
-    #[cfg(test)]
     pub fn text(&self) -> String {
         self.lines
             .iter()
