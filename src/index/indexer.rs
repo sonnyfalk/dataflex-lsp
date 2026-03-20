@@ -204,124 +204,110 @@ impl Indexer {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
                         {
-                            if let Some(name) = name_node.utf8_text(content).ok() {
-                                let superclass = query_match
-                                    .nodes_for_capture_index(superclass_capture_index)
-                                    .next()
-                                    .and_then(|n| n.utf8_text(content).ok())
-                                    .unwrap_or_default();
-                                let class_symbol = ClassSymbol {
-                                    location: name_node.start_position(),
-                                    symbol_path: SymbolPath::with_name(name),
-                                    superclass: superclass.into(),
-                                    members: Vec::new(),
-                                };
-                                stack.push(IndexSymbol::Class(class_symbol));
-                            }
+                            let superclass = query_match
+                                .nodes_for_capture_index(superclass_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                                .unwrap_or_default();
+                            let class_symbol = ClassSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_name(name),
+                                superclass: superclass.into(),
+                                members: Vec::new(),
+                            };
+                            stack.push(IndexSymbol::Class(class_symbol));
                         }
                     }
                     Some(TagsQueryIndexElement::ObjectDefinition) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
                         {
-                            if let Some(name) = name_node.utf8_text(content).ok() {
-                                let superclass = query_match
-                                    .nodes_for_capture_index(superclass_capture_index)
-                                    .next()
-                                    .and_then(|n| n.utf8_text(content).ok())
-                                    .unwrap_or_default();
-                                let parent = stack.last().and_then(ClassSymbol::from_index_symbol);
-                                let class_symbol = ClassSymbol {
-                                    location: name_node.start_position(),
-                                    symbol_path: parent
-                                        .map(|parent| {
-                                            SymbolPath::with_parent_and_name(
-                                                &parent.symbol_path,
-                                                name,
-                                            )
-                                        })
-                                        .unwrap_or_else(|| SymbolPath::with_name(name)),
-                                    superclass: superclass.into(),
-                                    members: Vec::new(),
-                                };
-                                stack.push(IndexSymbol::Object(class_symbol));
-                            }
+                            let superclass = query_match
+                                .nodes_for_capture_index(superclass_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                                .unwrap_or_default();
+                            let parent = stack.last().and_then(ClassSymbol::from_index_symbol);
+                            let class_symbol = ClassSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: parent
+                                    .map(|parent| {
+                                        SymbolPath::with_parent_and_name(&parent.symbol_path, name)
+                                    })
+                                    .unwrap_or_else(|| SymbolPath::with_name(name)),
+                                superclass: superclass.into(),
+                                members: Vec::new(),
+                            };
+                            stack.push(IndexSymbol::Object(class_symbol));
                         }
                     }
                     Some(TagsQueryIndexElement::MethodProcedureDefinition) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                            && let Some(class_symbol) = stack
+                                .last_mut()
+                                .and_then(ClassSymbol::from_index_symbol_mut)
                         {
-                            if let Some(name) = name_node.utf8_text(content).ok() {
-                                if let Some(class_symbol) = stack
-                                    .last_mut()
-                                    .and_then(ClassSymbol::from_index_symbol_mut)
-                                {
-                                    let method_symbol = MethodSymbol {
-                                        location: name_node.start_position(),
-                                        symbol_path: SymbolPath::with_parent_and_name(
-                                            &class_symbol.symbol_path,
-                                            name,
-                                        ),
-                                        kind: MethodKind::Msg,
-                                    };
-                                    class_symbol
-                                        .members
-                                        .push(IndexSymbol::Method(method_symbol));
-                                }
-                            }
+                            let method_symbol = MethodSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_parent_and_name(
+                                    &class_symbol.symbol_path,
+                                    name,
+                                ),
+                                kind: MethodKind::Msg,
+                            };
+                            class_symbol
+                                .members
+                                .push(IndexSymbol::Method(method_symbol));
                         }
                     }
                     Some(TagsQueryIndexElement::MethodFunctionDefinition) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                            && let Some(class_symbol) = stack
+                                .last_mut()
+                                .and_then(ClassSymbol::from_index_symbol_mut)
                         {
-                            if let Some(name) = name_node.utf8_text(content).ok() {
-                                if let Some(class_symbol) = stack
-                                    .last_mut()
-                                    .and_then(ClassSymbol::from_index_symbol_mut)
-                                {
-                                    let method_symbol = MethodSymbol {
-                                        location: name_node.start_position(),
-                                        symbol_path: SymbolPath::with_parent_and_name(
-                                            &class_symbol.symbol_path,
-                                            name,
-                                        ),
-                                        kind: MethodKind::Get,
-                                    };
-                                    class_symbol
-                                        .members
-                                        .push(IndexSymbol::Method(method_symbol));
-                                }
-                            }
+                            let method_symbol = MethodSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_parent_and_name(
+                                    &class_symbol.symbol_path,
+                                    name,
+                                ),
+                                kind: MethodKind::Get,
+                            };
+                            class_symbol
+                                .members
+                                .push(IndexSymbol::Method(method_symbol));
                         }
                     }
                     Some(TagsQueryIndexElement::PropertyDefinition) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                            && let Some(class_symbol) = stack
+                                .last_mut()
+                                .and_then(ClassSymbol::from_index_symbol_mut)
                         {
-                            if let Some(name) = name_node.utf8_text(content).ok() {
-                                if let Some(class_symbol) = stack
-                                    .last_mut()
-                                    .and_then(ClassSymbol::from_index_symbol_mut)
-                                {
-                                    let property_symbol = PropertySymbol {
-                                        location: name_node.start_position(),
-                                        symbol_path: SymbolPath::with_parent_and_name(
-                                            &class_symbol.symbol_path,
-                                            name,
-                                        ),
-                                    };
-                                    class_symbol
-                                        .members
-                                        .push(IndexSymbol::Property(property_symbol));
-                                }
-                            }
+                            let property_symbol = PropertySymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_parent_and_name(
+                                    &class_symbol.symbol_path,
+                                    name,
+                                ),
+                            };
+                            class_symbol
+                                .members
+                                .push(IndexSymbol::Property(property_symbol));
                         }
                     }
                     Some(TagsQueryIndexElement::PopStackSymbol) => {

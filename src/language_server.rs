@@ -263,19 +263,14 @@ impl IndexerCoordinator {
                 .iter_mut()
                 .filter(|open_file| open_file.modified)
                 .for_each(|mut open_file| {
-                    let Some(tree) = open_file.doc.tree().cloned() else {
-                        return;
-                    };
-                    let Some(file_path) = open_file.key().to_file_path().ok() else {
-                        return;
-                    };
-                    let Some(indexer) = inner.indexer.get() else {
-                        return;
-                    };
-
-                    let content = open_file.doc.text_content();
-                    indexer.index_modified_file_buffer(file_path, tree, content);
-                    open_file.modified = false;
+                    if let Some(tree) = open_file.doc.tree().cloned()
+                        && let Some(file_path) = open_file.key().to_file_path().ok()
+                        && let Some(indexer) = inner.indexer.get()
+                    {
+                        let content = open_file.doc.text_content();
+                        indexer.index_modified_file_buffer(file_path, tree, content);
+                        open_file.modified = false;
+                    }
                 });
         }
     }

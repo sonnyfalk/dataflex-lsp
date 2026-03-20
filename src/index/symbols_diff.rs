@@ -63,40 +63,38 @@ fn diff_symbols<'a>(
             existing_symbols,
         ),
         |(mut symbols_diff, mut existing_symbols), symbol| {
-            if let Some(&existing_symbol) = existing_symbols.get(symbol.name()) {
-                if existing_symbol.is_matching(symbol) {
-                    let inner_diff = match (existing_symbol, symbol) {
-                        (
-                            IndexSymbol::Class(old_class_symbol),
-                            IndexSymbol::Class(new_class_symbol),
-                        ) => Some(diff_symbols(
-                            &old_class_symbol.members,
-                            &new_class_symbol.members,
-                        )),
-                        (
-                            IndexSymbol::Object(old_class_symbol),
-                            IndexSymbol::Object(new_class_symbol),
-                        ) => Some(diff_symbols(
-                            &old_class_symbol.members,
-                            &new_class_symbol.members,
-                        )),
-                        (IndexSymbol::Class(_), _) => None,
-                        (IndexSymbol::Object(_), _) => None,
-                        (IndexSymbol::Method(_), _) => None,
-                        (IndexSymbol::Property(_), _) => None,
-                    };
-                    if let Some(mut inner_diff) = inner_diff {
-                        symbols_diff
-                            .added_symbols
-                            .append(&mut inner_diff.added_symbols);
-                        symbols_diff
-                            .removed_symbols
-                            .append(&mut inner_diff.removed_symbols);
-                    }
-                    existing_symbols.remove(symbol.name());
-                } else {
-                    symbols_diff.added_symbols.push(symbol);
+            if let Some(&existing_symbol) = existing_symbols.get(symbol.name())
+                && existing_symbol.is_matching(symbol)
+            {
+                let inner_diff = match (existing_symbol, symbol) {
+                    (
+                        IndexSymbol::Class(old_class_symbol),
+                        IndexSymbol::Class(new_class_symbol),
+                    ) => Some(diff_symbols(
+                        &old_class_symbol.members,
+                        &new_class_symbol.members,
+                    )),
+                    (
+                        IndexSymbol::Object(old_class_symbol),
+                        IndexSymbol::Object(new_class_symbol),
+                    ) => Some(diff_symbols(
+                        &old_class_symbol.members,
+                        &new_class_symbol.members,
+                    )),
+                    (IndexSymbol::Class(_), _) => None,
+                    (IndexSymbol::Object(_), _) => None,
+                    (IndexSymbol::Method(_), _) => None,
+                    (IndexSymbol::Property(_), _) => None,
+                };
+                if let Some(mut inner_diff) = inner_diff {
+                    symbols_diff
+                        .added_symbols
+                        .append(&mut inner_diff.added_symbols);
+                    symbols_diff
+                        .removed_symbols
+                        .append(&mut inner_diff.removed_symbols);
                 }
+                existing_symbols.remove(symbol.name());
             } else {
                 symbols_diff.added_symbols.push(symbol);
             }
