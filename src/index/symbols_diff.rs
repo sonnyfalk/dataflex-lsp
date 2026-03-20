@@ -342,7 +342,7 @@ mod tests {
     fn test_diff_symbols_remove_object() {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
-           "Object oMyObj1 is a cBaseClass\nEnd_Object\nObject oMyObj2 is a cBaseClass\nEnd_Object\n",
+            "Object oMyObj1 is a cBaseClass\nEnd_Object\nObject oMyObj2 is a cBaseClass\nEnd_Object\n",
             "test.pkg".into(),
             &index_ref,
         );

@@ -213,12 +213,16 @@ mod tests {
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
-        assert_eq!(doc.root_node().unwrap().to_sexp(),
-            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
+        assert_eq!(
+            doc.root_node().unwrap().to_sexp(),
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))"
+        );
 
         doc.replace_content(&"Procedure test\nEnd_Procedure\n".to_string());
-        assert_eq!(doc.root_node().unwrap().to_sexp(),
-            "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))");
+        assert_eq!(
+            doc.root_node().unwrap().to_sexp(),
+            "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))"
+        );
     }
 
     #[test]
@@ -228,8 +232,10 @@ mod tests {
             "Object oTest is a cTest\nEnd_Object\n",
             index::IndexRef::make_test_index_ref(),
         );
-        assert_eq!(doc.root_node().unwrap().to_sexp(),
-            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))");
+        assert_eq!(
+            doc.root_node().unwrap().to_sexp(),
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))"
+        );
 
         doc.edit_content(&vec![lsp_types::TextDocumentContentChangeEvent {
             range: Some(tower_lsp::lsp_types::Range {
@@ -246,7 +252,9 @@ mod tests {
             range_length: None,
         }]);
 
-        assert_eq!(doc.root_node().unwrap().to_sexp(),
-            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))");
+        assert_eq!(
+            doc.root_node().unwrap().to_sexp(),
+            "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))"
+        );
     }
 }

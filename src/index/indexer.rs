@@ -1,4 +1,4 @@
-use std::sync::{mpsc, OnceLock};
+use std::sync::{OnceLock, mpsc};
 
 use crate::dataflex_parser::DataFlexTreeParser;
 
@@ -82,7 +82,9 @@ impl Indexer {
 
     pub fn stop_indexing(&self) {
         let Some(channel) = self.channel.get() else {
-            log::error!("Indexer::stop_indexing() cannot be called before indexer is started with Indexer::start_indexing()");
+            log::error!(
+                "Indexer::stop_indexing() cannot be called before indexer is started with Indexer::start_indexing()"
+            );
             return;
         };
         _ = channel.send(IndexerMessage::StopIndexing);
@@ -95,7 +97,9 @@ impl Indexer {
         content: String,
     ) {
         let Some(channel) = self.channel.get() else {
-            log::error!("Indexer::index_modified_file_buffer() cannot be called before indexer is started with Indexer::start_indexing()");
+            log::error!(
+                "Indexer::index_modified_file_buffer() cannot be called before indexer is started with Indexer::start_indexing()"
+            );
             return;
         };
         _ = channel.send(IndexerMessage::IndexModifiedFileBuffer(path, tree, content));
@@ -486,7 +490,10 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
         );
     }
@@ -501,7 +508,10 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg })] })]"
         );
     }
@@ -516,7 +526,10 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get })] })]"
         );
     }
@@ -531,7 +544,10 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}",index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols),
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\") })] })]"
         );
     }

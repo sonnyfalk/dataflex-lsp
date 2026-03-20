@@ -193,7 +193,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.class_lookup_table()
+                    .lookup_tables
+                    .class_lookup_table()
                     .get(&"cMyClass".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
@@ -209,7 +210,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.class_lookup_table()
+                    .lookup_tables
+                    .class_lookup_table()
                     .get(&"cMyClass".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
@@ -219,7 +221,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.class_lookup_table()
+                    .lookup_tables
+                    .class_lookup_table()
                     .get(&"cOtherClass".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cOtherClass\") })"
@@ -246,7 +249,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.class_lookup_table()
+                    .lookup_tables
+                    .class_lookup_table()
                     .get(&"cMyRenamedClass".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyRenamedClass\") })"
@@ -256,7 +260,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.class_lookup_table()
+                    .lookup_tables
+                    .class_lookup_table()
                     .get(&"cOtherClass".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cOtherClass\") })"
@@ -277,7 +282,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Msg)
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHello\") })"
@@ -293,7 +299,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Msg)
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
                     .get(&"SayHello".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHello\") })"
@@ -303,7 +310,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Msg)
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
                     .get(&"SayBye".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayBye\") })"
@@ -330,7 +338,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Msg)
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
                     .get(&"SayHelloRenamed".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHelloRenamed\") })"
@@ -340,7 +349,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Msg)
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
                     .get(&"SayBye".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayBye\") })"
@@ -350,7 +360,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.method_lookup_table(MethodKind::Get)
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Get)
                     .get(&"Foo".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.Foo\") })"
@@ -371,7 +382,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.property_lookup_table()
+                    .lookup_tables
+                    .property_lookup_table()
                     .get(&"piTest".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piTest\") })"
@@ -387,7 +399,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.property_lookup_table()
+                    .lookup_tables
+                    .property_lookup_table()
                     .get(&"piTest".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piTest\") })"
@@ -397,7 +410,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.property_lookup_table()
+                    .lookup_tables
+                    .property_lookup_table()
                     .get(&"piOtherTest".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piOtherTest\") })"
@@ -424,7 +438,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.property_lookup_table()
+                    .lookup_tables
+                    .property_lookup_table()
                     .get(&"piRenamedTest".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piRenamedTest\") })"
@@ -434,7 +449,8 @@ mod tests {
                 "{:?}",
                 index_ref
                     .get()
-                    .lookup_tables.property_lookup_table()
+                    .lookup_tables
+                    .property_lookup_table()
                     .get(&"piOtherTest".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piOtherTest\") })"
