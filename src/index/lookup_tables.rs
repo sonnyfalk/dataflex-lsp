@@ -27,7 +27,6 @@ impl LookupTables {
         &mut self.class_lookup_table
     }
 
-    #[allow(dead_code)]
     pub fn object_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
         &self.object_lookup_table
     }
@@ -64,11 +63,11 @@ impl LookupTables {
     }
 
     pub fn update(&mut self, symbols_diff: SymbolsDiff, file_ref: IndexFileRef) {
-        self.remove_symols(symbols_diff.removed_symbols.into_iter(), &file_ref);
+        self.remove_symbols(symbols_diff.removed_symbols.into_iter(), &file_ref);
         self.add_symbols(symbols_diff.added_symbols.into_iter(), &file_ref);
     }
 
-    fn remove_symols<'a>(
+    fn remove_symbols<'a>(
         &mut self,
         symbols: impl std::iter::Iterator<Item = &'a IndexSymbol>,
         file_ref: &IndexFileRef,
@@ -76,13 +75,13 @@ impl LookupTables {
         for symbol in symbols {
             match symbol {
                 IndexSymbol::Class(class_symbol) => {
-                    self.remove_symols(class_symbol.members.iter(), file_ref);
+                    self.remove_symbols(class_symbol.members.iter(), file_ref);
                     // FIXME: This needs to be updated to support multiple classes with the same name.
                     self.class_lookup_table_mut()
                         .remove(class_symbol.symbol_path.name());
                 }
                 IndexSymbol::Object(class_symbol) => {
-                    self.remove_symols(class_symbol.members.iter(), file_ref);
+                    self.remove_symbols(class_symbol.members.iter(), file_ref);
                     if let Some(object_symbols) = self
                         .object_lookup_table_mut()
                         .get_vec_mut(class_symbol.symbol_path.name())
@@ -145,29 +144,20 @@ impl LookupTables {
                 IndexSymbol::Object(class_symbol) => {
                     self.object_lookup_table_mut().insert(
                         class_symbol.symbol_path.name().clone(),
-                        IndexSymbolRef {
-                            file_ref: file_ref.clone(),
-                            symbol_path: class_symbol.symbol_path.clone(),
-                        },
+                        IndexSymbolRef::new(file_ref.clone(), class_symbol.symbol_path.clone()),
                     );
                     self.add_symbols(class_symbol.members.iter(), file_ref);
                 }
                 IndexSymbol::Method(method_symbol) => {
                     self.method_lookup_table_mut(method_symbol.kind).insert(
                         method_symbol.symbol_path.name().clone(),
-                        IndexSymbolRef {
-                            file_ref: file_ref.clone(),
-                            symbol_path: method_symbol.symbol_path.clone(),
-                        },
+                        IndexSymbolRef::new(file_ref.clone(), method_symbol.symbol_path.clone()),
                     );
                 }
                 IndexSymbol::Property(property_symbol) => {
                     self.property_lookup_table_mut().insert(
                         property_symbol.symbol_path.name().clone(),
-                        IndexSymbolRef {
-                            file_ref: file_ref.clone(),
-                            symbol_path: property_symbol.symbol_path.clone(),
-                        },
+                        IndexSymbolRef::new(file_ref.clone(), property_symbol.symbol_path.clone()),
                     );
                 }
             }
