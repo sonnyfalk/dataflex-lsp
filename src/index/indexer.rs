@@ -181,6 +181,7 @@ impl Indexer {
                 .collect();
         let name_capture_index = query.capture_index_for_name("name").unwrap();
         let superclass_capture_index = query.capture_index_for_name("superclass").unwrap();
+        let type_capture_index = query.capture_index_for_name("type").unwrap();
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, tree.root_node(), content);
 
@@ -310,6 +311,27 @@ impl Indexer {
                                 .push(IndexSymbol::Property(property_symbol));
                         }
                     }
+                    Some(TagsQueryIndexElement::GlobalVariableDeclaration) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                        {
+                            let type_name = query_match
+                                .nodes_for_capture_index(type_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                                .unwrap_or_default();
+                            let variable_symbol = VariableSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_name(name),
+                                type_name: SymbolName::from(type_name),
+                            };
+                            index_file
+                                .symbols
+                                .push(IndexSymbol::Variable(variable_symbol));
+                        }
+                    }
                     Some(TagsQueryIndexElement::PopStackSymbol) => {
                         if let Some(symbol) = stack.pop() {
                             match stack.last_mut() {
@@ -319,6 +341,7 @@ impl Indexer {
                                 Some(IndexSymbol::Class(_))
                                 | Some(IndexSymbol::Method(_))
                                 | Some(IndexSymbol::Property(_))
+                                | Some(IndexSymbol::Variable(_))
                                 | None => {
                                     index_file.symbols.push(symbol);
                                 }
@@ -431,6 +454,7 @@ enum TagsQueryIndexElement {
     MethodProcedureDefinition,
     MethodFunctionDefinition,
     PropertyDefinition,
+    GlobalVariableDeclaration,
     PopStackSymbol,
 }
 
@@ -589,6 +613,24 @@ mod tests {
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_global_variable() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyGlobalVar\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Variable(VariableSymbol { location: Point { row: 0, column: 24 }, symbol_path: SymbolPath(\"giMyGlobalVar\"), type_name: SymbolName(\"Integer\") })]"
         );
     }
 }

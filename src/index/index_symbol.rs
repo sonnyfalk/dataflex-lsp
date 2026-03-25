@@ -7,6 +7,7 @@ pub enum IndexSymbol {
     Object(ClassSymbol),
     Method(MethodSymbol),
     Property(PropertySymbol),
+    Variable(VariableSymbol),
 }
 
 #[derive(Debug)]
@@ -41,6 +42,14 @@ pub struct PropertySymbol {
     pub symbol_path: SymbolPath,
 }
 
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct VariableSymbol {
+    pub location: Point,
+    pub symbol_path: SymbolPath,
+    pub type_name: SymbolName,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SymbolName(String);
 
@@ -66,6 +75,7 @@ impl IndexSymbol {
             Self::Object(class_symbol) => class_symbol.symbol_path.name(),
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
             Self::Property(property_symbol) => property_symbol.symbol_path.name(),
+            Self::Variable(variable_symbol) => variable_symbol.symbol_path.name(),
         }
     }
 
@@ -75,6 +85,7 @@ impl IndexSymbol {
             Self::Object(class_symbol) => class_symbol.location,
             Self::Method(method_symbol) => method_symbol.location,
             Self::Property(property_symbol) => property_symbol.location,
+            Self::Variable(variable_symbol) => variable_symbol.location,
         }
     }
 
@@ -92,10 +103,14 @@ impl IndexSymbol {
             (Self::Property(property_symbol), Self::Property(other_property_symbol)) => {
                 property_symbol.symbol_path == other_property_symbol.symbol_path
             }
+            (Self::Variable(variable_symbol), Self::Variable(other_variable_symbol)) => {
+                variable_symbol.symbol_path == other_variable_symbol.symbol_path
+            }
             (Self::Class(_), _) => false,
             (Self::Object(_), _) => false,
             (Self::Method(_), _) => false,
             (Self::Property(_), _) => false,
+            (Self::Variable(_), _) => false,
         }
     }
 
@@ -105,6 +120,7 @@ impl IndexSymbol {
             Self::Object(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
             Self::Method(_) => None,
             Self::Property(_) => None,
+            Self::Variable(_) => None,
         }
     }
 

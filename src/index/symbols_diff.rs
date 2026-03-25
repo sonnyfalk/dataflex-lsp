@@ -85,6 +85,7 @@ fn diff_symbols<'a>(
                     (IndexSymbol::Object(_), _) => None,
                     (IndexSymbol::Method(_), _) => None,
                     (IndexSymbol::Property(_), _) => None,
+                    (IndexSymbol::Variable(_), _) => None,
                 };
                 if let Some(mut inner_diff) = inner_diff {
                     symbols_diff
@@ -380,6 +381,102 @@ mod tests {
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Object oMyObjRenamed is a cBaseClass\nEnd_Object\n",
+            "test.pkg".into(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_add_global_variable() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyGlobalVar\nClass cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_diff_symbols_remove_global_variable() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyGlobalVar\nClass cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 0);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_rename_global_variable() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyGlobalVar\nClass cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyRenamedGlobalVar\nClass cMyClass is a cBaseClass\nEnd_Class\n",
             "test.pkg".into(),
             &new_index_ref,
         );

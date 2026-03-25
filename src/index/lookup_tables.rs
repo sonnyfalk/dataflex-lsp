@@ -7,6 +7,7 @@ pub struct LookupTables {
     object_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     method_lookup_tables: [MultiMap<SymbolName, IndexSymbolRef>; 3],
     property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
+    global_variable_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
 }
 
 impl LookupTables {
@@ -16,6 +17,7 @@ impl LookupTables {
             object_lookup_table: MultiMap::new(),
             method_lookup_tables: [MultiMap::new(), MultiMap::new(), MultiMap::new()],
             property_lookup_table: MultiMap::new(),
+            global_variable_lookup_table: HashMap::new(),
         }
     }
 
@@ -60,6 +62,15 @@ impl LookupTables {
 
     pub fn property_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.property_lookup_table
+    }
+
+    #[allow(dead_code)]
+    pub fn global_variable_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+        &self.global_variable_lookup_table
+    }
+
+    pub fn global_variable_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+        &mut self.global_variable_lookup_table
     }
 
     pub fn update(&mut self, symbols_diff: SymbolsDiff, file_ref: IndexFileRef) {
@@ -123,6 +134,10 @@ impl LookupTables {
                         }
                     }
                 }
+                IndexSymbol::Variable(variable_symbol) => {
+                    self.global_variable_lookup_table_mut()
+                        .remove(&variable_symbol.symbol_path.name());
+                }
             }
         }
     }
@@ -158,6 +173,12 @@ impl LookupTables {
                     self.property_lookup_table_mut().insert(
                         property_symbol.symbol_path.name().clone(),
                         IndexSymbolRef::new(file_ref.clone(), property_symbol.symbol_path.clone()),
+                    );
+                }
+                IndexSymbol::Variable(variable_symbol) => {
+                    self.global_variable_lookup_table_mut().insert(
+                        variable_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef::new(file_ref.clone(), variable_symbol.symbol_path.clone()),
                     );
                 }
             }
@@ -494,6 +515,95 @@ mod tests {
                     .get(&"oMyInner".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"oMyObj.oMyInner\") })"
+        );
+    }
+
+    #[test]
+    fn test_global_variable_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyGlobalVar\n\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .global_variable_lookup_table()
+                    .get(&"giMyGlobalVar".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"giMyGlobalVar\") })"
+        );
+
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyGlobalVar\nGlobal_Variable Integer giMyOtherGlobalVar\n\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .global_variable_lookup_table()
+                    .get(&"giMyGlobalVar".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"giMyGlobalVar\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .global_variable_lookup_table()
+                    .get(&"giMyOtherGlobalVar".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"giMyOtherGlobalVar\") })"
+        );
+
+        Indexer::index_test_content(
+            "Global_Variable Integer giMyRenamedGlobalVar\nGlobal_Variable Integer giMyOtherGlobalVar\n\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .global_variable_lookup_table()
+                    .get(&"giMyGlobalVar".into())
+            ),
+            "None"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .global_variable_lookup_table()
+                    .get(&"giMyRenamedGlobalVar".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"giMyRenamedGlobalVar\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .global_variable_lookup_table()
+                    .get(&"giMyOtherGlobalVar".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"giMyOtherGlobalVar\") })"
         );
     }
 }
