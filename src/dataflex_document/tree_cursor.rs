@@ -21,6 +21,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["object_definition", "class_definition"])
     }
 
+    pub fn goto_enclosing_method_definition(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["procedure_definition", "function_definition"])
+    }
+
     pub fn is_object_definition(&self) -> bool {
         self.node().kind() == "object_definition"
     }

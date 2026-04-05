@@ -6,6 +6,7 @@ use tree_sitter::{InputEdit, Point, Tree};
 use crate::{dataflex_parser::DataFlexTreeParser, index};
 use document_context::DocumentContext;
 use reference_resolver::ReferenceResolver;
+use streaming_iterator::StreamingIterator;
 use tree_cursor::{DataFlexTreeCursor, TreeCursorExt};
 
 mod code_completion;
@@ -55,6 +56,61 @@ impl DataFlexDocument {
     pub fn symbol_at_position(&self, position: Point) -> Option<index::SymbolName> {
         self.node_at_position(position)
             .map(|node| self.line_map.text_for_node(&node).into())
+    }
+
+    fn local_variables(
+        &self,
+        position: Point,
+    ) -> impl Iterator<Item = index::VariableSymbol> + use<'_> {
+        let Some(method_node) = self
+            .cursor()
+            .and_then(|mut cursor| {
+                cursor.goto_first_leaf_node_for_point(position).then(|| {
+                    cursor
+                        .goto_enclosing_method_definition()
+                        .then(|| cursor.node())
+                })
+            })
+            .flatten()
+        else {
+            return Vec::new().into_iter();
+        };
+
+        let query = tree_sitter::Query::new(
+            &tree_sitter_dataflex::LANGUAGE.into(),
+            r#"
+            (variable_declaration
+              (system_type) @type
+              (identifier) @name)
+            "#,
+        )
+        .expect("Error loading local variables query");
+
+        let name_capture_index = query.capture_index_for_name("name").unwrap();
+        let type_capture_index = query.capture_index_for_name("type").unwrap();
+
+        let mut query_cursor = tree_sitter::QueryCursor::new();
+        let matches = query_cursor.matches(&query, method_node, self.line_map.text_provider());
+
+        let vars: Vec<index::VariableSymbol> = matches.fold(Vec::new(), |mut vars, query_match| {
+            if let Some(name_node) = query_match
+                .nodes_for_capture_index(name_capture_index)
+                .next()
+                && let Some(type_node) = query_match
+                    .nodes_for_capture_index(type_capture_index)
+                    .next()
+            {
+                let variable_name = self.line_map.text_for_node(&name_node);
+                let variable_type = self.line_map.text_for_node(&type_node);
+                vars.push(index::VariableSymbol {
+                    location: name_node.start_position(),
+                    symbol_path: index::SymbolPath::with_name(variable_name),
+                    type_name: variable_type.into(),
+                });
+            }
+            vars
+        });
+        vars.into_iter()
     }
 
     pub fn text_content(&self) -> String {
@@ -256,5 +312,47 @@ mod tests {
             doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))"
         );
+    }
+
+    #[test]
+    fn test_local_variables() {
+        let test_content = r#"
+Object oMyObject is a cObject
+    Procedure foo
+        Integer iMyInt
+        String sMyStr
+        Move 1 to iMyInt
+        Move "hello" to sMyStr
+    End_Procedure
+
+    Procedure bar
+        Integer iMyOtherInt
+        Move 1 to iMyOtherInt
+    End_Procedure
+End_Object
+
+Send foo of oMyObject
+            "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let mut variables = doc.local_variables(Point::new(5, 21));
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 3, column: 16 }, symbol_path: SymbolPath(\"iMyInt\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 4, column: 15 }, symbol_path: SymbolPath(\"sMyStr\"), type_name: SymbolName(\"String\") })"
+        );
+        assert_eq!(format!("{:?}", variables.next()), "None");
+
+        let mut variables = doc.local_variables(Point::new(11, 23));
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(format!("{:?}", variables.next()), "None");
     }
 }
