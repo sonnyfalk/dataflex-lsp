@@ -15,6 +15,7 @@ pub enum CompletionItemKind {
     Object,
     Method,
     Property,
+    LocalVariable,
 }
 
 impl CodeCompletion {
@@ -26,7 +27,9 @@ impl CodeCompletion {
         let completions = match context {
             DocumentContext::ClassReference => Some(Self::class_completions(doc)),
             DocumentContext::MethodReference(kind) => Some(Self::method_completions(doc, kind)),
-            DocumentContext::CallReceiverReference => Some(Self::call_receiver_completions(doc)),
+            DocumentContext::CallReceiverReference => {
+                Some(Self::call_receiver_completions(doc, position))
+            }
         };
 
         completions
@@ -79,7 +82,7 @@ impl CodeCompletion {
         }
     }
 
-    fn call_receiver_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+    fn call_receiver_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
         doc.index
             .get()
             .all_known_objects()
@@ -88,6 +91,18 @@ impl CodeCompletion {
                 label: object_name.to_string(),
                 kind: CompletionItemKind::Object,
             })
+            .chain(Self::local_variable_completions(doc, position))
             .collect()
+    }
+
+    fn local_variable_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+    ) -> impl Iterator<Item = CompletionItem> {
+        doc.local_variables(position)
+            .map(|variable| CompletionItem {
+                label: variable.symbol_path.name().to_string(),
+                kind: CompletionItemKind::LocalVariable,
+            })
     }
 }
