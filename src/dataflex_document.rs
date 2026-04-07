@@ -192,12 +192,28 @@ impl DataFlexDocument {
             row: position.line as usize,
             column: position.character as usize,
         };
-        let reference_resolver = ReferenceResolver::new(self);
-        let symbols = reference_resolver.resolve_reference(position);
+        let Some(context) = DocumentContext::context(self, position) else {
+            return None;
+        };
 
-        let locations: Vec<lsp_types::Location> = symbols
-            .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
-            .collect();
+        let locations = if context.can_reference_variables()
+            && let Some(symbol_name) = self.symbol_at_position(position)
+            && let Some(variable) = self
+                .local_variables(position)
+                .find(|v| v.symbol_path.name() == &symbol_name)
+        {
+            vec![lsp_types::Location::from(&index::IndexSymbolSnapshot {
+                path: &self.file_path,
+                symbol: &index::IndexSymbol::Variable(variable),
+            })]
+        } else {
+            let reference_resolver = ReferenceResolver::new(self);
+            let symbols = reference_resolver.resolve_reference(context, position);
+            symbols
+                .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
+                .collect()
+        };
+
         if !locations.is_empty() {
             Some(locations)
         } else {

@@ -91,6 +91,14 @@ impl DocumentContext {
 
         context
     }
+
+    pub fn can_reference_variables(&self) -> bool {
+        match self {
+            Self::CallReceiverReference => true,
+            Self::ClassReference => false,
+            Self::MethodReference(_) => false,
+        }
+    }
 }
 
 impl<'a> ContextScanner<'a> {

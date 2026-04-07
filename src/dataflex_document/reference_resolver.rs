@@ -16,14 +16,15 @@ impl<'a> ReferenceResolver<'a> {
         }
     }
 
-    pub fn resolve_reference(&self, position: Point) -> IndexSymbolIter<'_> {
-        match DocumentContext::context(self.doc, position) {
-            Some(DocumentContext::ClassReference) => self.resolve_class_reference(position),
-            Some(DocumentContext::MethodReference(kind)) => {
-                self.resolve_method_reference(position, kind)
-            }
-            Some(DocumentContext::CallReceiverReference) => self.resolve_object_reference(position),
-            None => IndexSymbolIter::empty(),
+    pub fn resolve_reference(
+        &self,
+        context: DocumentContext,
+        position: Point,
+    ) -> IndexSymbolIter<'_> {
+        match context {
+            DocumentContext::ClassReference => self.resolve_class_reference(position),
+            DocumentContext::MethodReference(kind) => self.resolve_method_reference(position, kind),
+            DocumentContext::CallReceiverReference => self.resolve_object_reference(position),
         }
     }
 
