@@ -81,7 +81,7 @@ impl DataFlexDocument {
             r#"
             (variable_declaration
               (system_type) @type
-              (identifier) @name)
+              (identifier)+ @name)
             "#,
         )
         .expect("Error loading local variables query");
@@ -93,20 +93,19 @@ impl DataFlexDocument {
         let matches = query_cursor.matches(&query, method_node, self.line_map.text_provider());
 
         let vars: Vec<index::VariableSymbol> = matches.fold(Vec::new(), |mut vars, query_match| {
-            if let Some(name_node) = query_match
-                .nodes_for_capture_index(name_capture_index)
+            if let Some(type_node) = query_match
+                .nodes_for_capture_index(type_capture_index)
                 .next()
-                && let Some(type_node) = query_match
-                    .nodes_for_capture_index(type_capture_index)
-                    .next()
             {
-                let variable_name = self.line_map.text_for_node(&name_node);
                 let variable_type = self.line_map.text_for_node(&type_node);
-                vars.push(index::VariableSymbol {
-                    location: name_node.start_position(),
-                    symbol_path: index::SymbolPath::with_name(variable_name),
-                    type_name: variable_type.into(),
-                });
+                for name_node in query_match.nodes_for_capture_index(name_capture_index) {
+                    let variable_name = self.line_map.text_for_node(&name_node);
+                    vars.push(index::VariableSymbol {
+                        location: name_node.start_position(),
+                        symbol_path: index::SymbolPath::with_name(variable_name),
+                        type_name: variable_type.clone().into(),
+                    });
+                }
             }
             vars
         });
@@ -343,7 +342,7 @@ Object oMyObject is a cObject
     End_Procedure
 
     Procedure bar
-        Integer iMyOtherInt
+        Integer iMyOtherInt iMyOtherIntOnSameLine
         Move 1 to iMyOtherInt
     End_Procedure
 End_Object
@@ -369,6 +368,10 @@ Send foo of oMyObject
         assert_eq!(
             format!("{:?}", variables.next()),
             "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), type_name: SymbolName(\"Integer\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
     }
