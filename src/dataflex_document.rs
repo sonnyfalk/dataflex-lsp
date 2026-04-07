@@ -79,6 +79,9 @@ impl DataFlexDocument {
         let query = tree_sitter::Query::new(
             &tree_sitter_dataflex::LANGUAGE.into(),
             r#"
+            (parameter
+                type: (identifier) @type
+                name: (identifier) @name)
             (variable_declaration
               (system_type) @type
               (identifier)+ @name)
@@ -341,7 +344,7 @@ Object oMyObject is a cObject
         Move "hello" to sMyStr
     End_Procedure
 
-    Procedure bar
+    Procedure bar Integer iArg1 String sArg2
         Integer iMyOtherInt iMyOtherIntOnSameLine
         Move 1 to iMyOtherInt
     End_Procedure
@@ -365,6 +368,14 @@ Send foo of oMyObject
         assert_eq!(format!("{:?}", variables.next()), "None");
 
         let mut variables = doc.local_variables(Point::new(11, 23));
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), type_name: SymbolName(\"String\") })"
+        );
         assert_eq!(
             format!("{:?}", variables.next()),
             "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), type_name: SymbolName(\"Integer\") })"
