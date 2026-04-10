@@ -24,7 +24,8 @@ impl<'a> ReferenceResolver<'a> {
         match context {
             DocumentContext::ClassReference => self.resolve_class_reference(position),
             DocumentContext::MethodReference(kind) => self.resolve_method_reference(position, kind),
-            DocumentContext::CallReceiverReference => self.resolve_object_reference(position),
+            DocumentContext::CallReceiverReference => self.resolve_expr_reference(position),
+            DocumentContext::Expression => self.resolve_expr_reference(position),
         }
     }
 
@@ -122,7 +123,7 @@ impl<'a> ReferenceResolver<'a> {
         }
     }
 
-    fn resolve_object_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+    fn resolve_expr_reference(&self, position: Point) -> IndexSymbolIter<'_> {
         let Some(name) = self.doc.symbol_at_position(position) else {
             return IndexSymbolIter::empty();
         };
@@ -131,7 +132,12 @@ impl<'a> ReferenceResolver<'a> {
             self.index
                 .find_objects(&name)
                 .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
-                .filter_map(|s| self.index.symbol_snapshot(s)),
+                .filter_map(|s| self.index.symbol_snapshot(s))
+                .chain(
+                    self.index
+                        .find_global_variables(&name)
+                        .filter_map(|s| self.index.symbol_snapshot(s)),
+                ),
         )
     }
 }
@@ -213,24 +219,24 @@ End_Object
     }
 
     #[test]
-    fn test_resolve_object_reference() {
+    fn test_resolve_call_receiver_reference() {
         let test_content = r#"
-            Object oMyObject is a cObject
-                Procedure foo
-                End_Procedure
-            End_Object
+Object oMyObject is a cObject
+    Procedure foo
+    End_Procedure
+End_Object
 
-            Send foo of oMyObject
+Send foo of oMyObject
             "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
 
         let reference_resolver = ReferenceResolver::new(&doc);
-        let mut symbol = reference_resolver.resolve_object_reference(Point::new(6, 27));
+        let mut symbol = reference_resolver.resolve_expr_reference(Point::new(6, 16));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Object(ClassSymbol { location: Point { row: 1, column: 19 }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), members: [Method(MethodSymbol { location: Point { row: 2, column: 26 }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg })] }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Object(ClassSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), members: [Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }

@@ -145,6 +145,24 @@ impl Index {
             .unwrap_or_default()
     }
 
+    pub fn all_known_global_variables(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .global_variable_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    pub fn find_global_variables(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
+        self.lookup_tables
+            .global_variable_lookup_table()
+            .get(name)
+            .into_iter()
+    }
+
     pub fn class_hierarchy<'a>(&'a self, class: &'a ClassSymbol) -> ClassHierarchyIter<'a> {
         ClassHierarchyIter {
             index: self,

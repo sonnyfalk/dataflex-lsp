@@ -64,7 +64,6 @@ impl LookupTables {
         &mut self.property_lookup_table
     }
 
-    #[allow(dead_code)]
     pub fn global_variable_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
         &self.global_variable_lookup_table
     }

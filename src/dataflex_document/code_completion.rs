@@ -16,6 +16,7 @@ pub enum CompletionItemKind {
     Method,
     Property,
     LocalVariable,
+    GlobalVariable,
 }
 
 impl CodeCompletion {
@@ -27,9 +28,8 @@ impl CodeCompletion {
         let completions = match context {
             DocumentContext::ClassReference => Some(Self::class_completions(doc)),
             DocumentContext::MethodReference(kind) => Some(Self::method_completions(doc, kind)),
-            DocumentContext::CallReceiverReference => {
-                Some(Self::call_receiver_completions(doc, position))
-            }
+            DocumentContext::CallReceiverReference => Some(Self::expr_completions(doc, position)),
+            DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
         };
 
         completions
@@ -82,16 +82,28 @@ impl CodeCompletion {
         }
     }
 
-    fn call_receiver_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
-        doc.index
-            .get()
-            .all_known_objects()
-            .drain(..)
-            .map(|object_name| CompletionItem {
-                label: object_name.to_string(),
-                kind: CompletionItemKind::Object,
-            })
-            .chain(Self::local_variable_completions(doc, position))
+    fn expr_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
+        Self::local_variable_completions(doc, position)
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_global_variables()
+                    .drain(..)
+                    .map(|variable_name| CompletionItem {
+                        label: variable_name.to_string(),
+                        kind: CompletionItemKind::GlobalVariable,
+                    }),
+            )
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_objects()
+                    .drain(..)
+                    .map(|object_name| CompletionItem {
+                        label: object_name.to_string(),
+                        kind: CompletionItemKind::Object,
+                    }),
+            )
             .collect()
     }
 
