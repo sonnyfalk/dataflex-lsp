@@ -102,9 +102,12 @@ impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
 
     fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool {
         let current = self.clone();
-        while self.goto_parent() {
+        loop {
             if kinds.contains(&self.node().kind()) {
                 return true;
+            }
+            if !self.goto_parent() {
+                break;
             }
         }
 

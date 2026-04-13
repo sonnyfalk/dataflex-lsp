@@ -348,6 +348,7 @@ Object oMyObject is a cObject
     Procedure bar Integer iArg1 String sArg2
         Integer iMyOtherInt iMyOtherIntOnSameLine
         Move 1 to iMyOtherInt
+        Move i
     End_Procedure
 End_Object
 
@@ -369,6 +370,25 @@ Send foo of oMyObject
         assert_eq!(format!("{:?}", variables.next()), "None");
 
         let mut variables = doc.local_variables(Point::new(11, 23));
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), type_name: SymbolName(\"String\") })"
+        );
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(format!("{:?}", variables.next()), "None");
+
+        let mut variables = doc.local_variables(Point::new(12, 14));
         assert_eq!(
             format!("{:?}", variables.next()),
             "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), type_name: SymbolName(\"Integer\") })"
