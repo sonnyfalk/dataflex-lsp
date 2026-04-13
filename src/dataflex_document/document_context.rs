@@ -71,6 +71,21 @@ macro_rules! context_scanner_match {
             };
         }
     };
+    (@rules $scanner:ident, expr, $($rest:tt)*) => {
+        match $scanner.accept_expr().ok()? {
+            ContextScannerStatus::Yield(context) => { return Some(context); }
+            ContextScannerStatus::Stop => { return None; }
+            ContextScannerStatus::Continue => {}
+        };
+        context_scanner_match!(@rules $scanner, $($rest)*);
+    };
+    (@rules $scanner:ident, expr) => {
+        match $scanner.accept_expr().ok()? {
+            ContextScannerStatus::Yield(context) => { return Some(context); }
+            ContextScannerStatus::Stop => { return None; }
+            ContextScannerStatus::Continue => {}
+        };
+    };
     (@rules $scanner:ident, ($keyword:pat, $($inner_rest:tt)+)?, $($rest:tt)*) => {
         match $scanner.accept_optional_keyword_if(|kw| matches!(kw, $keyword)).ok() {
             Some(ContextScannerStatus::Stop) => { return None; }
@@ -116,6 +131,9 @@ impl DocumentContext {
             }
             ("keyword", "set") => {
                 context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", identifier -> Self::CallReceiverReference)?, "to", expr*)
+            }
+            ("keyword", "move") => {
+                context_scanner_match!(scanner, expr, "to", expr)
             }
             _ => None,
         };
@@ -164,6 +182,23 @@ impl<'a> ContextScanner<'a> {
         if self.cursor.node().end_position() >= self.end {
             return Ok(ContextScannerStatus::Stop);
         }
+        Ok(ContextScannerStatus::Continue)
+    }
+
+    fn accept_expr(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
+        if !self.cursor.goto_next_node() || self.cursor.node().start_position() > self.end {
+            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
+        }
+        if self.cursor.is_identifier() && self.cursor.node().end_position() >= self.end {
+            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
+        }
+
+        if self.cursor.node().end_position() >= self.end {
+            return Ok(ContextScannerStatus::Stop);
+        }
+
+        // FIXME: Reject anything that's not valid expression.
+
         Ok(ContextScannerStatus::Continue)
     }
 
@@ -361,7 +396,7 @@ mod test {
     }
 
     #[test]
-    fn test_expr_context() {
+    fn test_call_expr_context() {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo to oMyObj arg1\n",
@@ -432,6 +467,23 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+    }
+
+    #[test]
+    fn test_move_expr_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move iMyInt to iMyOtherInt\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
+        assert_eq!(context, None);
+
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
         assert_eq!(context, Some(DocumentContext::Expression));
     }
 }
