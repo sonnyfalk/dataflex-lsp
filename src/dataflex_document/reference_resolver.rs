@@ -26,6 +26,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::MethodReference(kind) => self.resolve_method_reference(position, kind),
             DocumentContext::CallReceiverReference => self.resolve_expr_reference(position),
             DocumentContext::Expression => self.resolve_expr_reference(position),
+            DocumentContext::ParenExpression => self.resolve_expr_reference(position),
         }
     }
 

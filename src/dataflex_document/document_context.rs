@@ -7,6 +7,7 @@ pub enum DocumentContext {
     MethodReference(MethodKind),
     CallReceiverReference,
     Expression,
+    ParenExpression,
 }
 
 struct ContextScanner<'a> {
@@ -145,6 +146,7 @@ impl DocumentContext {
         match self {
             Self::CallReceiverReference => true,
             Self::Expression => true,
+            Self::ParenExpression => true,
             Self::ClassReference => false,
             Self::MethodReference(_) => false,
         }
@@ -193,6 +195,12 @@ impl<'a> ContextScanner<'a> {
             return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
         }
 
+        if self.cursor.is_paren_expression() && self.cursor.node().end_position() >= self.end {
+            return Ok(ContextScannerStatus::Yield(
+                DocumentContext::ParenExpression,
+            ));
+        }
+
         if self.cursor.node().end_position() >= self.end {
             return Ok(ContextScannerStatus::Stop);
         }
@@ -204,21 +212,15 @@ impl<'a> ContextScanner<'a> {
 
     fn accept_optional_expr(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
         let current = self.cursor.clone();
-        if !self.cursor.goto_next_node() || self.cursor.node().start_position() > self.end {
-            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
-        }
-        if self.cursor.is_identifier() && self.cursor.node().end_position() >= self.end {
-            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
-        }
-
-        if self.cursor.node().end_position() >= self.end {
+        let result = self.accept_expr();
+        if result.is_err()
+            || result
+                .as_ref()
+                .is_ok_and(|s| matches!(s, ContextScannerStatus::Stop))
+        {
             self.cursor.reset_to(&current);
-            return Ok(ContextScannerStatus::Stop);
         }
-
-        // FIXME: Reject anything that's not valid expression.
-
-        Ok(ContextScannerStatus::Continue)
+        result
     }
 
     fn accept_optional_keyword_if<P: Fn(&str) -> bool>(
@@ -485,5 +487,16 @@ mod test {
 
         let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
         assert_eq!(context, Some(DocumentContext::Expression));
+    }
+
+    #[test]
+    fn test_paren_expr_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move (iMyInt) to iMyOtherInt\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
+        assert_eq!(context, Some(DocumentContext::ParenExpression));
     }
 }

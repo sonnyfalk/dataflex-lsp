@@ -33,6 +33,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.node().kind() == "identifier"
     }
 
+    pub fn is_paren_expression(&self) -> bool {
+        self.node().kind() == "paren_expression"
+    }
+
     pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
         if self.node().kind() == "keyword" {
             let mut keyword = self.doc.line_map.text_for_node(&self.node());
