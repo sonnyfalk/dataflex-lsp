@@ -26,7 +26,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::MethodReference(kind) => self.resolve_method_reference(position, kind),
             DocumentContext::CallReceiverReference => self.resolve_expr_reference(position),
             DocumentContext::Expression => self.resolve_expr_reference(position),
-            DocumentContext::ParenExpression => self.resolve_expr_reference(position),
+            DocumentContext::ParenExpression => self.resolve_paren_expr_reference(position),
         }
     }
 
@@ -137,6 +137,30 @@ impl<'a> ReferenceResolver<'a> {
                 .chain(
                     self.index
                         .find_global_variables(&name)
+                        .filter_map(|s| self.index.symbol_snapshot(s)),
+                ),
+        )
+    }
+
+    fn resolve_paren_expr_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+        let Some(name) = self.doc.symbol_at_position(position) else {
+            return IndexSymbolIter::empty();
+        };
+        let file_ref = IndexFileRef::from(&self.doc.file_path);
+        IndexSymbolIter::new(
+            self.index
+                .find_objects(&name)
+                .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
+                .filter_map(|s| self.index.symbol_snapshot(s))
+                .chain(
+                    self.index
+                        .find_global_variables(&name)
+                        .filter_map(|s| self.index.symbol_snapshot(s)),
+                )
+                .chain(
+                    //FIXME: Filter on call receiver, like `resolve_method_reference()`.
+                    self.index
+                        .find_members(&name, MethodKind::Get)
                         .filter_map(|s| self.index.symbol_snapshot(s)),
                 ),
         )

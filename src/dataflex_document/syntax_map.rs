@@ -178,6 +178,19 @@ impl SyntaxMap {
                                         None
                                     }
                                 }
+                                "entity.name.function.dataflex.expr" => {
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_property(&name) {
+                                        Some(SyntaxToken::new(start, end, 3, prev_pos))
+                                    } else if index.is_known_method(&name, MethodKind::Get) {
+                                        Some(SyntaxToken::new(start, end, 2, prev_pos))
+                                    } else if index.is_system_function(&name) {
+                                        Some(SyntaxToken::new(start, end, 5, prev_pos))
+                                    } else {
+                                        None
+                                    }
+                                }
                                 _ => None,
                             };
                             if let Some(token) = token {
