@@ -80,10 +80,10 @@ impl DataFlexDocument {
             &tree_sitter_dataflex::LANGUAGE.into(),
             r#"
             (parameter
-                type: (identifier) @type
+                type: (typedecl) @type
                 name: (identifier) @name)
             (variable_declaration
-              (system_type) @type
+              (system_typedecl) @type
               (identifier)+ @name)
             "#,
         )

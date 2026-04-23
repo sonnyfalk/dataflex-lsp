@@ -51,7 +51,6 @@
   (#set! index.element property_definition)) @definition.property
 
 (global_variable_declaration
-  (variable_declaration
-    (system_type) @type
-    (identifier) @name)
+  (typedecl) @type
+  (identifier) @name
   (#set! index.element global_variable_declaration)) @definition.variable.global
