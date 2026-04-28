@@ -50,6 +50,21 @@
   name: (identifier) @name
   (#set! index.element property_definition)) @definition.property
 
+(struct_declaration
+  (struct_header
+    name: (identifier) @name) @definition.struct
+  (#set! index.element struct_declaration))
+
+(struct_declaration
+  (struct_footer) @definition.struct
+  (#set! index.element pop_stack_symbol))
+
+(struct_declaration
+  (struct_member
+    (typedecl) @type
+    (identifier) @name)
+  (#set! index.element struct_member)) @definition.struct_member
+
 (global_variable_declaration
   (typedecl) @type
   (identifier) @name

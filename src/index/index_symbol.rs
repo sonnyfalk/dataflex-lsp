@@ -5,6 +5,7 @@ use super::*;
 pub enum IndexSymbol {
     Class(ClassSymbol),
     Object(ClassSymbol),
+    Struct(StructSymbol),
     Method(MethodSymbol),
     Property(PropertySymbol),
     Variable(VariableSymbol),
@@ -16,6 +17,14 @@ pub struct ClassSymbol {
     pub location: Point,
     pub symbol_path: SymbolPath,
     pub superclass: SymbolName,
+    pub members: Vec<IndexSymbol>,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct StructSymbol {
+    pub location: Point,
+    pub symbol_path: SymbolPath,
     pub members: Vec<IndexSymbol>,
 }
 
@@ -73,6 +82,7 @@ impl IndexSymbol {
         match self {
             Self::Class(class_symbol) => class_symbol.symbol_path.name(),
             Self::Object(class_symbol) => class_symbol.symbol_path.name(),
+            Self::Struct(struct_symbol) => struct_symbol.symbol_path.name(),
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
             Self::Property(property_symbol) => property_symbol.symbol_path.name(),
             Self::Variable(variable_symbol) => variable_symbol.symbol_path.name(),
@@ -83,6 +93,7 @@ impl IndexSymbol {
         match self {
             Self::Class(class_symbol) => class_symbol.location,
             Self::Object(class_symbol) => class_symbol.location,
+            Self::Struct(struct_symbol) => struct_symbol.location,
             Self::Method(method_symbol) => method_symbol.location,
             Self::Property(property_symbol) => property_symbol.location,
             Self::Variable(variable_symbol) => variable_symbol.location,
@@ -97,6 +108,9 @@ impl IndexSymbol {
             (Self::Object(class_symbol), Self::Object(other_class_symbol)) => {
                 class_symbol.symbol_path == other_class_symbol.symbol_path
             }
+            (Self::Struct(struct_symbol), Self::Struct(other_struct_symbol)) => {
+                struct_symbol.symbol_path == other_struct_symbol.symbol_path
+            }
             (Self::Method(method_symbol), Self::Method(other_method_symbol)) => {
                 method_symbol.symbol_path == other_method_symbol.symbol_path
             }
@@ -108,6 +122,7 @@ impl IndexSymbol {
             }
             (Self::Class(_), _) => false,
             (Self::Object(_), _) => false,
+            (Self::Struct(_), _) => false,
             (Self::Method(_), _) => false,
             (Self::Property(_), _) => false,
             (Self::Variable(_), _) => false,
@@ -118,6 +133,7 @@ impl IndexSymbol {
         match self {
             Self::Class(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
             Self::Object(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
+            Self::Struct(struct_symbol) => struct_symbol.members.iter().find(|s| s.name() == name),
             Self::Method(_) => None,
             Self::Property(_) => None,
             Self::Variable(_) => None,
@@ -218,6 +234,24 @@ impl IndexSymbolType for ClassSymbol {
             Some(class_symbol)
         } else if let IndexSymbol::Object(class_symbol) = index_symbol {
             Some(class_symbol)
+        } else {
+            None
+        }
+    }
+}
+
+impl IndexSymbolType for StructSymbol {
+    fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self> {
+        if let IndexSymbol::Struct(struct_symbol) = index_symbol {
+            Some(struct_symbol)
+        } else {
+            None
+        }
+    }
+
+    fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
+        if let IndexSymbol::Struct(struct_symbol) = index_symbol {
+            Some(struct_symbol)
         } else {
             None
         }

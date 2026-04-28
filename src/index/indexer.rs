@@ -246,6 +246,47 @@ impl Indexer {
                             stack.push(IndexSymbol::Object(class_symbol));
                         }
                     }
+                    Some(TagsQueryIndexElement::StructDeclaration) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                        {
+                            let struct_symbol = StructSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_name(name),
+                                members: Vec::new(),
+                            };
+                            stack.push(IndexSymbol::Struct(struct_symbol));
+                        }
+                    }
+                    Some(TagsQueryIndexElement::StructMember) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                            && let Some(struct_symbol) = stack
+                                .last_mut()
+                                .and_then(StructSymbol::from_index_symbol_mut)
+                        {
+                            let type_name = query_match
+                                .nodes_for_capture_index(type_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                                .unwrap_or_default();
+                            let variable_symbol = VariableSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_parent_and_name(
+                                    &struct_symbol.symbol_path,
+                                    name,
+                                ),
+                                type_name: SymbolName::from(type_name),
+                            };
+                            struct_symbol
+                                .members
+                                .push(IndexSymbol::Variable(variable_symbol));
+                        }
+                    }
                     Some(TagsQueryIndexElement::MethodProcedureDefinition) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
@@ -339,6 +380,7 @@ impl Indexer {
                                     class_symbol.members.push(symbol);
                                 }
                                 Some(IndexSymbol::Class(_))
+                                | Some(IndexSymbol::Struct(_))
                                 | Some(IndexSymbol::Method(_))
                                 | Some(IndexSymbol::Property(_))
                                 | Some(IndexSymbol::Variable(_))
@@ -454,6 +496,8 @@ enum TagsQueryIndexElement {
     MethodProcedureDefinition,
     MethodFunctionDefinition,
     PropertyDefinition,
+    StructDeclaration,
+    StructMember,
     GlobalVariableDeclaration,
     PopStackSymbol,
 }
@@ -631,6 +675,29 @@ mod tests {
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Variable(VariableSymbol { location: Point { row: 0, column: 24 }, symbol_path: SymbolPath(\"giMyGlobalVar\"), type_name: SymbolName(\"Integer\") })]"
+        );
+    }
+
+    #[test]
+    fn test_index_struct() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Struct tMyStruct
+    String sName
+    Integer[] iValues
+End_Struct
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") }), Variable(VariableSymbol { location: Point { row: 3, column: 14 }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), type_name: SymbolName(\"Integer[]\") })] })]"
         );
     }
 }

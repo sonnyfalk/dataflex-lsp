@@ -5,6 +5,7 @@ use symbols_diff::SymbolsDiff;
 pub struct LookupTables {
     class_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
     object_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
+    struct_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
     method_lookup_tables: [MultiMap<SymbolName, IndexSymbolRef>; 3],
     property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     global_variable_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
@@ -15,6 +16,7 @@ impl LookupTables {
         Self {
             class_lookup_table: HashMap::new(),
             object_lookup_table: MultiMap::new(),
+            struct_lookup_table: HashMap::new(),
             method_lookup_tables: [MultiMap::new(), MultiMap::new(), MultiMap::new()],
             property_lookup_table: MultiMap::new(),
             global_variable_lookup_table: HashMap::new(),
@@ -35,6 +37,15 @@ impl LookupTables {
 
     pub fn object_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.object_lookup_table
+    }
+
+    #[cfg(test)]
+    pub fn struct_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+        &self.struct_lookup_table
+    }
+
+    pub fn struct_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+        &mut self.struct_lookup_table
     }
 
     pub fn method_lookup_table(&self, kind: MethodKind) -> &MultiMap<SymbolName, IndexSymbolRef> {
@@ -105,6 +116,10 @@ impl LookupTables {
                         }
                     }
                 }
+                IndexSymbol::Struct(struct_symbol) => {
+                    self.struct_lookup_table_mut()
+                        .remove(struct_symbol.symbol_path.name());
+                }
                 IndexSymbol::Method(method_symbol) => {
                     if let Some(method_symbols) = self
                         .method_lookup_table_mut(method_symbol.kind)
@@ -161,6 +176,12 @@ impl LookupTables {
                         IndexSymbolRef::new(file_ref.clone(), class_symbol.symbol_path.clone()),
                     );
                     self.add_symbols(class_symbol.members.iter(), file_ref);
+                }
+                IndexSymbol::Struct(struct_symbol) => {
+                    self.struct_lookup_table_mut().insert(
+                        struct_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef::new(file_ref.clone(), struct_symbol.symbol_path.clone()),
+                    );
                 }
                 IndexSymbol::Method(method_symbol) => {
                     self.method_lookup_table_mut(method_symbol.kind).insert(
@@ -603,6 +624,95 @@ mod tests {
                     .get(&"giMyOtherGlobalVar".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"giMyOtherGlobalVar\") })"
+        );
+    }
+
+    #[test]
+    fn test_struct_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "Struct tMyStruct\nEnd_Struct\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"tMyStruct".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"tMyStruct\") })"
+        );
+
+        Indexer::index_test_content(
+            "Struct tMyStruct\nEnd_Struct\n\nStruct tOtherStruct\nEnd_Struct\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"tMyStruct".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"tMyStruct\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"tOtherStruct".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"tOtherStruct\") })"
+        );
+
+        Indexer::index_test_content(
+            "Struct tMyRenamedStruct\nEnd_Struct\n\nStruct tOtherStruct\nEnd_Struct\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"tMyStruct".into())
+            ),
+            "None"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"tMyRenamedStruct".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"tMyRenamedStruct\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"tOtherStruct".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"tOtherStruct\") })"
         );
     }
 }
