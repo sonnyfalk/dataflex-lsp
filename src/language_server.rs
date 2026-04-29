@@ -85,6 +85,7 @@ impl LanguageServer for DataFlexLanguageServer {
                             SemanticTokenType::PROPERTY,
                             SemanticTokenType::INTERFACE,
                             SemanticTokenType::FUNCTION,
+                            SemanticTokenType::STRUCT,
                         ],
                         token_modifiers: vec![],
                     },

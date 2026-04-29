@@ -39,7 +39,6 @@ impl LookupTables {
         &mut self.object_lookup_table
     }
 
-    #[cfg(test)]
     pub fn struct_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
         &self.struct_lookup_table
     }

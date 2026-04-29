@@ -163,6 +163,24 @@ impl Index {
             .into_iter()
     }
 
+    #[allow(dead_code)]
+    pub fn find_struct(&self, name: &SymbolName) -> Option<&IndexSymbolRef> {
+        self.lookup_tables.struct_lookup_table().get(name)
+    }
+
+    pub fn is_known_struct(&self, name: &SymbolName) -> bool {
+        self.lookup_tables.struct_lookup_table().get(name).is_some()
+    }
+
+    #[allow(dead_code)]
+    pub fn all_known_structs(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .struct_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
     pub fn all_system_functions(&self) -> Vec<SymbolName> {
         let functions = [
             "Abs",
