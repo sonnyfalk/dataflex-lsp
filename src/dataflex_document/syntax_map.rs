@@ -187,6 +187,15 @@ impl SyntaxMap {
                                         None
                                     }
                                 }
+                                "entity.name.type" => {
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_struct(&name) {
+                                        Some(SyntaxToken::new(start, end, 6, prev_pos))
+                                    } else {
+                                        None
+                                    }
+                                }
                                 "entity.name.function.dataflex.expr" => {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
