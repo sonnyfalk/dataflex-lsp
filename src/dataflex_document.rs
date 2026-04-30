@@ -83,8 +83,11 @@ impl DataFlexDocument {
                 type: (typedecl) @type
                 name: (identifier) @name)
             (variable_declaration
-              (system_typedecl) @type
-              (identifier)+ @name)
+                (system_typedecl) @type
+                (identifier)+ @name)
+            (potential_variable_declaration
+                (custom_typedecl) @type
+                (identifier)+ @name)
             "#,
         )
         .expect("Error loading local variables query");
@@ -101,6 +104,15 @@ impl DataFlexDocument {
                 .next()
             {
                 let variable_type = self.line_map.text_for_node(&type_node);
+                if type_node.kind() == "custom_typedecl"
+                    && !self
+                        .index
+                        .get()
+                        .is_known_struct(&variable_type.clone().into())
+                {
+                    return vars;
+                }
+
                 for name_node in query_match.nodes_for_capture_index(name_capture_index) {
                     let variable_name = self.line_map.text_for_node(&name_node);
                     vars.push(index::VariableSymbol {
@@ -405,6 +417,29 @@ Send foo of oMyObject
         assert_eq!(
             format!("{:?}", variables.next()),
             "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), type_name: SymbolName(\"Integer\") })"
+        );
+        assert_eq!(format!("{:?}", variables.next()), "None");
+    }
+
+    #[test]
+    fn test_struct_local_variables() {
+        let test_content = r#"
+Struct tMyStruct
+End_Struct
+
+Procedure testIt
+    tMyStruct myStructVar
+    tNotExistingStruct myOtherStructVar
+End_Procedure
+            "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let mut variables = doc.local_variables(Point::new(5, 21));
+        assert_eq!(
+            format!("{:?}", variables.next()),
+            "Some(VariableSymbol { location: Point { row: 5, column: 14 }, symbol_path: SymbolPath(\"myStructVar\"), type_name: SymbolName(\"tMyStruct\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
     }
