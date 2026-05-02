@@ -25,6 +25,14 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["procedure_definition", "function_definition"])
     }
 
+    pub fn goto_enclosing_paren_expression(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["paren_expression"])
+    }
+
+    pub fn goto_enclosing_member_access(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["member_access"])
+    }
+
     pub fn is_object_definition(&self) -> bool {
         self.node().kind() == "object_definition"
     }
@@ -33,8 +41,8 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.node().kind() == "identifier"
     }
 
-    pub fn is_paren_expression(&self) -> bool {
-        self.node().kind() == "paren_expression"
+    pub fn is_dot(&self) -> bool {
+        self.node().kind() == "."
     }
 
     pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
@@ -71,6 +79,7 @@ impl DataFlexDocument {
 
 pub trait TreeCursorExt {
     fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool;
+    fn goto_descendant_for_point(&mut self, point: Point) -> bool;
     fn goto_next_node(&mut self) -> bool;
     fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool;
 }
@@ -88,14 +97,34 @@ impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
         true
     }
 
+    fn goto_descendant_for_point(&mut self, point: Point) -> bool {
+        let mut current = self.clone();
+        let mut did_descend = false;
+        loop {
+            if self.goto_first_child_for_point(point).is_some()
+                && self.node().start_position() <= point
+                && self.node().end_position() >= point
+            {
+                did_descend = true;
+                current = self.clone();
+            } else {
+                self.reset_to(&current);
+                break;
+            }
+        }
+        did_descend
+    }
+
     fn goto_next_node(&mut self) -> bool {
         if self.goto_next_sibling() {
+            while self.goto_first_child() {}
             return true;
         }
 
         let current = self.clone();
         while self.goto_parent() {
             if self.goto_next_sibling() {
+                while self.goto_first_child() {}
                 return true;
             }
         }

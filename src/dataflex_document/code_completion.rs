@@ -32,6 +32,7 @@ impl CodeCompletion {
             DocumentContext::CallReceiverReference => Some(Self::expr_completions(doc, position)),
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
+            DocumentContext::DotMemberExpression => None,
         };
 
         completions

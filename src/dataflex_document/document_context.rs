@@ -8,6 +8,7 @@ pub enum DocumentContext {
     CallReceiverReference,
     Expression,
     ParenExpression,
+    DotMemberExpression,
 }
 
 struct ContextScanner<'a> {
@@ -108,6 +109,13 @@ macro_rules! context_scanner_match {
 
 impl DocumentContext {
     pub fn context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
+        if let Some(context) = Self::dot_member_context(doc, position) {
+            return Some(context);
+        }
+        if let Some(context) = Self::paren_expr_context(doc, position) {
+            return Some(context);
+        }
+
         let mut cursor = doc.cursor()?;
         let start_of_line = Point::new(position.row, 0);
         cursor.goto_first_leaf_node_for_point(start_of_line);
@@ -149,6 +157,25 @@ impl DocumentContext {
             Self::ParenExpression => true,
             Self::ClassReference => false,
             Self::MethodReference(_) => false,
+            Self::DotMemberExpression => false,
+        }
+    }
+
+    fn dot_member_context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
+        let mut cursor = doc.cursor()?;
+        if cursor.goto_descendant_for_point(position) && cursor.goto_enclosing_member_access() {
+            Some(Self::DotMemberExpression)
+        } else {
+            None
+        }
+    }
+
+    fn paren_expr_context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
+        let mut cursor = doc.cursor()?;
+        if cursor.goto_descendant_for_point(position) && cursor.goto_enclosing_paren_expression() {
+            Some(Self::ParenExpression)
+        } else {
+            None
         }
     }
 }
@@ -191,14 +218,21 @@ impl<'a> ContextScanner<'a> {
         if !self.cursor.goto_next_node() || self.cursor.node().start_position() > self.end {
             return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
         }
-        if self.cursor.is_identifier() && self.cursor.node().end_position() >= self.end {
-            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
-        }
 
-        if self.cursor.is_paren_expression() && self.cursor.node().end_position() >= self.end {
-            return Ok(ContextScannerStatus::Yield(
-                DocumentContext::ParenExpression,
-            ));
+        if self.cursor.is_identifier() {
+            if self.cursor.node().end_position() >= self.end {
+                return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
+            }
+            let current = self.cursor.clone();
+            if self.cursor.goto_next_node()
+                && self.cursor.is_dot()
+                && self.cursor.node().end_position() >= self.end
+            {
+                return Ok(ContextScannerStatus::Yield(
+                    DocumentContext::DotMemberExpression,
+                ));
+            }
+            self.cursor.reset_to(&current);
         }
 
         if self.cursor.node().end_position() >= self.end {
@@ -498,5 +532,36 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
         assert_eq!(context, Some(DocumentContext::ParenExpression));
+    }
+
+    #[test]
+    fn test_dot_member_expr_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move shippingAddress.iZipCode to iZipCode\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 24 });
+        assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 21 });
+        assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move shippingAddress.iZipCode\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 24 });
+        assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move shippingAddress.\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 21 });
+        assert_eq!(context, Some(DocumentContext::DotMemberExpression));
     }
 }

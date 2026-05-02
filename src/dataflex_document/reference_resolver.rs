@@ -27,6 +27,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::CallReceiverReference => self.resolve_expr_reference(position),
             DocumentContext::Expression => self.resolve_expr_reference(position),
             DocumentContext::ParenExpression => self.resolve_paren_expr_reference(position),
+            DocumentContext::DotMemberExpression => self.resolve_member_expr_reference(position),
         }
     }
 
@@ -164,6 +165,10 @@ impl<'a> ReferenceResolver<'a> {
                         .filter_map(|s| self.index.symbol_snapshot(s)),
                 ),
         )
+    }
+
+    fn resolve_member_expr_reference(&self, _position: Point) -> IndexSymbolIter<'_> {
+        IndexSymbolIter::empty()
     }
 }
 
