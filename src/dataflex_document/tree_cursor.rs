@@ -29,6 +29,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["paren_expression"])
     }
 
+    pub fn goto_enclosing_postfix_expression(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["postfix_expression"])
+    }
+
     pub fn goto_enclosing_member_access(&mut self) -> bool {
         self.goto_enclosing_node_kind(&["member_access"])
     }

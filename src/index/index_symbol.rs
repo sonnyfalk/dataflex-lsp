@@ -276,6 +276,24 @@ impl IndexSymbolType for MethodSymbol {
     }
 }
 
+impl IndexSymbolType for VariableSymbol {
+    fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self> {
+        if let IndexSymbol::Variable(variable_symbol) = index_symbol {
+            Some(variable_symbol)
+        } else {
+            None
+        }
+    }
+
+    fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
+        if let IndexSymbol::Variable(variable_symbol) = index_symbol {
+            Some(variable_symbol)
+        } else {
+            None
+        }
+    }
+}
+
 impl IndexSymbolRef {
     pub fn new(file_ref: IndexFileRef, symbol_path: SymbolPath) -> Self {
         Self {

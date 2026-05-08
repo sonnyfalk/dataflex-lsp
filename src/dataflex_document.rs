@@ -127,6 +127,15 @@ impl DataFlexDocument {
         vars.into_iter()
     }
 
+    fn find_local_variable(
+        &self,
+        position: Point,
+        name: &index::SymbolName,
+    ) -> Option<index::VariableSymbol> {
+        self.local_variables(position)
+            .find(|variable| variable.symbol_path.name() == name)
+    }
+
     pub fn text_content(&self) -> String {
         self.line_map.text()
     }
@@ -212,9 +221,7 @@ impl DataFlexDocument {
 
         let locations = if context.can_reference_variables()
             && let Some(symbol_name) = self.symbol_at_position(position)
-            && let Some(variable) = self
-                .local_variables(position)
-                .find(|v| v.symbol_path.name() == &symbol_name)
+            && let Some(variable) = self.find_local_variable(position, &symbol_name)
         {
             vec![lsp_types::Location::from(&index::IndexSymbolSnapshot {
                 path: &self.file_path,
