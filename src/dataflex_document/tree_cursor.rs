@@ -49,6 +49,14 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.node().kind() == "."
     }
 
+    pub fn is_paren_expression(&self) -> bool {
+        self.node().kind() == "paren_expression"
+    }
+
+    pub fn is_postfix_expression(&self) -> bool {
+        self.node().kind() == "postfix_expression"
+    }
+
     pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
         if self.node().kind() == "keyword" {
             let mut keyword = self.doc.line_map.text_for_node(&self.node());
@@ -85,6 +93,8 @@ pub trait TreeCursorExt {
     fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool;
     fn goto_descendant_for_point(&mut self, point: Point) -> bool;
     fn goto_next_node(&mut self) -> bool;
+    fn goto_next_leaf_node(&mut self) -> bool;
+    fn goto_leaf_node(&mut self) -> bool;
     fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool;
 }
 
@@ -121,20 +131,34 @@ impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
 
     fn goto_next_node(&mut self) -> bool {
         if self.goto_next_sibling() {
-            while self.goto_first_child() {}
             return true;
         }
 
         let current = self.clone();
         while self.goto_parent() {
             if self.goto_next_sibling() {
-                while self.goto_first_child() {}
                 return true;
             }
         }
 
         self.reset_to(&current);
         false
+    }
+
+    fn goto_next_leaf_node(&mut self) -> bool {
+        if self.goto_next_node() {
+            self.goto_leaf_node();
+            return true;
+        }
+        false
+    }
+
+    fn goto_leaf_node(&mut self) -> bool {
+        let mut did_descend = false;
+        while self.goto_first_child() {
+            did_descend = true;
+        }
+        did_descend
     }
 
     fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool {
