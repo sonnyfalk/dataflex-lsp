@@ -1,5 +1,5 @@
 use super::*;
-use index::MethodKind;
+use index::{IndexSymbolType, MethodKind, StructSymbol};
 
 pub struct CodeCompletion {}
 
@@ -18,6 +18,7 @@ pub enum CompletionItemKind {
     LocalVariable,
     GlobalVariable,
     Function,
+    StructMember,
 }
 
 impl CodeCompletion {
@@ -32,7 +33,7 @@ impl CodeCompletion {
             DocumentContext::CallReceiverReference => Some(Self::expr_completions(doc, position)),
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
-            DocumentContext::DotMemberExpression => None,
+            DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
         };
 
         completions
@@ -156,6 +157,53 @@ impl CodeCompletion {
             .collect()
     }
 
+    fn dot_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
+        let Some(mut cursor) = doc.cursor().and_then(|mut cursor| {
+            cursor
+                .goto_leaf_node_before_point(position)
+                .then_some(cursor)
+        }) else {
+            return vec![];
+        };
+
+        while !cursor.is_dot() {
+            cursor.goto_previous_leaf_node();
+        }
+
+        let position = cursor.node().end_position();
+        let index = doc.index.get();
+        let reference_resolver = ReferenceResolver::new(doc);
+
+        let symbol_snapshot = if cursor.goto_enclosing_member_access()
+            && cursor.goto_previous_sibling()
+            && cursor.is_identifier()
+        {
+            let name = index::SymbolName::from(doc.line_map.text_for_node(&cursor.node()));
+            reference_resolver
+                .resolve_type_of_variable(cursor.node().start_position(), &name)
+                .and_then(|type_name| index.find_struct(&type_name))
+                .and_then(|struct_ref| index.symbol_snapshot(struct_ref))
+        } else {
+            reference_resolver
+                .resolve_reference(DocumentContext::DotMemberExpression, position)
+                .next()
+        };
+
+        symbol_snapshot
+            .and_then(|s| StructSymbol::from_index_symbol(s.symbol))
+            .map(|struct_symbol| {
+                struct_symbol
+                    .members
+                    .iter()
+                    .map(|member| CompletionItem {
+                        label: member.name().to_string(),
+                        kind: CompletionItemKind::StructMember,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     fn local_variable_completions(
         doc: &DataFlexDocument,
         position: Point,
@@ -176,5 +224,97 @@ impl CodeCompletion {
                 label: f.to_string(),
                 kind: CompletionItemKind::Function,
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dot_completions() {
+        let test_content = r#"
+Struct tMyStruct
+    String sName
+End_Struct
+
+Procedure test
+    tMyStruct myStruct
+    Move "test" to myStruct.
+End_Procedure
+                "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 28)).unwrap();
+        assert_eq!(completions.len(), 1);
+
+        let test_content = r#"
+Struct tMyStruct
+    String sName
+End_Struct
+
+Procedure test
+    tMyStruct myStruct
+    Move "test" to myStruct.s
+End_Procedure
+                "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29)).unwrap();
+        assert_eq!(completions.len(), 1);
+
+        let test_content = r#"
+Struct tMyStruct
+    String sName
+End_Struct
+
+Procedure test
+    tMyStruct myStruct
+    Move "test" to myStruct.s
+End_Procedure
+                "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29)).unwrap();
+        assert_eq!(completions.len(), 1);
+
+        let test_content = r#"
+Struct tMyStruct
+    String sName
+End_Struct
+
+Procedure test
+    tMyStruct myStruct
+    Move "test" to myStruct.sName.
+End_Procedure
+                "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 34)).unwrap();
+        assert_eq!(completions.len(), 0);
+
+        let test_content = r#"
+Struct tMyStruct
+    String sName
+End_Struct
+
+Struct tMyOtherStruct
+    tMyStruct myStruct
+End_Struct
+
+Procedure test
+    tMyOtherStruct myOtherStruct
+    Move "test" to myOtherStruct.myStruct.
+End_Procedure
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let completions = CodeCompletion::code_completion(&doc, Point::new(11, 42)).unwrap();
+        assert_eq!(completions.len(), 1);
     }
 }

@@ -45,6 +45,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.node().kind() == "identifier"
     }
 
+    pub fn is_dot(&self) -> bool {
+        self.node().kind() == "."
+    }
+
     pub fn is_paren_expression(&self) -> bool {
         self.node().kind() == "paren_expression"
     }

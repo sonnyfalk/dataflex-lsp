@@ -275,6 +275,7 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
             code_completion::CompletionItemKind::LocalVariable => Self::VARIABLE,
             code_completion::CompletionItemKind::GlobalVariable => Self::VARIABLE,
             code_completion::CompletionItemKind::Function => Self::FUNCTION,
+            code_completion::CompletionItemKind::StructMember => Self::FIELD,
         }
     }
 }
