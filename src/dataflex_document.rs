@@ -80,20 +80,34 @@ impl DataFlexDocument {
             &tree_sitter_dataflex::LANGUAGE.into(),
             r#"
             (parameter
-                type: (typedecl) @type
-                name: (identifier) @name)
+              [
+                (system_typedecl
+                  (system_type) @type
+                  (array_decl)* @array_decl)
+                (custom_typedecl
+                  (identifier) @type
+                  (array_decl)* @array_decl)
+              ]
+              name: (identifier)+ @name)
+
             (variable_declaration
-                (system_typedecl) @type
-                (identifier)+ @name)
+              (system_typedecl
+                (system_type) @type
+                (array_decl)* @array)
+              (identifier)+ @name)
+
             (potential_variable_declaration
-                (custom_typedecl) @type
-                (identifier)+ @name)
+              (custom_typedecl
+                (identifier) @type
+                (array_decl)* @array)
+              (identifier)+ @name)
             "#,
         )
         .expect("Error loading local variables query");
 
         let name_capture_index = query.capture_index_for_name("name").unwrap();
         let type_capture_index = query.capture_index_for_name("type").unwrap();
+        let array_capture_index = query.capture_index_for_name("array").unwrap();
 
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, method_node, self.line_map.text_provider());
@@ -104,7 +118,7 @@ impl DataFlexDocument {
                 .next()
             {
                 let variable_type = self.line_map.text_for_node(&type_node);
-                if type_node.kind() == "custom_typedecl"
+                if type_node.kind() != "system_type"
                     && !self
                         .index
                         .get()
@@ -113,12 +127,23 @@ impl DataFlexDocument {
                     return vars;
                 }
 
+                let array_dimension_count = query_match
+                    .nodes_for_capture_index(array_capture_index)
+                    .count();
                 for name_node in query_match.nodes_for_capture_index(name_capture_index) {
                     let variable_name = self.line_map.text_for_node(&name_node);
+                    let variable_type = if array_dimension_count == 0 {
+                        index::DataFlexDataType::Simple(variable_type.clone().into())
+                    } else {
+                        index::DataFlexDataType::Array(
+                            variable_type.clone().into(),
+                            array_dimension_count,
+                        )
+                    };
                     vars.push(index::VariableSymbol {
                         location: name_node.start_position(),
                         symbol_path: index::SymbolPath::with_name(variable_name),
-                        type_name: variable_type.clone().into(),
+                        data_type: variable_type,
                     });
                 }
             }
@@ -382,49 +407,49 @@ Send foo of oMyObject
         let mut variables = doc.local_variables(Point::new(5, 21));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 3, column: 16 }, symbol_path: SymbolPath(\"iMyInt\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 3, column: 16 }, symbol_path: SymbolPath(\"iMyInt\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 4, column: 15 }, symbol_path: SymbolPath(\"sMyStr\"), type_name: SymbolName(\"String\") })"
+            "Some(VariableSymbol { location: Point { row: 4, column: 15 }, symbol_path: SymbolPath(\"sMyStr\"), data_type: DataFlexDataType(\"String\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
 
         let mut variables = doc.local_variables(Point::new(11, 23));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), type_name: SymbolName(\"String\") })"
+            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
 
         let mut variables = doc.local_variables(Point::new(12, 14));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), type_name: SymbolName(\"String\") })"
+            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), type_name: SymbolName(\"Integer\") })"
+            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
     }
@@ -447,7 +472,7 @@ End_Procedure
         let mut variables = doc.local_variables(Point::new(5, 21));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 5, column: 14 }, symbol_path: SymbolPath(\"myStructVar\"), type_name: SymbolName(\"tMyStruct\") })"
+            "Some(VariableSymbol { location: Point { row: 5, column: 14 }, symbol_path: SymbolPath(\"myStructVar\"), data_type: DataFlexDataType(\"tMyStruct\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
     }

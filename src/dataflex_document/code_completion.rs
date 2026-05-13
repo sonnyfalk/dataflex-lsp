@@ -181,7 +181,7 @@ impl CodeCompletion {
             let name = index::SymbolName::from(doc.line_map.text_for_node(&cursor.node()));
             reference_resolver
                 .resolve_type_of_variable(cursor.node().start_position(), &name)
-                .and_then(|type_name| index.find_struct(&type_name))
+                .and_then(|data_type| index.find_struct(data_type.name()))
                 .and_then(|struct_ref| index.symbol_snapshot(struct_ref))
         } else {
             reference_resolver

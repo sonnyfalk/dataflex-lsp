@@ -61,11 +61,25 @@
 
 (struct_declaration
   (struct_member
-    (typedecl) @type
+    [
+      (system_typedecl
+        (system_type) @type
+        (array_decl)* @array)
+      (custom_typedecl
+        (identifier) @type
+        (array_decl)* @array)
+    ]
     (identifier) @name)
   (#set! index.element struct_member)) @definition.struct_member
 
 (global_variable_declaration
-  (typedecl) @type
+  [
+    (system_typedecl
+      (system_type) @type
+      (array_decl)* @array)
+    (custom_typedecl
+      (identifier) @type
+      (array_decl)* @array)
+  ]
   (identifier) @name
   (#set! index.element global_variable_declaration)) @definition.variable.global

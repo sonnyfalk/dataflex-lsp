@@ -182,6 +182,7 @@ impl Indexer {
         let name_capture_index = query.capture_index_for_name("name").unwrap();
         let superclass_capture_index = query.capture_index_for_name("superclass").unwrap();
         let type_capture_index = query.capture_index_for_name("type").unwrap();
+        let array_capture_index = query.capture_index_for_name("array").unwrap();
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, tree.root_node(), content);
 
@@ -274,13 +275,21 @@ impl Indexer {
                                 .next()
                                 .and_then(|n| n.utf8_text(content).ok())
                                 .unwrap_or_default();
+                            let array_dimension_count = query_match
+                                .nodes_for_capture_index(array_capture_index)
+                                .count();
+                            let variable_type = if array_dimension_count == 0 {
+                                DataFlexDataType::Simple(type_name.into())
+                            } else {
+                                DataFlexDataType::Array(type_name.into(), array_dimension_count)
+                            };
                             let variable_symbol = VariableSymbol {
                                 location: name_node.start_position(),
                                 symbol_path: SymbolPath::with_parent_and_name(
                                     &struct_symbol.symbol_path,
                                     name,
                                 ),
-                                type_name: SymbolName::from(type_name),
+                                data_type: variable_type,
                             };
                             struct_symbol
                                 .members
@@ -363,10 +372,18 @@ impl Indexer {
                                 .next()
                                 .and_then(|n| n.utf8_text(content).ok())
                                 .unwrap_or_default();
+                            let array_dimension_count = query_match
+                                .nodes_for_capture_index(array_capture_index)
+                                .count();
+                            let variable_type = if array_dimension_count == 0 {
+                                DataFlexDataType::Simple(type_name.into())
+                            } else {
+                                DataFlexDataType::Array(type_name.into(), array_dimension_count)
+                            };
                             let variable_symbol = VariableSymbol {
                                 location: name_node.start_position(),
                                 symbol_path: SymbolPath::with_name(name),
-                                type_name: SymbolName::from(type_name),
+                                data_type: variable_type,
                             };
                             index_file
                                 .symbols
@@ -674,7 +691,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Variable(VariableSymbol { location: Point { row: 0, column: 24 }, symbol_path: SymbolPath(\"giMyGlobalVar\"), type_name: SymbolName(\"Integer\") })]"
+            "[Variable(VariableSymbol { location: Point { row: 0, column: 24 }, symbol_path: SymbolPath(\"giMyGlobalVar\"), data_type: DataFlexDataType(\"Integer\") })]"
         );
     }
 
@@ -697,7 +714,7 @@ End_Struct
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") }), Variable(VariableSymbol { location: Point { row: 3, column: 14 }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), type_name: SymbolName(\"Integer[]\") })] })]"
+            "[Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") }), Variable(VariableSymbol { location: Point { row: 3, column: 14 }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), data_type: DataFlexDataType(\"Integer[]\") })] })]"
         );
     }
 }

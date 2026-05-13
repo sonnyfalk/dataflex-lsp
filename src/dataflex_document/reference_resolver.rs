@@ -1,7 +1,7 @@
 use super::*;
 use index::{
-    ClassSymbol, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind, ReadableIndexRef,
-    StructSymbol, SymbolName, VariableSymbol,
+    ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
+    ReadableIndexRef, StructSymbol, SymbolName, VariableSymbol,
 };
 
 pub struct ReferenceResolver<'a> {
@@ -36,7 +36,7 @@ impl<'a> ReferenceResolver<'a> {
         &self,
         position: Point,
         name: &SymbolName,
-    ) -> Option<SymbolName> {
+    ) -> Option<DataFlexDataType> {
         self.doc
             .find_local_variable(position, &name)
             .as_ref()
@@ -47,7 +47,7 @@ impl<'a> ReferenceResolver<'a> {
                     .and_then(|v| self.index.symbol_snapshot(v))
                     .and_then(|s| VariableSymbol::from_index_symbol(s.symbol))
             })
-            .map(|variable| variable.type_name.clone())
+            .map(|variable| variable.data_type.clone())
     }
 
     fn resolve_class_reference(&self, position: Point) -> IndexSymbolIter<'_> {
@@ -220,7 +220,7 @@ impl<'a> ReferenceResolver<'a> {
         {
             let current_symbol = self
                 .resolve_type_of_variable(position, &variable_name)
-                .and_then(|type_name| self.index.find_struct(&type_name))
+                .and_then(|data_type| self.index.find_struct(data_type.name()))
                 .and_then(|struct_ref| self.index.symbol_snapshot(struct_ref));
 
             query_match
@@ -232,7 +232,7 @@ impl<'a> ReferenceResolver<'a> {
                         .and_then(|cs| VariableSymbol::from_index_symbol(cs.symbol))
                     {
                         self.index
-                            .find_struct(&variable.type_name)
+                            .find_struct(&variable.data_type.name())
                             .and_then(|struct_ref| self.index.symbol_snapshot(struct_ref))
                     } else {
                         current_symbol
@@ -396,14 +396,14 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 21));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") })] }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") })] }) })"
         );
     }
 
@@ -454,21 +454,21 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 35));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 25));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: Point { row: 6, column: 14 }, symbol_path: SymbolPath(\"tMyOtherStruct.myStruct\"), type_name: SymbolName(\"tMyStruct\") }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: Point { row: 6, column: 14 }, symbol_path: SymbolPath(\"tMyOtherStruct.myStruct\"), data_type: DataFlexDataType(\"tMyStruct\") }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") })] }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -493,7 +493,7 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(7, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") })] }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -522,7 +522,7 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(11, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), type_name: SymbolName(\"String\") })] }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }

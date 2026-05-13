@@ -56,7 +56,14 @@ pub struct PropertySymbol {
 pub struct VariableSymbol {
     pub location: Point,
     pub symbol_path: SymbolPath,
-    pub type_name: SymbolName,
+    pub data_type: DataFlexDataType,
+}
+
+#[derive(Clone)]
+#[allow(dead_code)]
+pub enum DataFlexDataType {
+    Simple(SymbolName),
+    Array(SymbolName, usize),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -161,9 +168,35 @@ impl From<&str> for SymbolName {
     }
 }
 
-impl ToString for SymbolName {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl std::fmt::Display for SymbolName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl DataFlexDataType {
+    pub fn name(&self) -> &SymbolName {
+        match self {
+            Self::Simple(type_name) => type_name,
+            Self::Array(type_name, _) => type_name,
+        }
+    }
+}
+
+impl std::fmt::Display for DataFlexDataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Simple(type_name) => write!(f, "{type_name}"),
+            Self::Array(type_name, dimension_count) => {
+                write!(f, "{type_name}{}", "[]".repeat(*dimension_count))
+            }
+        }
+    }
+}
+
+impl std::fmt::Debug for DataFlexDataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DataFlexDataType(\"{}\")", self.to_string())
     }
 }
 
