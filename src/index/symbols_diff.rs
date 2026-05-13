@@ -87,6 +87,7 @@ fn diff_symbols<'a>(
                     (IndexSymbol::Method(_), _) => None,
                     (IndexSymbol::Property(_), _) => None,
                     (IndexSymbol::Variable(_), _) => None,
+                    (IndexSymbol::Alias(_), _) => None,
                 };
                 if let Some(mut inner_diff) = inner_diff {
                     symbols_diff
@@ -574,6 +575,102 @@ mod tests {
         let new_index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Struct tMyRenamedStruct\nEnd_Struct\n",
+            "test.pkg".into(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_add_alias() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\nDefine MyOtherAlias for MyOtherOriginal\n",
+            "test.pkg".into(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 1);
+        assert_eq!(symbols_diff.removed_symbols.len(), 0);
+    }
+
+    #[test]
+    fn test_diff_symbols_remove_alias() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\nDefine MyOtherAlias for MyOtherOriginal\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\n",
+            "test.pkg".into(),
+            &new_index_ref,
+        );
+
+        let orig_index = index_ref.get();
+        let new_index = new_index_ref.get();
+        let symbols_diff = orig_index
+            .files
+            .get(&IndexFileRef::from("test.pkg"))
+            .unwrap()
+            .diff_symbols(
+                new_index
+                    .files
+                    .get(&IndexFileRef::from("test.pkg"))
+                    .unwrap(),
+            );
+        assert_eq!(symbols_diff.added_symbols.len(), 0);
+        assert_eq!(symbols_diff.removed_symbols.len(), 1);
+    }
+
+    #[test]
+    fn test_diff_symbols_rename_alias() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let new_index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Define MyRenamedAlias for MyOriginal\n",
             "test.pkg".into(),
             &new_index_ref,
         );

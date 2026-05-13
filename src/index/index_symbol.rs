@@ -9,6 +9,7 @@ pub enum IndexSymbol {
     Method(MethodSymbol),
     Property(PropertySymbol),
     Variable(VariableSymbol),
+    Alias(AliasSymbol),
 }
 
 #[derive(Debug)]
@@ -36,14 +37,6 @@ pub struct MethodSymbol {
     pub kind: MethodKind,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[allow(dead_code)]
-pub enum MethodKind {
-    Msg,
-    Get,
-    Set,
-}
-
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct PropertySymbol {
@@ -59,11 +52,34 @@ pub struct VariableSymbol {
     pub data_type: DataFlexDataType,
 }
 
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct AliasSymbol {
+    pub location: Point,
+    pub symbol_path: SymbolPath,
+    pub alias: ValueReference,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
+pub enum MethodKind {
+    Msg,
+    Get,
+    Set,
+}
+
 #[derive(Clone)]
 #[allow(dead_code)]
 pub enum DataFlexDataType {
     Simple(SymbolName),
     Array(SymbolName, usize),
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum ValueReference {
+    Symbol(SymbolName),
+    Value(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -93,6 +109,7 @@ impl IndexSymbol {
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
             Self::Property(property_symbol) => property_symbol.symbol_path.name(),
             Self::Variable(variable_symbol) => variable_symbol.symbol_path.name(),
+            Self::Alias(alias_symbol) => alias_symbol.symbol_path.name(),
         }
     }
 
@@ -104,6 +121,7 @@ impl IndexSymbol {
             Self::Method(method_symbol) => method_symbol.location,
             Self::Property(property_symbol) => property_symbol.location,
             Self::Variable(variable_symbol) => variable_symbol.location,
+            Self::Alias(alias_symbol) => alias_symbol.location,
         }
     }
 
@@ -127,12 +145,16 @@ impl IndexSymbol {
             (Self::Variable(variable_symbol), Self::Variable(other_variable_symbol)) => {
                 variable_symbol.symbol_path == other_variable_symbol.symbol_path
             }
+            (Self::Alias(alias_symbol), Self::Alias(other_alias_symbol)) => {
+                alias_symbol.symbol_path == other_alias_symbol.symbol_path
+            }
             (Self::Class(_), _) => false,
             (Self::Object(_), _) => false,
             (Self::Struct(_), _) => false,
             (Self::Method(_), _) => false,
             (Self::Property(_), _) => false,
             (Self::Variable(_), _) => false,
+            (Self::Alias(_), _) => false,
         }
     }
 
@@ -144,6 +166,7 @@ impl IndexSymbol {
             Self::Method(_) => None,
             Self::Property(_) => None,
             Self::Variable(_) => None,
+            Self::Alias(_) => None,
         }
     }
 

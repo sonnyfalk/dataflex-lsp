@@ -83,3 +83,23 @@
   ]
   (identifier) @name
   (#set! index.element global_variable_declaration)) @definition.variable.global
+
+(define_declaration
+  name: (identifier) @name
+  value: [
+    (identifier) @name_reference
+    (number_literal) @value_reference
+    (string_literal) @value_reference
+    (paren_expression) @value_reference
+  ]?
+  (#set! index.element alias_definition)) @definition.alias
+
+(replace_declaration
+  name: (identifier) @name
+  value: [
+    (identifier) @name_reference
+    (number_literal) @value_reference
+    (string_literal) @value_reference
+    (paren_expression) @value_reference
+  ]
+  (#set! index.element alias_definition)) @definition.alias

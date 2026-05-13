@@ -183,6 +183,8 @@ impl Indexer {
         let superclass_capture_index = query.capture_index_for_name("superclass").unwrap();
         let type_capture_index = query.capture_index_for_name("type").unwrap();
         let array_capture_index = query.capture_index_for_name("array").unwrap();
+        let value_ref_capture_index = query.capture_index_for_name("value_reference").unwrap();
+        let name_ref_capture_index = query.capture_index_for_name("name_reference").unwrap();
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, tree.root_node(), content);
 
@@ -390,6 +392,36 @@ impl Indexer {
                                 .push(IndexSymbol::Variable(variable_symbol));
                         }
                     }
+                    Some(TagsQueryIndexElement::AliasDefinition) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                        {
+                            let value = if let Some(value) = query_match
+                                .nodes_for_capture_index(value_ref_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                            {
+                                ValueReference::Value(value.into())
+                            } else if let Some(name_ref) = query_match
+                                .nodes_for_capture_index(name_ref_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                            {
+                                ValueReference::Symbol(name_ref.into())
+                            } else {
+                                //FIXME: This should increment by one for enum list and use "1" otherwise
+                                ValueReference::Value(String::new())
+                            };
+                            let alias_symbol = AliasSymbol {
+                                location: name_node.start_position(),
+                                symbol_path: SymbolPath::with_name(name),
+                                alias: value,
+                            };
+                            index_file.symbols.push(IndexSymbol::Alias(alias_symbol));
+                        }
+                    }
                     Some(TagsQueryIndexElement::PopStackSymbol) => {
                         if let Some(symbol) = stack.pop() {
                             match stack.last_mut() {
@@ -401,6 +433,7 @@ impl Indexer {
                                 | Some(IndexSymbol::Method(_))
                                 | Some(IndexSymbol::Property(_))
                                 | Some(IndexSymbol::Variable(_))
+                                | Some(IndexSymbol::Alias(_))
                                 | None => {
                                     index_file.symbols.push(symbol);
                                 }
@@ -516,6 +549,7 @@ enum TagsQueryIndexElement {
     StructDeclaration,
     StructMember,
     GlobalVariableDeclaration,
+    AliasDefinition,
     PopStackSymbol,
 }
 
@@ -715,6 +749,29 @@ End_Struct
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") }), Variable(VariableSymbol { location: Point { row: 3, column: 14 }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), data_type: DataFlexDataType(\"Integer[]\") })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_alias() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Define MyAlias for MyOriginalSymbol
+Define someValue for 1
+Define someUndefinedValue
+#REPLACE MyNewSymbol MyOldSymbol
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Alias(AliasSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"MyAlias\"), alias: Symbol(SymbolName(\"MyOriginalSymbol\")) }), Alias(AliasSymbol { location: Point { row: 2, column: 7 }, symbol_path: SymbolPath(\"someValue\"), alias: Value(\"1\") }), Alias(AliasSymbol { location: Point { row: 3, column: 7 }, symbol_path: SymbolPath(\"someUndefinedValue\"), alias: Value(\"\") }), Alias(AliasSymbol { location: Point { row: 4, column: 9 }, symbol_path: SymbolPath(\"MyNewSymbol\"), alias: Symbol(SymbolName(\"MyOldSymbol\")) })]"
         );
     }
 }

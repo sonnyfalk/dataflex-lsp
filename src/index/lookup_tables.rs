@@ -9,6 +9,7 @@ pub struct LookupTables {
     method_lookup_tables: [MultiMap<SymbolName, IndexSymbolRef>; 3],
     property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     global_variable_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
+    alias_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
 }
 
 impl LookupTables {
@@ -20,6 +21,7 @@ impl LookupTables {
             method_lookup_tables: [MultiMap::new(), MultiMap::new(), MultiMap::new()],
             property_lookup_table: MultiMap::new(),
             global_variable_lookup_table: HashMap::new(),
+            alias_lookup_table: HashMap::new(),
         }
     }
 
@@ -80,6 +82,15 @@ impl LookupTables {
 
     pub fn global_variable_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
         &mut self.global_variable_lookup_table
+    }
+
+    #[cfg(test)]
+    pub fn alias_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+        &self.alias_lookup_table
+    }
+
+    pub fn alias_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+        &mut self.alias_lookup_table
     }
 
     pub fn update(&mut self, symbols_diff: SymbolsDiff, file_ref: IndexFileRef) {
@@ -151,6 +162,10 @@ impl LookupTables {
                     self.global_variable_lookup_table_mut()
                         .remove(&variable_symbol.symbol_path.name());
                 }
+                IndexSymbol::Alias(alias_symbol) => {
+                    self.alias_lookup_table_mut()
+                        .remove(&alias_symbol.symbol_path.name());
+                }
             }
         }
     }
@@ -198,6 +213,12 @@ impl LookupTables {
                     self.global_variable_lookup_table_mut().insert(
                         variable_symbol.symbol_path.name().clone(),
                         IndexSymbolRef::new(file_ref.clone(), variable_symbol.symbol_path.clone()),
+                    );
+                }
+                IndexSymbol::Alias(alias_symbol) => {
+                    self.alias_lookup_table_mut().insert(
+                        alias_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef::new(file_ref.clone(), alias_symbol.symbol_path.clone()),
                     );
                 }
             }
@@ -712,6 +733,95 @@ mod tests {
                     .get(&"tOtherStruct".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"tOtherStruct\") })"
+        );
+    }
+
+    #[test]
+    fn test_alias_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .alias_lookup_table()
+                    .get(&"MyAlias".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyAlias\") })"
+        );
+
+        Indexer::index_test_content(
+            "Define MyAlias for MyOriginal\nDefine MyOtherAlias for MyOtherOriginal\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .alias_lookup_table()
+                    .get(&"MyAlias".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyAlias\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .alias_lookup_table()
+                    .get(&"MyOtherAlias".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyOtherAlias\") })"
+        );
+
+        Indexer::index_test_content(
+            "Define MyRenamedAlias for MyOriginal\nDefine MyOtherAlias for MyOtherOriginal\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .struct_lookup_table()
+                    .get(&"MyAlias".into())
+            ),
+            "None"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .alias_lookup_table()
+                    .get(&"MyRenamedAlias".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyRenamedAlias\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .alias_lookup_table()
+                    .get(&"MyOtherAlias".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyOtherAlias\") })"
         );
     }
 }
