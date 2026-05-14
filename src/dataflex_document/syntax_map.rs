@@ -209,6 +209,17 @@ impl SyntaxMap {
                                         None
                                     }
                                 }
+                                "entity.name" => {
+                                    let name =
+                                        SymbolName::from(doc.line_map.text_in_range(start, end));
+                                    if index.is_known_object(&name) {
+                                        Some(SyntaxToken::new(start, end, 4, prev_pos))
+                                    } else if index.is_known_alias_symbol(&name) {
+                                        Some(SyntaxToken::new(start, end, 7, prev_pos))
+                                    } else {
+                                        None
+                                    }
+                                }
                                 _ => None,
                             };
                             if let Some(token) = token {

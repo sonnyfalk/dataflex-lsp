@@ -153,12 +153,9 @@ impl<'a> ReferenceResolver<'a> {
             self.index
                 .find_objects(&name)
                 .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
-                .filter_map(|s| self.index.symbol_snapshot(s))
-                .chain(
-                    self.index
-                        .find_global_variables(&name)
-                        .filter_map(|s| self.index.symbol_snapshot(s)),
-                ),
+                .chain(self.index.find_global_variables(&name))
+                .chain(self.index.find_alias_symbols(&name))
+                .filter_map(|s| self.index.symbol_snapshot(s)),
         )
     }
 
@@ -171,18 +168,14 @@ impl<'a> ReferenceResolver<'a> {
             self.index
                 .find_objects(&name)
                 .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
-                .filter_map(|s| self.index.symbol_snapshot(s))
-                .chain(
-                    self.index
-                        .find_global_variables(&name)
-                        .filter_map(|s| self.index.symbol_snapshot(s)),
-                )
+                .chain(self.index.find_global_variables(&name))
+                .chain(self.index.find_alias_symbols(&name))
+                .chain(self.index.find_class(&name))
                 .chain(
                     //FIXME: Filter on call receiver, like `resolve_method_reference()`.
-                    self.index
-                        .find_members(&name, MethodKind::Get)
-                        .filter_map(|s| self.index.symbol_snapshot(s)),
-                ),
+                    self.index.find_members(&name, MethodKind::Get),
+                )
+                .filter_map(|s| self.index.symbol_snapshot(s)),
         )
     }
 

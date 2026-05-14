@@ -19,6 +19,7 @@ pub enum CompletionItemKind {
     GlobalVariable,
     Function,
     StructMember,
+    EnumMember,
 }
 
 impl CodeCompletion {
@@ -108,6 +109,16 @@ impl CodeCompletion {
                         kind: CompletionItemKind::Object,
                     }),
             )
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_alias_symbols()
+                    .drain(..)
+                    .map(|alias_name| CompletionItem {
+                        label: alias_name.to_string(),
+                        kind: CompletionItemKind::EnumMember,
+                    }),
+            )
             .collect()
     }
 
@@ -137,6 +148,16 @@ impl CodeCompletion {
             .chain(
                 doc.index
                     .get()
+                    .all_known_alias_symbols()
+                    .drain(..)
+                    .map(|alias_name| CompletionItem {
+                        label: alias_name.to_string(),
+                        kind: CompletionItemKind::EnumMember,
+                    }),
+            )
+            .chain(
+                doc.index
+                    .get()
                     .all_known_methods(MethodKind::Get)
                     .drain(..)
                     .map(|method_name| CompletionItem {
@@ -152,6 +173,16 @@ impl CodeCompletion {
                     .map(|property_name| CompletionItem {
                         label: property_name.to_string(),
                         kind: CompletionItemKind::Property,
+                    }),
+            )
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_classes()
+                    .drain(..)
+                    .map(|class_name| CompletionItem {
+                        label: class_name.to_string(),
+                        kind: CompletionItemKind::Class,
                     }),
             )
             .collect()

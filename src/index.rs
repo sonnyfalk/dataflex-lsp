@@ -163,6 +163,28 @@ impl Index {
             .into_iter()
     }
 
+    pub fn is_known_alias_symbol(&self, name: &SymbolName) -> bool {
+        self.lookup_tables.alias_lookup_table().get(name).is_some()
+    }
+
+    pub fn all_known_alias_symbols(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .alias_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    pub fn find_alias_symbols(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
+        self.lookup_tables
+            .alias_lookup_table()
+            .get(name)
+            .into_iter()
+    }
+
     #[allow(dead_code)]
     pub fn find_struct(&self, name: &SymbolName) -> Option<&IndexSymbolRef> {
         self.lookup_tables.struct_lookup_table().get(name)

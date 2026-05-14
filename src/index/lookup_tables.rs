@@ -84,7 +84,6 @@ impl LookupTables {
         &mut self.global_variable_lookup_table
     }
 
-    #[cfg(test)]
     pub fn alias_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
         &self.alias_lookup_table
     }
