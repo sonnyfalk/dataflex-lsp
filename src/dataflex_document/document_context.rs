@@ -132,6 +132,9 @@ impl DocumentContext {
             ("keyword", "class") => {
                 context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference)
             }
+            ("keyword", "import_class_protocol") => {
+                context_scanner_match!(scanner, identifier -> Self::ClassReference)
+            }
             ("keyword", "send") => {
                 context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), ("to" | "of", identifier -> Self::CallReceiverReference)?, expr*)
             }
@@ -329,6 +332,22 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
+        assert_eq!(context, Some(DocumentContext::ClassReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Class cTest is a cBase\nImport_Class_Protocol \nEnd_Class\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 22 });
+        assert_eq!(context, Some(DocumentContext::ClassReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Class cTest is a cBase\nImport_Class_Protocol cMyMixin\nEnd_Class\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 23 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
     }
 

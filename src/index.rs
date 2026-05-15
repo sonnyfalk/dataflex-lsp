@@ -439,6 +439,7 @@ impl Index {
         ClassHierarchyIter {
             index: self,
             current: Some(class),
+            mixins: Default::default(),
         }
     }
 
@@ -462,21 +463,36 @@ impl Index {
 pub struct ClassHierarchyIter<'a> {
     index: &'a Index,
     current: Option<&'a ClassSymbol>,
+    mixins: core::slice::Iter<'a, SymbolName>,
 }
 
 impl<'a> Iterator for ClassHierarchyIter<'a> {
     type Item = &'a ClassSymbol;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next = self
-            .current
-            .and_then(|class| self.index.find_class(&class.superclass))
+        if let Some(mixin) = self
+            .mixins
+            .next()
+            .and_then(|class_name| self.index.find_class(class_name))
             .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
-            .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol));
-        if let Some(next) = next {
-            self.current.replace(next)
+            .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol))
+        {
+            Some(mixin)
         } else {
-            self.current.take()
+            self.mixins = self
+                .current
+                .map(|class| class.mixins.iter())
+                .unwrap_or_default();
+            let next = self
+                .current
+                .and_then(|class| self.index.find_class(&class.superclass))
+                .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+                .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol));
+            if let Some(next) = next {
+                self.current.replace(next)
+            } else {
+                self.current.take()
+            }
         }
     }
 }
@@ -615,11 +631,61 @@ mod tests {
         let mut class_hierarchy = index.class_hierarchy(class);
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: Point { row: 2, column: 6 }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), members: [] })"
+            "Some(ClassSymbol { location: Point { row: 2, column: 6 }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [], members: [] })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })"
+            "Some(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })"
+        );
+        assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
+    }
+
+    #[test]
+    fn test_class_hierarchy_with_mixins() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Class cMyMixin is a cMixin
+End_Class
+
+Class cMyOtherMixin is a cMixin
+End_Class
+
+Class cMyBaseClass is a cBaseClass
+    Import_Class_Protocol cMyMixin
+End_Class
+
+
+Class cMySubClass is a cMyBaseClass
+    Import_Class_Protocol cMyOtherMixin
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+        let index = index_ref.get();
+        let class = index
+            .find_class(&"cMySubClass".into())
+            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol))
+            .unwrap();
+
+        let mut class_hierarchy = index.class_hierarchy(class);
+        assert_eq!(
+            format!("{:?}", class_hierarchy.next()),
+            "Some(ClassSymbol { location: Point { row: 12, column: 6 }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [SymbolName(\"cMyOtherMixin\")], members: [] })"
+        );
+        assert_eq!(
+            format!("{:?}", class_hierarchy.next()),
+            "Some(ClassSymbol { location: Point { row: 4, column: 6 }, symbol_path: SymbolPath(\"cMyOtherMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [] })"
+        );
+        assert_eq!(
+            format!("{:?}", class_hierarchy.next()),
+            "Some(ClassSymbol { location: Point { row: 7, column: 6 }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [SymbolName(\"cMyMixin\")], members: [] })"
+        );
+        assert_eq!(
+            format!("{:?}", class_hierarchy.next()),
+            "Some(ClassSymbol { location: Point { row: 1, column: 6 }, symbol_path: SymbolPath(\"cMyMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [] })"
         );
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }

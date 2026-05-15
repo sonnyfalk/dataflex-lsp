@@ -219,6 +219,7 @@ impl Indexer {
                                 location: name_node.start_position(),
                                 symbol_path: SymbolPath::with_name(name),
                                 superclass: superclass.into(),
+                                mixins: Vec::new(),
                                 members: Vec::new(),
                             };
                             stack.push(IndexSymbol::Class(class_symbol));
@@ -244,6 +245,7 @@ impl Indexer {
                                     })
                                     .unwrap_or_else(|| SymbolPath::with_name(name)),
                                 superclass: superclass.into(),
+                                mixins: Vec::new(),
                                 members: Vec::new(),
                             };
                             stack.push(IndexSymbol::Object(class_symbol));
@@ -422,6 +424,18 @@ impl Indexer {
                             index_file.symbols.push(IndexSymbol::Alias(alias_symbol));
                         }
                     }
+                    Some(TagsQueryIndexElement::MixinClass) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                            && let Some(class_symbol) = stack
+                                .last_mut()
+                                .and_then(ClassSymbol::from_index_symbol_mut)
+                        {
+                            class_symbol.mixins.push(name.into());
+                        }
+                    }
                     Some(TagsQueryIndexElement::PopStackSymbol) => {
                         if let Some(symbol) = stack.pop() {
                             match stack.last_mut() {
@@ -550,6 +564,7 @@ enum TagsQueryIndexElement {
     StructMember,
     GlobalVariableDeclaration,
     AliasDefinition,
+    MixinClass,
     PopStackSymbol,
 }
 
@@ -599,7 +614,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
         );
     }
 
@@ -617,7 +632,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg })] })]"
         );
     }
 
@@ -635,7 +650,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get })] })]"
         );
     }
 
@@ -653,7 +668,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\") })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\") })] })]"
         );
     }
 
@@ -671,7 +686,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
         );
     }
 
@@ -689,7 +704,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [Object(ClassSymbol { location: Point { row: 1, column: 11 }, symbol_path: SymbolPath(\"oMyObj.oMyInner\"), superclass: SymbolName(\"cBaseClass\"), members: [] })] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Object(ClassSymbol { location: Point { row: 1, column: 11 }, symbol_path: SymbolPath(\"oMyObj.oMyInner\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })] })]"
         );
     }
 
@@ -707,7 +722,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg })] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg })] })]"
         );
     }
 
@@ -772,6 +787,29 @@ Define someUndefinedValue
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Alias(AliasSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"MyAlias\"), alias: Symbol(SymbolName(\"MyOriginalSymbol\")) }), Alias(AliasSymbol { location: Point { row: 2, column: 7 }, symbol_path: SymbolPath(\"someValue\"), alias: Value(\"1\") }), Alias(AliasSymbol { location: Point { row: 3, column: 7 }, symbol_path: SymbolPath(\"someUndefinedValue\"), alias: Value(\"\") }), Alias(AliasSymbol { location: Point { row: 4, column: 9 }, symbol_path: SymbolPath(\"MyNewSymbol\"), alias: Symbol(SymbolName(\"MyOldSymbol\")) })]"
+        );
+    }
+
+    #[test]
+    fn test_mixin_class() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Class cFoo is a cBar
+    Import_Class_Protocol cMyMixin
+    Import_Class_Protocol cMyOtherMixin
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: Point { row: 1, column: 6 }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [SymbolName(\"cMyMixin\"), SymbolName(\"cMyOtherMixin\")], members: [] })]"
         );
     }
 }

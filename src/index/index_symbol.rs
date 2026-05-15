@@ -18,6 +18,7 @@ pub struct ClassSymbol {
     pub location: Point,
     pub symbol_path: SymbolPath,
     pub superclass: SymbolName,
+    pub mixins: Vec<SymbolName>,
     pub members: Vec<IndexSymbol>,
 }
 

@@ -103,3 +103,7 @@
     (paren_expression) @value_reference
   ]
   (#set! index.element alias_definition)) @definition.alias
+
+(mixin_class
+  name: (identifier) @name
+  (#set! index.element mixin_class)) @definition.mixin
