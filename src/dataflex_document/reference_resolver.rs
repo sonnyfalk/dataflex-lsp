@@ -25,7 +25,6 @@ impl<'a> ReferenceResolver<'a> {
         match context {
             DocumentContext::ClassReference => self.resolve_class_reference(position),
             DocumentContext::MethodReference(kind) => self.resolve_method_reference(position, kind),
-            DocumentContext::CallReceiverReference => self.resolve_expr_reference(position),
             DocumentContext::Expression => self.resolve_expr_reference(position),
             DocumentContext::ParenExpression => self.resolve_paren_expr_reference(position),
             DocumentContext::DotMemberExpression => self.resolve_member_expr_reference(position),

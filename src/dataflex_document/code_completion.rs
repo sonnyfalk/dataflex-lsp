@@ -31,7 +31,6 @@ impl CodeCompletion {
         let completions = match context {
             DocumentContext::ClassReference => Some(Self::class_completions(doc)),
             DocumentContext::MethodReference(kind) => Some(Self::method_completions(doc, kind)),
-            DocumentContext::CallReceiverReference => Some(Self::expr_completions(doc, position)),
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),

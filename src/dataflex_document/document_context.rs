@@ -5,7 +5,6 @@ use index::MethodKind;
 pub enum DocumentContext {
     ClassReference,
     MethodReference(MethodKind),
-    CallReceiverReference,
     Expression,
     ParenExpression,
     DotMemberExpression,
@@ -139,13 +138,13 @@ impl DocumentContext {
                 context_scanner_match!(scanner, identifier -> Self::ClassReference)
             }
             ("keyword", "send") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), ("to" | "of", identifier -> Self::CallReceiverReference)?, expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), ("to" | "of", expr)?, expr*)
             }
             ("keyword", "get") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), ("of", identifier -> Self::CallReceiverReference)?, expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), ("of", expr)?, expr*)
             }
             ("keyword", "set") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", identifier -> Self::CallReceiverReference)?, "to", expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", expr)?, "to", expr*)
             }
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
@@ -159,7 +158,6 @@ impl DocumentContext {
 
     pub fn can_reference_variables(&self) -> bool {
         match self {
-            Self::CallReceiverReference => true,
             Self::Expression => true,
             Self::ParenExpression => true,
             Self::ClassReference => false,
@@ -426,7 +424,7 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
-        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+        assert_eq!(context, Some(DocumentContext::Expression));
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
@@ -434,7 +432,7 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
-        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+        assert_eq!(context, Some(DocumentContext::Expression));
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
@@ -442,7 +440,7 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
-        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+        assert_eq!(context, Some(DocumentContext::Expression));
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
@@ -450,7 +448,7 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
-        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+        assert_eq!(context, Some(DocumentContext::Expression));
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
@@ -458,7 +456,7 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
-        assert_eq!(context, Some(DocumentContext::CallReceiverReference));
+        assert_eq!(context, Some(DocumentContext::Expression));
     }
 
     #[test]
@@ -517,6 +515,14 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Get Foo of (oMyObj) arg1\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 22 });
         assert_eq!(context, Some(DocumentContext::Expression));
 
         let doc = DataFlexDocument::new(
