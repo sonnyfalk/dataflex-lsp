@@ -14,7 +14,13 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn goto_enclosing_method_call(&mut self) -> bool {
-        self.goto_enclosing_node_kind(&["send_statement", "get_statement", "set_statement"])
+        self.goto_enclosing_node_kind(&[
+            "send_statement",
+            "get_statement",
+            "set_statement",
+            "web_get_statement",
+            "web_set_statement",
+        ])
     }
 
     pub fn goto_enclosing_object_or_class(&mut self) -> bool {

@@ -146,6 +146,12 @@ impl DocumentContext {
             ("keyword", "set") => {
                 context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", expr)?, "to", expr*)
             }
+            ("keyword", "webget") => {
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), ("of", expr)?, expr*)
+            }
+            ("keyword", "webset") => {
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", expr)?, "to", expr*)
+            }
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
             }
@@ -390,10 +396,32 @@ mod test {
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
+            "WebGet Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Get))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Set Foo\n",
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 6 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Set))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebSet Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
         assert_eq!(
             context,
             Some(DocumentContext::MethodReference(MethodKind::Set))
@@ -456,6 +484,22 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebGet Foo of oMyObj\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 17 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebSet Foo of oMyObj\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 17 });
         assert_eq!(context, Some(DocumentContext::Expression));
     }
 
@@ -539,6 +583,38 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebGet Foo of oMyObj arg1\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebGet Foo arg1\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebGet Foo of oMyObj arg1\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "WebGet Foo of (oMyObj) arg1\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 25 });
         assert_eq!(context, Some(DocumentContext::Expression));
     }
 
