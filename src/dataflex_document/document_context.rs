@@ -132,6 +132,9 @@ impl DocumentContext {
             ("keyword", "class") => {
                 context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference)
             }
+            ("keyword", "composite") => {
+                context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference)
+            }
             ("keyword", "import_class_protocol") => {
                 context_scanner_match!(scanner, identifier -> Self::ClassReference)
             }
@@ -147,7 +150,8 @@ impl DocumentContext {
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
             }
-            _ => None,
+            // Default fallback to recognize expression context as appropriate for all other commands.
+            _ => context_scanner_match!(scanner, expr*),
         };
 
         context

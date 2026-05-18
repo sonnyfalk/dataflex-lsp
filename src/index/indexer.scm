@@ -12,6 +12,16 @@
   (class_footer) @definition.class
   (#set! index.element pop_stack_symbol))
 
+(composite_definition
+  (composite_header
+    name: (identifier) @name
+    superclass: (identifier) @superclass) @definition.class
+  (#set! index.element class_definition))
+
+(composite_definition
+  (composite_footer) @definition.class
+  (#set! index.element pop_stack_symbol))
+
 (object_definition
   (object_header
     name: (identifier) @name

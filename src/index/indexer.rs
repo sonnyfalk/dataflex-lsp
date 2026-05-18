@@ -442,8 +442,10 @@ impl Indexer {
                                 Some(IndexSymbol::Object(class_symbol)) => {
                                     class_symbol.members.push(symbol);
                                 }
-                                Some(IndexSymbol::Class(_))
-                                | Some(IndexSymbol::Struct(_))
+                                Some(IndexSymbol::Class(class_symbol)) => {
+                                    class_symbol.members.push(symbol);
+                                }
+                                Some(IndexSymbol::Struct(_))
                                 | Some(IndexSymbol::Method(_))
                                 | Some(IndexSymbol::Property(_))
                                 | Some(IndexSymbol::Variable(_))
@@ -615,6 +617,24 @@ mod tests {
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_composite() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Composite cMyClass is a cBaseClass\nEnd_Composite\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: Point { row: 0, column: 10 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
         );
     }
 
