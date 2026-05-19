@@ -353,16 +353,30 @@ impl Indexer {
                                 .last_mut()
                                 .and_then(ClassSymbol::from_index_symbol_mut)
                         {
-                            let property_symbol = PropertySymbol {
+                            let type_name = query_match
+                                .nodes_for_capture_index(type_capture_index)
+                                .next()
+                                .and_then(|n| n.utf8_text(content).ok())
+                                .unwrap_or_default();
+                            let array_dimension_count = query_match
+                                .nodes_for_capture_index(array_capture_index)
+                                .count();
+                            let variable_type = if array_dimension_count == 0 {
+                                DataFlexDataType::Simple(type_name.into())
+                            } else {
+                                DataFlexDataType::Array(type_name.into(), array_dimension_count)
+                            };
+                            let variable_symbol = VariableSymbol {
                                 location: name_node.start_position(),
                                 symbol_path: SymbolPath::with_parent_and_name(
                                     &class_symbol.symbol_path,
                                     name,
                                 ),
+                                data_type: variable_type,
                             };
                             class_symbol
                                 .members
-                                .push(IndexSymbol::Property(property_symbol));
+                                .push(IndexSymbol::Property(variable_symbol));
                         }
                     }
                     Some(TagsQueryIndexElement::GlobalVariableDeclaration) => {
@@ -688,7 +702,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(PropertySymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\") })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(VariableSymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\"), data_type: DataFlexDataType(\"Integer\") })] })]"
         );
     }
 

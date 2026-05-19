@@ -57,6 +57,14 @@
     (#set! index.element method_function_definition)))
 
 (property_definition
+  type: [
+    (system_typedecl
+      (system_type) @type
+      (array_decl)* @array)
+    (custom_typedecl
+      (identifier) @type
+      (array_decl)* @array)
+  ]
   name: (identifier) @name
   (#set! index.element property_definition)) @definition.property
 

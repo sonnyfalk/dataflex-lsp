@@ -7,7 +7,7 @@ pub enum IndexSymbol {
     Object(ClassSymbol),
     Struct(StructSymbol),
     Method(MethodSymbol),
-    Property(PropertySymbol),
+    Property(VariableSymbol),
     Variable(VariableSymbol),
     Alias(AliasSymbol),
 }
@@ -36,13 +36,6 @@ pub struct MethodSymbol {
     pub location: Point,
     pub symbol_path: SymbolPath,
     pub kind: MethodKind,
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct PropertySymbol {
-    pub location: Point,
-    pub symbol_path: SymbolPath,
 }
 
 #[derive(Debug)]
@@ -108,7 +101,7 @@ impl IndexSymbol {
             Self::Object(class_symbol) => class_symbol.symbol_path.name(),
             Self::Struct(struct_symbol) => struct_symbol.symbol_path.name(),
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
-            Self::Property(property_symbol) => property_symbol.symbol_path.name(),
+            Self::Property(variable_symbol) => variable_symbol.symbol_path.name(),
             Self::Variable(variable_symbol) => variable_symbol.symbol_path.name(),
             Self::Alias(alias_symbol) => alias_symbol.symbol_path.name(),
         }
@@ -120,7 +113,7 @@ impl IndexSymbol {
             Self::Object(class_symbol) => class_symbol.location,
             Self::Struct(struct_symbol) => struct_symbol.location,
             Self::Method(method_symbol) => method_symbol.location,
-            Self::Property(property_symbol) => property_symbol.location,
+            Self::Property(variable_symbol) => variable_symbol.location,
             Self::Variable(variable_symbol) => variable_symbol.location,
             Self::Alias(alias_symbol) => alias_symbol.location,
         }
@@ -140,8 +133,8 @@ impl IndexSymbol {
             (Self::Method(method_symbol), Self::Method(other_method_symbol)) => {
                 method_symbol.symbol_path == other_method_symbol.symbol_path
             }
-            (Self::Property(property_symbol), Self::Property(other_property_symbol)) => {
-                property_symbol.symbol_path == other_property_symbol.symbol_path
+            (Self::Property(variable_symbol), Self::Property(other_variable_symbol)) => {
+                variable_symbol.symbol_path == other_variable_symbol.symbol_path
             }
             (Self::Variable(variable_symbol), Self::Variable(other_variable_symbol)) => {
                 variable_symbol.symbol_path == other_variable_symbol.symbol_path
