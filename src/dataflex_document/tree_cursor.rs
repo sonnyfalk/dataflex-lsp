@@ -63,6 +63,25 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.node().kind() == "postfix_expression"
     }
 
+    pub fn is_call_modifier(&self) -> bool {
+        self.node().kind() == "call_modifier"
+    }
+
+    pub fn is_method_call_with_dynamic_receiver(&self) -> bool {
+        if matches!(
+            self.node().kind(),
+            "send_statement" | "get_statement" | "set_statement"
+        ) {
+            let mut clone = self.clone();
+            clone.goto_first_child()
+                && clone.is_call_modifier()
+                && clone.goto_leaf_node()
+                && clone.is_keyword(|kw| matches!(kw, "delegate" | "broadcast" | "broadcast_focus"))
+        } else {
+            false
+        }
+    }
+
     pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
         if self.node().kind() == "keyword" {
             let mut keyword = self.doc.line_map.text_for_node(&self.node());
@@ -71,6 +90,12 @@ impl<'a> DataFlexTreeCursor<'a> {
         } else {
             false
         }
+    }
+}
+
+impl<'a> Clone for DataFlexTreeCursor<'a> {
+    fn clone(&self) -> Self {
+        Self::new(self.cursor.clone(), self.doc)
     }
 }
 

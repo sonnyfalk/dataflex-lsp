@@ -119,12 +119,26 @@ impl DocumentContext {
         let start_of_line = Point::new(position.row, 0);
         cursor.goto_first_leaf_node_for_point(start_of_line);
 
-        let node = cursor.node();
-        let kind = node.kind();
-        let text = doc.line_map.text_for_node(&node);
+        let scanner = ContextScanner::new(cursor, position);
+        Self::context_with_scanner(scanner, doc)
+    }
 
-        let mut scanner = ContextScanner::new(cursor, position);
-        let context = match (kind, text.to_lowercase().as_str()) {
+    pub fn can_reference_variables(&self) -> bool {
+        match self {
+            Self::Expression => true,
+            Self::ParenExpression => true,
+            Self::ClassReference => false,
+            Self::MethodReference(_) => false,
+            Self::DotMemberExpression => false,
+        }
+    }
+
+    fn context_with_scanner(mut scanner: ContextScanner, doc: &DataFlexDocument) -> Option<Self> {
+        let node = scanner.cursor.node();
+        let kind = node.kind();
+        let text = doc.line_map.text_for_node(&node).to_lowercase();
+
+        let context = match (kind, text.as_str()) {
             ("keyword", "object") => {
                 context_scanner_match!(scanner, identifier, "is", "a" | "an", identifier -> Self::ClassReference)
             }
@@ -155,21 +169,22 @@ impl DocumentContext {
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
             }
+            ("keyword", "forward" | "delegate") => {
+                scanner.cursor.goto_next_leaf_node();
+                Self::context_with_scanner(scanner, doc)
+            }
+            ("keyword", "broadcast" | "broadcast_focus") => {
+                _ = scanner
+                    .accept_optional_keyword_if(|kw| matches!(kw, "recursive" | "recursive_up"));
+                _ = scanner.accept_optional_keyword_if(|kw| matches!(kw, "no_stop"));
+                scanner.cursor.goto_next_leaf_node();
+                Self::context_with_scanner(scanner, doc)
+            }
             // Default fallback to recognize expression context as appropriate for all other commands.
             _ => context_scanner_match!(scanner, expr*),
         };
 
         context
-    }
-
-    pub fn can_reference_variables(&self) -> bool {
-        match self {
-            Self::Expression => true,
-            Self::ParenExpression => true,
-            Self::ClassReference => false,
-            Self::MethodReference(_) => false,
-            Self::DotMemberExpression => false,
-        }
     }
 
     fn dot_member_context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
@@ -442,6 +457,94 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
         assert_eq!(context, None);
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Forward Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Delegate Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 15 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Broadcast Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 16 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Broadcast Recursive Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 26 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Broadcast Recursive_Up Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 29 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Broadcast No_Stop Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 24 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Broadcast Recursive No_Stop Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 34 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Broadcast_Focus Send Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 22 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
     }
 
     #[test]

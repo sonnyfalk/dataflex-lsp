@@ -98,6 +98,11 @@ impl<'a> ReferenceResolver<'a> {
             .goto_first_leaf_node_for_point(position)
             .then(|| cursor.goto_enclosing_method_call());
 
+        if cursor.is_method_call_with_dynamic_receiver() {
+            // Don't try to filter on the receiver if this is `Delegate`, `Broadcast`, or `Broadcast_Focus`.
+            return None;
+        }
+
         let receiver = cursor
             .node()
             .child_by_field_name("receiver")
