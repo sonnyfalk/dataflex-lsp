@@ -36,6 +36,8 @@ pub struct MethodSymbol {
     pub location: Point,
     pub symbol_path: SymbolPath,
     pub kind: MethodKind,
+    pub parameters: Vec<(SymbolName, DataFlexDataType)>,
+    pub return_type: Option<DataFlexDataType>,
 }
 
 #[derive(Debug)]

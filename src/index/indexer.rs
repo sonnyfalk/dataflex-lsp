@@ -185,6 +185,8 @@ impl Indexer {
         let array_capture_index = query.capture_index_for_name("array").unwrap();
         let value_ref_capture_index = query.capture_index_for_name("value_reference").unwrap();
         let name_ref_capture_index = query.capture_index_for_name("name_reference").unwrap();
+        let parameter_capture_index = query.capture_index_for_name("parameter").unwrap();
+        let return_type_capture_index = query.capture_index_for_name("return_type").unwrap();
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, tree.root_node(), content);
 
@@ -309,6 +311,22 @@ impl Indexer {
                                 .last_mut()
                                 .and_then(ClassSymbol::from_index_symbol_mut)
                         {
+                            let parameters = query_match
+                                .nodes_for_capture_index(parameter_capture_index)
+                                .filter_map(|parameter_node| {
+                                    let name = SymbolName::from(
+                                        parameter_node
+                                            .child_by_field_name("name")
+                                            .and_then(|n| n.utf8_text(content).ok())?,
+                                    );
+                                    let data_type =
+                                        parameter_node.child_by_field_name("type").and_then(
+                                            |n| DataFlexDataType::with_typedecl_node(n, content),
+                                        )?;
+                                    Some((name, data_type))
+                                })
+                                .collect();
+
                             let method_symbol = MethodSymbol {
                                 location: name_node.start_position(),
                                 symbol_path: SymbolPath::with_parent_and_name(
@@ -316,6 +334,8 @@ impl Indexer {
                                     name,
                                 ),
                                 kind: MethodKind::Msg,
+                                parameters: parameters,
+                                return_type: None,
                             };
                             class_symbol
                                 .members
@@ -331,6 +351,27 @@ impl Indexer {
                                 .last_mut()
                                 .and_then(ClassSymbol::from_index_symbol_mut)
                         {
+                            let parameters = query_match
+                                .nodes_for_capture_index(parameter_capture_index)
+                                .filter_map(|parameter_node| {
+                                    let name = SymbolName::from(
+                                        parameter_node
+                                            .child_by_field_name("name")
+                                            .and_then(|n| n.utf8_text(content).ok())?,
+                                    );
+                                    let data_type =
+                                        parameter_node.child_by_field_name("type").and_then(
+                                            |n| DataFlexDataType::with_typedecl_node(n, content),
+                                        )?;
+                                    Some((name, data_type))
+                                })
+                                .collect();
+
+                            let return_type = query_match
+                                .nodes_for_capture_index(return_type_capture_index)
+                                .filter_map(|n| DataFlexDataType::with_typedecl_node(n, content))
+                                .next();
+
                             let method_symbol = MethodSymbol {
                                 location: name_node.start_position(),
                                 symbol_path: SymbolPath::with_parent_and_name(
@@ -338,6 +379,8 @@ impl Indexer {
                                     name,
                                 ),
                                 kind: MethodKind::Get,
+                                parameters: parameters,
+                                return_type: return_type,
                             };
                             class_symbol
                                 .members
@@ -594,6 +637,23 @@ impl Index {
     }
 }
 
+impl DataFlexDataType {
+    fn with_typedecl_node(node: tree_sitter::Node, content: &[u8]) -> Option<Self> {
+        let type_name = node
+            .child_by_field_name("name")
+            .and_then(|n| n.utf8_text(content).ok())
+            .unwrap_or_default();
+        let array_dimension_count = node
+            .children_by_field_name("array", &mut node.walk())
+            .count();
+        if array_dimension_count == 0 {
+            Some(Self::Simple(type_name.into()))
+        } else {
+            Some(Self::Array(type_name.into(), array_dimension_count))
+        }
+    }
+}
+
 #[cfg(test)]
 impl Indexer {
     pub fn index_test_content(content: &str, path: PathBuf, index: &IndexRef) {
@@ -666,7 +726,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
         );
     }
 
@@ -684,7 +744,25 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get, parameters: [], return_type: Some(DataFlexDataType(\"String\")) })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_class_method_with_parameters() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure SayHello String sName\n    End_Procedure\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [(SymbolName(\"sName\"), DataFlexDataType(\"String\"))], return_type: None })] })]"
         );
     }
 
@@ -702,7 +780,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg }), Property(VariableSymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\"), data_type: DataFlexDataType(\"Integer\") })] })]"
+            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg, parameters: [], return_type: None }), Property(VariableSymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\"), data_type: DataFlexDataType(\"Integer\") })] })]"
         );
     }
 
@@ -756,7 +834,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg })] })]"
+            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
         );
     }
 

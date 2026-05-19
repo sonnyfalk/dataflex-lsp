@@ -35,25 +35,31 @@
 (class_definition
   (procedure_definition
     (procedure_header
-      name: (identifier) @name) @definition.method
+      name: (identifier) @name
+      (parameter)* @parameter) @definition.method
     (#set! index.element method_procedure_definition)))
 
 (class_definition
   (function_definition
     (function_header
-      name: (identifier) @name) @definition.method
+      name: (identifier) @name
+      (parameter)* @parameter
+      return_type: (typedecl) @return_type) @definition.method
     (#set! index.element method_function_definition)))
 
 (object_definition
   (procedure_definition
     (procedure_header
-      name: (identifier) @name) @definition.method
+      name: (identifier) @name
+      (parameter)* @parameter) @definition.method
     (#set! index.element method_procedure_definition)))
 
 (object_definition
   (function_definition
     (function_header
-      name: (identifier) @name) @definition.method
+      name: (identifier) @name
+      (parameter)* @parameter
+      return_type: (typedecl) @return_type) @definition.method
     (#set! index.element method_function_definition)))
 
 (property_definition

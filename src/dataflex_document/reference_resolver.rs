@@ -344,7 +344,7 @@ End_Object
             reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg, parameters: [], return_type: None }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -367,7 +367,7 @@ Send foo of oMyObject
         let mut symbol = reference_resolver.resolve_expr_reference(Point::new(6, 16));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Object(ClassSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg })] }) })"
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Object(ClassSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 2, column: 14 }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
