@@ -108,6 +108,7 @@ impl LanguageServer for DataFlexLanguageServer {
                 semantic_tokens_provider: semantic_tokens_options,
                 definition_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(Default::default()),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -238,6 +239,27 @@ impl LanguageServer for DataFlexLanguageServer {
                 is_incomplete: false,
                 items: completions,
             })))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let declaration = self
+            .inner
+            .open_files
+            .get(&params.text_document_position_params.text_document.uri)
+            .unwrap()
+            .doc
+            .symbol_declaration(params.text_document_position_params.position);
+        if let Some(declaration) = declaration {
+            Ok(Some(Hover {
+                contents: HoverContents::Scalar(MarkedString::from_language_code(
+                    "dataflex".into(),
+                    declaration,
+                )),
+                range: None,
+            }))
         } else {
             Ok(None)
         }

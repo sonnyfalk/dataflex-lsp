@@ -354,3 +354,73 @@ impl IndexSymbolRef {
         }
     }
 }
+
+impl std::fmt::Display for IndexSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Class(class_symbol) => writeln!(
+                f,
+                "Class {} is a {}",
+                class_symbol.symbol_path.name(),
+                class_symbol.superclass
+            ),
+            Self::Object(class_symbol) => writeln!(
+                f,
+                "Object {} is a {}",
+                class_symbol.symbol_path.name(),
+                class_symbol.superclass
+            ),
+            Self::Struct(struct_symbol) => {
+                writeln!(f, "Struct {}", struct_symbol.symbol_path.name())?;
+                for member in &struct_symbol.members {
+                    writeln!(f, "   {}", member.to_string())?;
+                }
+                writeln!(f, "End_Struct")
+            }
+            Self::Method(method_symbol) => {
+                write!(
+                    f,
+                    "{} {}",
+                    match method_symbol.kind {
+                        MethodKind::Msg => "Procedure",
+                        MethodKind::Get => "Function",
+                        MethodKind::Set => "Procedure Set",
+                    },
+                    method_symbol.symbol_path.name()
+                )?;
+                for (name, data_type) in &method_symbol.parameters {
+                    write!(f, " {} {}", data_type.to_string(), name.to_string())?;
+                }
+                if let Some(return_type) = &method_symbol.return_type {
+                    write!(f, " Returns {}", return_type.to_string())?;
+                }
+                writeln!(f)
+            }
+            Self::Property(variable_symbol) => {
+                writeln!(f, "Property {}", variable_symbol.to_string(),)
+            }
+            Self::Variable(variable_symbol) => writeln!(f, "{}", variable_symbol.to_string()),
+            Self::Alias(alias_symbol) => writeln!(
+                f,
+                "{} = {}",
+                alias_symbol.symbol_path.name(),
+                alias_symbol.alias.to_string()
+            ),
+        }
+    }
+}
+
+impl std::fmt::Display for VariableSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.data_type, self.symbol_path.name())
+    }
+}
+
+impl std::fmt::Display for ValueReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ValueReference::Symbol(name) => write!(f, "{name}"),
+            ValueReference::Value(value) => write!(f, "{value}"),
+        }
+    }
+}

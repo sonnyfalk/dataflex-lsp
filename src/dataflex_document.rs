@@ -288,6 +288,27 @@ impl DataFlexDocument {
                 .collect()
         })
     }
+
+    pub fn symbol_declaration(&self, position: lsp_types::Position) -> Option<String> {
+        let position = Point {
+            row: position.line as usize,
+            column: position.character as usize,
+        };
+        let Some(context) = DocumentContext::context(self, position) else {
+            return None;
+        };
+
+        if context.can_reference_variables()
+            && let Some(symbol_name) = self.symbol_at_position(position)
+            && let Some(variable) = self.find_local_variable(position, &symbol_name)
+        {
+            Some(variable.to_string())
+        } else {
+            let reference_resolver = ReferenceResolver::new(self);
+            let symbols = reference_resolver.resolve_reference(context, position);
+            symbols.map(|s| s.symbol.to_string()).next()
+        }
+    }
 }
 
 impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind {
