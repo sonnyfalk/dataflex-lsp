@@ -264,6 +264,12 @@ impl std::fmt::Debug for SymbolPath {
     }
 }
 
+impl From<Vec<SymbolName>> for SymbolPath {
+    fn from(value: Vec<SymbolName>) -> Self {
+        SymbolPath(value)
+    }
+}
+
 pub trait IndexSymbolType {
     #[allow(dead_code)]
     fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self>;

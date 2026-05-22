@@ -114,15 +114,13 @@ impl<'a> ReferenceResolver<'a> {
                 .goto_enclosing_object_or_class()
                 .then(|| {
                     if cursor.is_object_definition() {
-                        cursor
-                            .node()
-                            .child(0)
-                            .and_then(|n| n.child_by_field_name("superclass"))
-                            .and_then(|n| {
-                                self.index
-                                    .find_class(&self.doc.line_map.text_for_node(&n).into())
+                        index::SymbolPath::try_from(cursor.clone())
+                            .ok()
+                            .map(|symbol_path| index::IndexSymbolRef {
+                                file_ref: index::IndexFileRef::from(&self.doc.file_path),
+                                symbol_path,
                             })
-                            .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+                            .and_then(|symbol_ref| self.index.symbol_snapshot(&symbol_ref))
                             .and_then(|symbol_snapshot| {
                                 ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
                             })
@@ -326,18 +324,16 @@ End_Class
             "test.pkg".into(),
             &index,
         );
-        let doc = DataFlexDocument::new(
-            "other.pkg".into(),
-            r#"
+        let doc_content = r#"
 Use test.pkg
 Object oMyObject is a cMyClass
     Procedure foo
         Send testIt
     End_Procedure
 End_Object
-            "#,
-            index.clone(),
-        );
+            "#;
+        index::Indexer::index_test_content(doc_content, "other.pkg".into(), &index);
+        let doc = DataFlexDocument::new("other.pkg".into(), doc_content, index.clone());
 
         let reference_resolver = ReferenceResolver::new(&doc);
         let mut symbol =
@@ -350,7 +346,36 @@ End_Object
     }
 
     #[test]
-    fn test_resolve_call_receiver_reference() {
+    fn test_resolve_method_reference_with_self() {
+        let test_content = r#"
+Class cMyClass is a cBaseClass
+End_Class
+
+Object oMyObject is a cMyClass
+    Procedure foo
+    End_Procedure
+
+    Procedure test
+        Send foo
+    End_Procedure
+End_Object
+            "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let reference_resolver = ReferenceResolver::new(&doc);
+        let mut symbol =
+            reference_resolver.resolve_method_reference(Point::new(9, 15), MethodKind::Msg);
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 5, column: 14 }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+    }
+
+    #[test]
+    fn test_resolve_expr_reference_at_call_receiver() {
         let test_content = r#"
 Object oMyObject is a cObject
     Procedure foo

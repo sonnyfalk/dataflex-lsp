@@ -24,7 +24,11 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn goto_enclosing_object_or_class(&mut self) -> bool {
-        self.goto_enclosing_node_kind(&["object_definition", "class_definition"])
+        self.goto_enclosing_node_kind(&[
+            "object_definition",
+            "class_definition",
+            "composite_definition",
+        ])
     }
 
     pub fn goto_enclosing_method_definition(&mut self) -> bool {
@@ -49,6 +53,18 @@ impl<'a> DataFlexTreeCursor<'a> {
 
     pub fn is_object_definition(&self) -> bool {
         self.node().kind() == "object_definition"
+    }
+
+    pub fn is_class_definition(&self) -> bool {
+        self.node().kind() == "class_definition"
+    }
+
+    pub fn is_composite_definition(&self) -> bool {
+        self.node().kind() == "composite_definition"
+    }
+
+    pub fn is_object_or_class_definition(&self) -> bool {
+        self.is_object_definition() || self.is_class_definition() || self.is_composite_definition()
     }
 
     pub fn is_identifier(&self) -> bool {
@@ -121,6 +137,35 @@ impl DataFlexDocument {
     pub fn cursor(&self) -> Option<DataFlexTreeCursor<'_>> {
         self.root_node()
             .map(|root_node| DataFlexTreeCursor::new(root_node.walk(), self))
+    }
+}
+
+impl TryFrom<DataFlexTreeCursor<'_>> for index::SymbolPath {
+    type Error = ();
+
+    fn try_from(mut cursor: DataFlexTreeCursor) -> Result<Self, Self::Error> {
+        if cursor.is_object_definition() {
+            let mut path = vec![
+                cursor
+                    .node()
+                    .child(0)
+                    .and_then(|n| n.child_by_field_name("name"))
+                    .map(|n| index::SymbolName::from(cursor.doc.line_map.text_for_node(&n)))
+                    .ok_or(())?,
+            ];
+            while cursor.goto_parent() && cursor.is_object_or_class_definition() {
+                let parent = cursor
+                    .node()
+                    .child(0)
+                    .and_then(|n| n.child_by_field_name("name"))
+                    .map(|n| index::SymbolName::from(cursor.doc.line_map.text_for_node(&n)))
+                    .ok_or(())?;
+                path.insert(0, parent);
+            }
+            Ok(path.into())
+        } else {
+            Err(())
+        }
     }
 }
 
