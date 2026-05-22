@@ -523,4 +523,29 @@ End_Procedure
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
+
+    #[test]
+    fn test_resolve_paren_expr_reference() {
+        let test_content = r#"
+Object oTest is a cObject
+    Function MyMethod String sArg1 Integer iArg2 Returns Integer
+    End_Function
+End_Object
+
+Integer iTest
+Move (MyMethod(oTest, "test", 1234)) to iTest
+            "#;
+
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let reference_resolver = ReferenceResolver::new(&doc);
+        let mut symbol = reference_resolver.resolve_paren_expr_reference(Point::new(7, 10));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: Point { row: 2, column: 13 }, symbol_path: SymbolPath(\"oTest.MyMethod\"), kind: Get, parameters: [(SymbolName(\"sArg1\"), DataFlexDataType(\"String\")), (SymbolName(\"iArg2\"), DataFlexDataType(\"Integer\"))], return_type: Some(DataFlexDataType(\"Integer\")) }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+    }
 }

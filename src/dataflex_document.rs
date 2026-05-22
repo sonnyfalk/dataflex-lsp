@@ -12,6 +12,7 @@ use tree_cursor::{DataFlexTreeCursor, TreeCursorExt};
 mod code_completion;
 mod document_context;
 mod line_map;
+mod parameter_info;
 mod reference_resolver;
 mod syntax_map;
 mod tree_cursor;
@@ -309,6 +310,23 @@ impl DataFlexDocument {
             symbols.map(|s| s.symbol.to_string()).next()
         }
     }
+
+    pub fn signature_help(
+        &self,
+        position: lsp_types::Position,
+    ) -> Option<Vec<lsp_types::SignatureInformation>> {
+        let position = Point {
+            row: position.line as usize,
+            column: position.character as usize,
+        };
+        let parameter_info = parameter_info::ParameterInfo::parameter_info(self, position)?;
+        Some(
+            parameter_info
+                .into_iter()
+                .map(lsp_types::SignatureInformation::from)
+                .collect(),
+        )
+    }
 }
 
 impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind {
@@ -343,6 +361,26 @@ impl From<&index::IndexSymbolSnapshot<'_, index::IndexSymbol>> for lsp_types::Lo
                 },
             ),
         )
+    }
+}
+
+impl From<parameter_info::ParameterInfo> for lsp_types::SignatureInformation {
+    fn from(value: parameter_info::ParameterInfo) -> Self {
+        Self {
+            label: value.signature,
+            documentation: None,
+            parameters: Some(
+                value
+                    .parameters
+                    .into_iter()
+                    .map(|parameter| lsp_types::ParameterInformation {
+                        label: lsp_types::ParameterLabel::Simple(parameter),
+                        documentation: None,
+                    })
+                    .collect(),
+            ),
+            active_parameter: Some(value.active_parameter as u32),
+        }
     }
 }
 

@@ -109,6 +109,10 @@ impl LanguageServer for DataFlexLanguageServer {
                 definition_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(Default::default()),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                signature_help_provider: Some(SignatureHelpOptions {
+                    trigger_characters: Some(vec![String::from(" "), String::from("(")]),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             ..Default::default()
@@ -259,6 +263,25 @@ impl LanguageServer for DataFlexLanguageServer {
                     declaration,
                 )),
                 range: None,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
+        let signature_information = self
+            .inner
+            .open_files
+            .get(&params.text_document_position_params.text_document.uri)
+            .unwrap()
+            .doc
+            .signature_help(params.text_document_position_params.position);
+        if let Some(signature_information) = signature_information {
+            Ok(Some(SignatureHelp {
+                signatures: signature_information,
+                active_signature: None,
+                active_parameter: None,
             }))
         } else {
             Ok(None)

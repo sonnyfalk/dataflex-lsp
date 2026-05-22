@@ -43,6 +43,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["member_access"])
     }
 
+    pub fn goto_enclosing_call_expression(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["call_expression"])
+    }
+
     pub fn is_object_definition(&self) -> bool {
         self.node().kind() == "object_definition"
     }
