@@ -539,7 +539,9 @@ impl Indexer {
 
     fn should_index_file(path: &PathBuf) -> bool {
         match path.extension().and_then(OsStr::to_str) {
-            Some("pkg" | "vw" | "wo" | "sl" | "dd") => true,
+            Some("pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc") => {
+                true
+            }
             _ => false,
         }
     }
