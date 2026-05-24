@@ -142,7 +142,7 @@ impl DataFlexDocument {
                         )
                     };
                     vars.push(index::VariableSymbol {
-                        location: name_node.start_position(),
+                        location: name_node.start_position().into(),
                         symbol_path: index::SymbolPath::with_name(variable_name),
                         data_type: variable_type,
                     });
@@ -352,11 +352,11 @@ impl From<&index::IndexSymbolSnapshot<'_, index::IndexSymbol>> for lsp_types::Lo
             lsp_types::Url::from_file_path(symbol_snapshot.path).unwrap(),
             lsp_types::Range::new(
                 lsp_types::Position {
-                    line: location.row as u32,
+                    line: location.line as u32,
                     character: location.column as u32,
                 },
                 lsp_types::Position {
-                    line: location.row as u32,
+                    line: location.line as u32,
                     character: location.column as u32,
                 },
             ),
@@ -467,49 +467,49 @@ Send foo of oMyObject
         let mut variables = doc.local_variables(Point::new(5, 21));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 3, column: 16 }, symbol_path: SymbolPath(\"iMyInt\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 3, column: 16 }, symbol_path: SymbolPath(\"iMyInt\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 4, column: 15 }, symbol_path: SymbolPath(\"sMyStr\"), data_type: DataFlexDataType(\"String\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 4, column: 15 }, symbol_path: SymbolPath(\"sMyStr\"), data_type: DataFlexDataType(\"String\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
 
         let mut variables = doc.local_variables(Point::new(11, 23));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
 
         let mut variables = doc.local_variables(Point::new(12, 14));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 26 }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 39 }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 16 }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 28 }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
     }
@@ -532,7 +532,7 @@ End_Procedure
         let mut variables = doc.local_variables(Point::new(5, 21));
         assert_eq!(
             format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: Point { row: 5, column: 14 }, symbol_path: SymbolPath(\"myStructVar\"), data_type: DataFlexDataType(\"tMyStruct\") })"
+            "Some(VariableSymbol { location: SourceLocation { line: 5, column: 14 }, symbol_path: SymbolPath(\"myStructVar\"), data_type: DataFlexDataType(\"tMyStruct\") })"
         );
         assert_eq!(format!("{:?}", variables.next()), "None");
     }

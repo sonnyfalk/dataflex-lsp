@@ -218,7 +218,7 @@ impl Indexer {
                                 .and_then(|n| n.utf8_text(content).ok())
                                 .unwrap_or_default();
                             let class_symbol = ClassSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_name(name),
                                 superclass: superclass.into(),
                                 mixins: Vec::new(),
@@ -240,7 +240,7 @@ impl Indexer {
                                 .unwrap_or_default();
                             let parent = stack.last().and_then(ClassSymbol::from_index_symbol);
                             let class_symbol = ClassSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: parent
                                     .map(|parent| {
                                         SymbolPath::with_parent_and_name(&parent.symbol_path, name)
@@ -260,7 +260,7 @@ impl Indexer {
                             && let Some(name) = name_node.utf8_text(content).ok()
                         {
                             let struct_symbol = StructSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_name(name),
                                 members: Vec::new(),
                             };
@@ -290,7 +290,7 @@ impl Indexer {
                                 DataFlexDataType::Array(type_name.into(), array_dimension_count)
                             };
                             let variable_symbol = VariableSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_parent_and_name(
                                     &struct_symbol.symbol_path,
                                     name,
@@ -328,7 +328,7 @@ impl Indexer {
                                 .collect();
 
                             let method_symbol = MethodSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_parent_and_name(
                                     &class_symbol.symbol_path,
                                     name,
@@ -373,7 +373,7 @@ impl Indexer {
                                 .next();
 
                             let method_symbol = MethodSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_parent_and_name(
                                     &class_symbol.symbol_path,
                                     name,
@@ -410,7 +410,7 @@ impl Indexer {
                                 DataFlexDataType::Array(type_name.into(), array_dimension_count)
                             };
                             let variable_symbol = VariableSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_parent_and_name(
                                     &class_symbol.symbol_path,
                                     name,
@@ -442,7 +442,7 @@ impl Indexer {
                                 DataFlexDataType::Array(type_name.into(), array_dimension_count)
                             };
                             let variable_symbol = VariableSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_name(name),
                                 data_type: variable_type,
                             };
@@ -474,7 +474,7 @@ impl Indexer {
                                 ValueReference::Value(String::new())
                             };
                             let alias_symbol = AliasSymbol {
-                                location: name_node.start_position(),
+                                location: name_node.start_position().into(),
                                 symbol_path: SymbolPath::with_name(name),
                                 alias: value,
                             };
@@ -692,7 +692,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
         );
     }
 
@@ -710,7 +710,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 10 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 10 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
         );
     }
 
@@ -728,7 +728,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
         );
     }
 
@@ -746,7 +746,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get, parameters: [], return_type: Some(DataFlexDataType(\"String\")) })] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 13 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Get, parameters: [], return_type: Some(DataFlexDataType(\"String\")) })] })]"
         );
     }
 
@@ -764,7 +764,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [(SymbolName(\"sName\"), DataFlexDataType(\"String\"))], return_type: None })] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [(SymbolName(\"sName\"), DataFlexDataType(\"String\"))], return_type: None })] })]"
         );
     }
 
@@ -782,7 +782,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg, parameters: [], return_type: None }), Property(VariableSymbol { location: Point { row: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\"), data_type: DataFlexDataType(\"Integer\") })] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, symbol_path: SymbolPath(\"cMyClass.Construct_Object\"), kind: Msg, parameters: [], return_type: None }), Property(VariableSymbol { location: SourceLocation { line: 2, column: 25 }, symbol_path: SymbolPath(\"cMyClass.piTest\"), data_type: DataFlexDataType(\"Integer\") })] })]"
         );
     }
 
@@ -800,7 +800,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
+            "[Object(ClassSymbol { location: SourceLocation { line: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })]"
         );
     }
 
@@ -818,7 +818,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Object(ClassSymbol { location: Point { row: 1, column: 11 }, symbol_path: SymbolPath(\"oMyObj.oMyInner\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })] })]"
+            "[Object(ClassSymbol { location: SourceLocation { line: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Object(ClassSymbol { location: SourceLocation { line: 1, column: 11 }, symbol_path: SymbolPath(\"oMyObj.oMyInner\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })] })]"
         );
     }
 
@@ -836,7 +836,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Object(ClassSymbol { location: Point { row: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: Point { row: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
+            "[Object(ClassSymbol { location: SourceLocation { line: 0, column: 7 }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
         );
     }
 
@@ -854,7 +854,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Variable(VariableSymbol { location: Point { row: 0, column: 24 }, symbol_path: SymbolPath(\"giMyGlobalVar\"), data_type: DataFlexDataType(\"Integer\") })]"
+            "[Variable(VariableSymbol { location: SourceLocation { line: 0, column: 24 }, symbol_path: SymbolPath(\"giMyGlobalVar\"), data_type: DataFlexDataType(\"Integer\") })]"
         );
     }
 
@@ -877,7 +877,7 @@ End_Struct
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Struct(StructSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: Point { row: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") }), Variable(VariableSymbol { location: Point { row: 3, column: 14 }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), data_type: DataFlexDataType(\"Integer[]\") })] })]"
+            "[Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\") }), Variable(VariableSymbol { location: SourceLocation { line: 3, column: 14 }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), data_type: DataFlexDataType(\"Integer[]\") })] })]"
         );
     }
 
@@ -900,7 +900,7 @@ Define someUndefinedValue
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Alias(AliasSymbol { location: Point { row: 1, column: 7 }, symbol_path: SymbolPath(\"MyAlias\"), alias: Symbol(SymbolName(\"MyOriginalSymbol\")) }), Alias(AliasSymbol { location: Point { row: 2, column: 7 }, symbol_path: SymbolPath(\"someValue\"), alias: Value(\"1\") }), Alias(AliasSymbol { location: Point { row: 3, column: 7 }, symbol_path: SymbolPath(\"someUndefinedValue\"), alias: Value(\"\") }), Alias(AliasSymbol { location: Point { row: 4, column: 9 }, symbol_path: SymbolPath(\"MyNewSymbol\"), alias: Symbol(SymbolName(\"MyOldSymbol\")) })]"
+            "[Alias(AliasSymbol { location: SourceLocation { line: 1, column: 7 }, symbol_path: SymbolPath(\"MyAlias\"), alias: Symbol(SymbolName(\"MyOriginalSymbol\")) }), Alias(AliasSymbol { location: SourceLocation { line: 2, column: 7 }, symbol_path: SymbolPath(\"someValue\"), alias: Value(\"1\") }), Alias(AliasSymbol { location: SourceLocation { line: 3, column: 7 }, symbol_path: SymbolPath(\"someUndefinedValue\"), alias: Value(\"\") }), Alias(AliasSymbol { location: SourceLocation { line: 4, column: 9 }, symbol_path: SymbolPath(\"MyNewSymbol\"), alias: Symbol(SymbolName(\"MyOldSymbol\")) })]"
         );
     }
 
@@ -923,7 +923,7 @@ End_Class
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Class(ClassSymbol { location: Point { row: 1, column: 6 }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [SymbolName(\"cMyMixin\"), SymbolName(\"cMyOtherMixin\")], members: [] })]"
+            "[Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [SymbolName(\"cMyMixin\"), SymbolName(\"cMyOtherMixin\")], members: [] })]"
         );
     }
 }

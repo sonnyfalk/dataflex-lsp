@@ -1,5 +1,11 @@
 use super::*;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceLocation {
+    pub line: usize,
+    pub column: usize,
+}
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum IndexSymbol {
@@ -15,7 +21,7 @@ pub enum IndexSymbol {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ClassSymbol {
-    pub location: Point,
+    pub location: SourceLocation,
     pub symbol_path: SymbolPath,
     pub superclass: SymbolName,
     pub mixins: Vec<SymbolName>,
@@ -25,7 +31,7 @@ pub struct ClassSymbol {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct StructSymbol {
-    pub location: Point,
+    pub location: SourceLocation,
     pub symbol_path: SymbolPath,
     pub members: Vec<IndexSymbol>,
 }
@@ -33,7 +39,7 @@ pub struct StructSymbol {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct MethodSymbol {
-    pub location: Point,
+    pub location: SourceLocation,
     pub symbol_path: SymbolPath,
     pub kind: MethodKind,
     pub parameters: Vec<(SymbolName, DataFlexDataType)>,
@@ -43,7 +49,7 @@ pub struct MethodSymbol {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct VariableSymbol {
-    pub location: Point,
+    pub location: SourceLocation,
     pub symbol_path: SymbolPath,
     pub data_type: DataFlexDataType,
 }
@@ -51,7 +57,7 @@ pub struct VariableSymbol {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct AliasSymbol {
-    pub location: Point,
+    pub location: SourceLocation,
     pub symbol_path: SymbolPath,
     pub alias: ValueReference,
 }
@@ -109,7 +115,7 @@ impl IndexSymbol {
         }
     }
 
-    pub fn location(&self) -> Point {
+    pub fn location(&self) -> SourceLocation {
         match self {
             Self::Class(class_symbol) => class_symbol.location,
             Self::Object(class_symbol) => class_symbol.location,
@@ -171,6 +177,15 @@ impl IndexSymbol {
             self.child(name).map(|s| s.resolve(sym_path_it)).flatten()
         } else {
             Some(self)
+        }
+    }
+}
+
+impl From<tree_sitter::Point> for SourceLocation {
+    fn from(value: tree_sitter::Point) -> Self {
+        Self {
+            line: value.row,
+            column: value.column,
         }
     }
 }
