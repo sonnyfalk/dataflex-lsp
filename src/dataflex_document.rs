@@ -328,6 +328,17 @@ impl DataFlexDocument {
                 .collect(),
         )
     }
+
+    pub fn document_symbols(&self) -> Vec<lsp_types::DocumentSymbol> {
+        let Some(tree) = self.tree() else {
+            return Vec::new();
+        };
+        index::IndexFile::with_parse_tree(tree, self.text_content().as_bytes())
+            .symbols
+            .iter()
+            .map(|s| s.into())
+            .collect()
+    }
 }
 
 impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind {
@@ -381,6 +392,64 @@ impl From<parameter_info::ParameterInfo> for lsp_types::SignatureInformation {
                     .collect(),
             ),
             active_parameter: Some(value.active_parameter as u32),
+        }
+    }
+}
+
+impl From<&index::IndexSymbol> for lsp_types::DocumentSymbol {
+    fn from(symbol: &index::IndexSymbol) -> Self {
+        let position = lsp_types::Position {
+            line: symbol.location().line as u32,
+            character: symbol.location().column as u32,
+        };
+
+        let range = lsp_types::Range {
+            start: lsp_types::Position {
+                line: symbol.range().start.line as u32,
+                character: symbol.range().start.column as u32,
+            },
+            end: lsp_types::Position {
+                line: symbol.range().end.line as u32,
+                character: symbol.range().end.column as u32,
+            },
+        };
+
+        let children: Vec<lsp_types::DocumentSymbol> = symbol
+            .children()
+            .map(lsp_types::DocumentSymbol::from)
+            .collect();
+
+        #[allow(deprecated)]
+        lsp_types::DocumentSymbol {
+            name: symbol.name().to_string(),
+            detail: Some(symbol.to_string()),
+            kind: symbol.into(),
+            tags: None,
+            deprecated: None,
+            range: range,
+            selection_range: lsp_types::Range {
+                start: position,
+                end: position,
+            },
+            children: if children.is_empty() {
+                None
+            } else {
+                Some(children)
+            },
+        }
+    }
+}
+
+impl From<&index::IndexSymbol> for lsp_types::SymbolKind {
+    fn from(symbol: &index::IndexSymbol) -> Self {
+        match symbol {
+            index::IndexSymbol::Class(_) => Self::CLASS,
+            index::IndexSymbol::Object(_) => Self::OBJECT,
+            index::IndexSymbol::Struct(_) => Self::STRUCT,
+            index::IndexSymbol::Method(_) => Self::METHOD,
+            index::IndexSymbol::Property(_) => Self::PROPERTY,
+            index::IndexSymbol::Variable(_) => Self::VARIABLE,
+            index::IndexSymbol::Alias(_) => Self::ENUM_MEMBER,
         }
     }
 }

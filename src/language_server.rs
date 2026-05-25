@@ -113,6 +113,7 @@ impl LanguageServer for DataFlexLanguageServer {
                     trigger_characters: Some(vec![String::from(" "), String::from("(")]),
                     ..Default::default()
                 }),
+                document_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -286,6 +287,21 @@ impl LanguageServer for DataFlexLanguageServer {
         } else {
             Ok(None)
         }
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        let symbols = self
+            .inner
+            .open_files
+            .get(&params.text_document.uri)
+            .unwrap()
+            .doc
+            .document_symbols();
+
+        Ok(Some(symbols.into()))
     }
 }
 

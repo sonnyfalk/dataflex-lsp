@@ -116,12 +116,12 @@ Send MyMethod of oTest "test" 1234
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 23));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\\n\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 30));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\\n\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 1 }])"
+            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 1 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 35));
         assert_eq!(format!("{:?}", parameter_info), "Some([])");
@@ -145,27 +145,27 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 11));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\\n\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 15));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\\n\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 22));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\\n\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 30));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\\n\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 1 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 1 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 35));
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\\n\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 2 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 2 }])"
         );
     }
 }

@@ -195,6 +195,18 @@ impl IndexSymbol {
         }
     }
 
+    pub fn children(&self) -> impl Iterator<Item = &IndexSymbol> + use<'_> {
+        match self {
+            Self::Class(class_symbol) => class_symbol.members.iter(),
+            Self::Object(class_symbol) => class_symbol.members.iter(),
+            Self::Struct(struct_symbol) => struct_symbol.members.iter(),
+            Self::Method(_) => Default::default(),
+            Self::Property(_) => Default::default(),
+            Self::Variable(_) => Default::default(),
+            Self::Alias(_) => Default::default(),
+        }
+    }
+
     pub fn resolve(&self, mut sym_path_it: core::slice::Iter<SymbolName>) -> Option<&Self> {
         if let Some(name) = sym_path_it.next() {
             self.child(name).map(|s| s.resolve(sym_path_it)).flatten()
@@ -424,13 +436,13 @@ impl IndexSymbolRef {
 impl std::fmt::Display for IndexSymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Class(class_symbol) => writeln!(
+            Self::Class(class_symbol) => write!(
                 f,
                 "Class {} is a {}",
                 class_symbol.symbol_path.name(),
                 class_symbol.superclass
             ),
-            Self::Object(class_symbol) => writeln!(
+            Self::Object(class_symbol) => write!(
                 f,
                 "Object {} is a {}",
                 class_symbol.symbol_path.name(),
@@ -460,13 +472,13 @@ impl std::fmt::Display for IndexSymbol {
                 if let Some(return_type) = &method_symbol.return_type {
                     write!(f, " Returns {}", return_type.to_string())?;
                 }
-                writeln!(f)
+                Ok(())
             }
             Self::Property(variable_symbol) => {
-                writeln!(f, "Property {}", variable_symbol.to_string(),)
+                write!(f, "Property {}", variable_symbol.to_string(),)
             }
-            Self::Variable(variable_symbol) => writeln!(f, "{}", variable_symbol.to_string()),
-            Self::Alias(alias_symbol) => writeln!(
+            Self::Variable(variable_symbol) => write!(f, "{}", variable_symbol.to_string()),
+            Self::Alias(alias_symbol) => write!(
                 f,
                 "{} = {}",
                 alias_symbol.symbol_path.name(),

@@ -156,10 +156,11 @@ impl Indexer {
             return;
         };
 
-        Self::index_parse_tree(&tree, content, path, index);
+        let index_file = Self::index_parse_tree(&tree, content, path);
+        index.get_mut().update_file(index_file);
     }
 
-    fn index_parse_tree(tree: &tree_sitter::Tree, content: &[u8], path: PathBuf, index: &IndexRef) {
+    fn index_parse_tree(tree: &tree_sitter::Tree, content: &[u8], path: PathBuf) -> IndexFile {
         log::trace!("Indexing file parse tree for {:?}", path);
 
         let query = tree_sitter::Query::new(
@@ -533,8 +534,7 @@ impl Indexer {
                 (index_file, stack)
             },
         );
-
-        index.get_mut().update_file(index_file);
+        index_file
     }
 
     fn watch_and_index_changed_files(index: &IndexRef, channel: mpsc::Receiver<IndexerMessage>) {
@@ -543,7 +543,8 @@ impl Indexer {
             match msg {
                 IndexerMessage::IndexModifiedFileBuffer(path, tree, content) => {
                     log::info!("Request to index file buffer for {path:?}");
-                    Self::index_parse_tree(&tree, content.as_bytes(), path, index);
+                    let index_file = Self::index_parse_tree(&tree, content.as_bytes(), path);
+                    index.get_mut().update_file(index_file);
                 }
                 IndexerMessage::StopIndexing => {
                     break;
@@ -651,6 +652,12 @@ impl Index {
         let symbols_diff =
             SymbolsDiff::diff_index_files(old_index_file.as_ref(), self.files.get(&file_ref));
         self.lookup_tables.update(symbols_diff, file_ref);
+    }
+}
+
+impl IndexFile {
+    pub fn with_parse_tree(tree: &tree_sitter::Tree, content: &[u8]) -> Self {
+        Indexer::index_parse_tree(tree, content, PathBuf::new())
     }
 }
 
