@@ -6,6 +6,12 @@ pub struct SourceLocation {
     pub column: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceRange {
+    pub start: SourceLocation,
+    pub end: SourceLocation,
+}
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum IndexSymbol {
@@ -22,6 +28,7 @@ pub enum IndexSymbol {
 #[allow(dead_code)]
 pub struct ClassSymbol {
     pub location: SourceLocation,
+    pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub superclass: SymbolName,
     pub mixins: Vec<SymbolName>,
@@ -32,6 +39,7 @@ pub struct ClassSymbol {
 #[allow(dead_code)]
 pub struct StructSymbol {
     pub location: SourceLocation,
+    pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub members: Vec<IndexSymbol>,
 }
@@ -40,6 +48,7 @@ pub struct StructSymbol {
 #[allow(dead_code)]
 pub struct MethodSymbol {
     pub location: SourceLocation,
+    pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub kind: MethodKind,
     pub parameters: Vec<(SymbolName, DataFlexDataType)>,
@@ -50,6 +59,7 @@ pub struct MethodSymbol {
 #[allow(dead_code)]
 pub struct VariableSymbol {
     pub location: SourceLocation,
+    pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub data_type: DataFlexDataType,
 }
@@ -58,6 +68,7 @@ pub struct VariableSymbol {
 #[allow(dead_code)]
 pub struct AliasSymbol {
     pub location: SourceLocation,
+    pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub alias: ValueReference,
 }
@@ -127,6 +138,18 @@ impl IndexSymbol {
         }
     }
 
+    pub fn range(&self) -> SourceRange {
+        match self {
+            Self::Class(class_symbol) => class_symbol.range,
+            Self::Object(class_symbol) => class_symbol.range,
+            Self::Struct(struct_symbol) => struct_symbol.range,
+            Self::Method(method_symbol) => method_symbol.range,
+            Self::Property(variable_symbol) => variable_symbol.range,
+            Self::Variable(variable_symbol) => variable_symbol.range,
+            Self::Alias(alias_symbol) => alias_symbol.range,
+        }
+    }
+
     pub fn is_matching(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Class(class_symbol), Self::Class(other_class_symbol)) => {
@@ -186,6 +209,28 @@ impl From<tree_sitter::Point> for SourceLocation {
         Self {
             line: value.row,
             column: value.column,
+        }
+    }
+}
+
+impl SourceRange {
+    pub fn new(start: SourceLocation, end: SourceLocation) -> Self {
+        Self { start, end }
+    }
+
+    pub fn with_location(location: SourceLocation) -> Self {
+        Self {
+            start: location,
+            end: location,
+        }
+    }
+}
+
+impl From<tree_sitter::Range> for SourceRange {
+    fn from(value: tree_sitter::Range) -> Self {
+        Self {
+            start: value.start_point.into(),
+            end: value.end_point.into(),
         }
     }
 }

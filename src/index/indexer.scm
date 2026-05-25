@@ -1,66 +1,66 @@
 (use_statement
   (file_name) @name
-  (#set! index.element file_dependency)) @reference.file_dependency
+  (#set! index.element file_dependency)) @element_node
 
 (class_definition
   (class_header
     name: (identifier) @name
-    superclass: (identifier) @superclass) @definition.class
-  (#set! index.element class_definition))
+    superclass: (identifier) @superclass) 
+  (#set! index.element class_definition)) @element_node
 
 (class_definition
-  (class_footer) @definition.class
-  (#set! index.element pop_stack_symbol))
+  (class_footer) 
+  (#set! index.element pop_stack_symbol)) @element_node
 
 (composite_definition
   (composite_header
     name: (identifier) @name
-    superclass: (identifier) @superclass) @definition.class
-  (#set! index.element class_definition))
+    superclass: (identifier) @superclass) 
+  (#set! index.element class_definition)) @element_node
 
 (composite_definition
-  (composite_footer) @definition.class
-  (#set! index.element pop_stack_symbol))
+  (composite_footer)
+  (#set! index.element pop_stack_symbol)) @element_node
 
 (object_definition
   (object_header
     name: (identifier) @name
-    superclass: (identifier) @superclass) @definition.object
-  (#set! index.element object_definition))
+    superclass: (identifier) @superclass)
+  (#set! index.element object_definition)) @element_node
 
 (object_definition
-  (object_footer) @definition.object
-  (#set! index.element pop_stack_symbol))
+  (object_footer)
+  (#set! index.element pop_stack_symbol)) @element_node
 
 (class_definition
   (procedure_definition
     (procedure_header
       name: (identifier) @name
-      (parameter)* @parameter) @definition.method
-    (#set! index.element method_procedure_definition)))
+      (parameter)* @parameter)
+    (#set! index.element method_procedure_definition)) @element_node)
 
 (class_definition
   (function_definition
     (function_header
       name: (identifier) @name
       (parameter)* @parameter
-      return_type: (typedecl) @return_type) @definition.method
-    (#set! index.element method_function_definition)))
+      return_type: (typedecl) @return_type)
+    (#set! index.element method_function_definition)) @element_node)
 
 (object_definition
   (procedure_definition
     (procedure_header
       name: (identifier) @name
-      (parameter)* @parameter) @definition.method
-    (#set! index.element method_procedure_definition)))
+      (parameter)* @parameter)
+    (#set! index.element method_procedure_definition)) @element_node)
 
 (object_definition
   (function_definition
     (function_header
       name: (identifier) @name
       (parameter)* @parameter
-      return_type: (typedecl) @return_type) @definition.method
-    (#set! index.element method_function_definition)))
+      return_type: (typedecl) @return_type)
+    (#set! index.element method_function_definition)) @element_node)
 
 (property_definition
   type: [
@@ -72,16 +72,16 @@
       (array_decl)* @array)
   ]
   name: (identifier) @name
-  (#set! index.element property_definition)) @definition.property
+  (#set! index.element property_definition)) @element_node
 
 (struct_declaration
   (struct_header
-    name: (identifier) @name) @definition.struct
-  (#set! index.element struct_declaration))
+    name: (identifier) @name)
+  (#set! index.element struct_declaration)) @element_node
 
 (struct_declaration
-  (struct_footer) @definition.struct
-  (#set! index.element pop_stack_symbol))
+  (struct_footer)
+  (#set! index.element pop_stack_symbol)) @element_node
 
 (struct_declaration
   (struct_member
@@ -94,7 +94,7 @@
         (array_decl)* @array)
     ]
     (identifier) @name)
-  (#set! index.element struct_member)) @definition.struct_member
+  (#set! index.element struct_member)) @element_node
 
 (global_variable_declaration
   [
@@ -106,7 +106,7 @@
       (array_decl)* @array)
   ]
   (identifier) @name
-  (#set! index.element global_variable_declaration)) @definition.variable.global
+  (#set! index.element global_variable_declaration)) @element_node
 
 (define_declaration
   name: (identifier) @name
@@ -116,7 +116,7 @@
     (string_literal) @value_reference
     (paren_expression) @value_reference
   ]?
-  (#set! index.element alias_definition)) @definition.alias
+  (#set! index.element alias_definition)) @element_node
 
 (replace_declaration
   name: (identifier) @name
@@ -126,8 +126,8 @@
     (string_literal) @value_reference
     (paren_expression) @value_reference
   ]
-  (#set! index.element alias_definition)) @definition.alias
+  (#set! index.element alias_definition)) @element_node
 
 (mixin_class
   name: (identifier) @name
-  (#set! index.element mixin_class)) @definition.mixin
+  (#set! index.element mixin_class)) @element_node
