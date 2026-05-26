@@ -126,6 +126,18 @@ impl IndexSymbol {
         }
     }
 
+    pub fn parent_name(&self) -> Option<&SymbolName> {
+        match self {
+            Self::Class(class_symbol) => class_symbol.symbol_path.parent_name(),
+            Self::Object(class_symbol) => class_symbol.symbol_path.parent_name(),
+            Self::Struct(struct_symbol) => struct_symbol.symbol_path.parent_name(),
+            Self::Method(method_symbol) => method_symbol.symbol_path.parent_name(),
+            Self::Property(variable_symbol) => variable_symbol.symbol_path.parent_name(),
+            Self::Variable(variable_symbol) => variable_symbol.symbol_path.parent_name(),
+            Self::Alias(alias_symbol) => alias_symbol.symbol_path.parent_name(),
+        }
+    }
+
     pub fn location(&self) -> SourceLocation {
         match self {
             Self::Class(class_symbol) => class_symbol.location,
@@ -195,7 +207,7 @@ impl IndexSymbol {
         }
     }
 
-    pub fn children(&self) -> impl Iterator<Item = &IndexSymbol> + use<'_> {
+    pub fn children(&self) -> impl DoubleEndedIterator<Item = &IndexSymbol> + use<'_> {
         match self {
             Self::Class(class_symbol) => class_symbol.members.iter(),
             Self::Object(class_symbol) => class_symbol.members.iter(),
@@ -244,6 +256,12 @@ impl From<tree_sitter::Range> for SourceRange {
             start: value.start_point.into(),
             end: value.end_point.into(),
         }
+    }
+}
+
+impl SymbolName {
+    pub fn starts_with(&self, pat: &str) -> bool {
+        self.0.starts_with(pat)
     }
 }
 
@@ -305,6 +323,10 @@ impl SymbolPath {
 
     pub fn name(&self) -> &SymbolName {
         self.0.last().unwrap()
+    }
+
+    pub fn parent_name(&self) -> Option<&SymbolName> {
+        self.parent_slice().last()
     }
 
     pub fn is_top_level(&self) -> bool {

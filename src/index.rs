@@ -1,6 +1,7 @@
 use std::{collections::HashMap, ffi::OsStr, path::PathBuf};
 
 use multimap::MultiMap;
+use rayon::prelude::*;
 use streaming_iterator::StreamingIterator;
 use strum::EnumString;
 
@@ -432,6 +433,37 @@ impl Index {
             .into_iter()
             .find(|f| f == name)
             .is_some()
+    }
+
+    pub fn matching_symbols<'a>(&'a self, query: &'a str) -> IndexSymbolIter<'a> {
+        IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
+            let symbols: Vec<IndexSymbolSnapshot<'_, IndexSymbol>> = index_file
+                .symbols
+                .par_iter()
+                .flat_map(|s| rayon::iter::walk_tree(s, |s| s.children()))
+                .filter(|s| s.name().starts_with(query))
+                .map(|s| IndexSymbolSnapshot {
+                    path: &index_file.path,
+                    symbol: s,
+                })
+                .collect();
+            symbols.into_iter()
+        }))
+    }
+
+    pub fn top_level_class_and_object_symbols<'a>(&'a self) -> IndexSymbolIter<'a> {
+        IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
+            let symbols: Vec<IndexSymbolSnapshot<'_, IndexSymbol>> = index_file
+                .symbols
+                .par_iter()
+                .filter(|s| matches!(s, IndexSymbol::Class(_) | IndexSymbol::Object(_)))
+                .map(|s| IndexSymbolSnapshot {
+                    path: &index_file.path,
+                    symbol: s,
+                })
+                .collect();
+            symbols.into_iter()
+        }))
     }
 
     pub fn class_hierarchy<'a>(&'a self, class: &'a ClassSymbol) -> ClassHierarchyIter<'a> {

@@ -114,6 +114,7 @@ impl LanguageServer for DataFlexLanguageServer {
                     ..Default::default()
                 }),
                 document_symbol_provider: Some(OneOf::Left(true)),
+                workspace_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -302,6 +303,39 @@ impl LanguageServer for DataFlexLanguageServer {
             .document_symbols();
 
         Ok(Some(symbols.into()))
+    }
+
+    async fn symbol(
+        &self,
+        params: WorkspaceSymbolParams,
+    ) -> Result<Option<Vec<SymbolInformation>>> {
+        let Some(index) = self
+            .inner
+            .indexer
+            .get()
+            .map(|indexer| indexer.get_index().get())
+        else {
+            return Ok(None);
+        };
+
+        let symbols = if params.query.is_empty() {
+            index.top_level_class_and_object_symbols()
+        } else {
+            index.matching_symbols(&params.query)
+        };
+
+        #[allow(deprecated)]
+        let symbols = symbols
+            .map(|s| SymbolInformation {
+                name: s.symbol.name().to_string(),
+                kind: SymbolKind::from(s.symbol),
+                tags: None,
+                deprecated: None,
+                location: Location::from(&s),
+                container_name: s.symbol.parent_name().map(index::SymbolName::to_string),
+            })
+            .collect();
+        Ok(Some(symbols))
     }
 }
 
