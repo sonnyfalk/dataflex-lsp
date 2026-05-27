@@ -183,10 +183,32 @@ impl LanguageServer for DataFlexLanguageServer {
             params.text_document.uri.as_str()
         );
 
-        if let Some(mut open_file) = self.inner.open_files.get_mut(&params.text_document.uri) {
-            open_file.doc.edit_content(&params.content_changes);
-            open_file.modified = true;
-            self.inner.edited_files_notification.notify_one();
+        let followup_edit =
+            if let Some(mut open_file) = self.inner.open_files.get_mut(&params.text_document.uri) {
+                let followup_edits = open_file.doc.edit_content(&params.content_changes);
+                open_file.modified = true;
+                self.inner.edited_files_notification.notify_one();
+
+                followup_edits.map(|edits| TextDocumentEdit {
+                    text_document: OptionalVersionedTextDocumentIdentifier::new(
+                        params.text_document.uri,
+                        params.text_document.version,
+                    ),
+                    edits: edits.into_iter().map(|e| OneOf::Left(e)).collect(),
+                })
+            } else {
+                None
+            };
+
+        if let Some(followup_edit) = followup_edit {
+            _ = self
+                .inner
+                .client
+                .apply_edit(WorkspaceEdit {
+                    document_changes: Some(DocumentChanges::Edits(vec![followup_edit])),
+                    ..Default::default()
+                })
+                .await;
         }
     }
 

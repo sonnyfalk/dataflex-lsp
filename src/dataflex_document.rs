@@ -14,6 +14,7 @@ mod document_context;
 mod line_map;
 mod parameter_info;
 mod reference_resolver;
+mod scope_balancer;
 mod syntax_map;
 mod tree_cursor;
 
@@ -192,7 +193,10 @@ impl DataFlexDocument {
         self.update();
     }
 
-    pub fn edit_content(&mut self, changes: &Vec<lsp_types::TextDocumentContentChangeEvent>) {
+    pub fn edit_content(
+        &mut self,
+        changes: &Vec<lsp_types::TextDocumentContentChangeEvent>,
+    ) -> Option<Vec<lsp_types::TextEdit>> {
         for change in changes {
             let Some(range) = change.range else {
                 self.line_map = line_map::LineMap::new(&change.text);
@@ -227,6 +231,33 @@ impl DataFlexDocument {
             }
         }
         self.update();
+
+        if changes.len() == 1
+            && let Some(change) = changes.first()
+            && scope_balancer::ScopeBalancer::is_auto_close_scope_trigger(&change.text)
+            && let Some(position) = change
+                .range
+                .map(|range| Point::new(range.end.line as usize, range.end.character as usize))
+        {
+            scope_balancer::ScopeBalancer::auto_close_scope(self, position, &change.text).map(
+                |edit| {
+                    let start = lsp_types::Position::new(
+                        edit.range.start.row as u32,
+                        edit.range.start.column as u32,
+                    );
+                    let end = lsp_types::Position::new(
+                        edit.range.end.row as u32,
+                        edit.range.end.column as u32,
+                    );
+                    vec![lsp_types::TextEdit {
+                        range: lsp_types::Range::new(start, end),
+                        new_text: edit.text,
+                    }]
+                },
+            )
+        } else {
+            None
+        }
     }
 
     pub fn semantic_tokens_full(&self) -> Option<Vec<lsp_types::SemanticToken>> {
