@@ -113,6 +113,7 @@ impl LanguageServer for DataFlexLanguageServer {
                     trigger_characters: Some(vec![String::from(" "), String::from("(")]),
                     ..Default::default()
                 }),
+                document_highlight_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 workspace_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
@@ -310,6 +311,21 @@ impl LanguageServer for DataFlexLanguageServer {
         } else {
             Ok(None)
         }
+    }
+
+    async fn document_highlight(
+        &self,
+        params: DocumentHighlightParams,
+    ) -> Result<Option<Vec<DocumentHighlight>>> {
+        let highlights = self
+            .inner
+            .open_files
+            .get(&params.text_document_position_params.text_document.uri)
+            .unwrap()
+            .doc
+            .document_highlight(params.text_document_position_params.position);
+
+        Ok(highlights)
     }
 
     async fn document_symbol(

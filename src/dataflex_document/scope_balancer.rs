@@ -114,6 +114,34 @@ impl ScopeBalancer {
         })
     }
 
+    pub fn open_and_close_scope_range_pair(
+        doc: &DataFlexDocument,
+        position: Point,
+    ) -> Option<(std::ops::Range<Point>, std::ops::Range<Point>)> {
+        let mut cursor = doc.cursor()?;
+        if !cursor.goto_leaf_node_before_point(position) || !cursor.goto_parent() {
+            return None;
+        }
+        let scope_node = cursor.node();
+
+        if let Some(balanced_scope_node) = Self::find_balanced_corresponding_scope_node(&scope_node)
+        {
+            if scope_node.start_position() < balanced_scope_node.start_position() {
+                Some((
+                    Self::scope_node_range(&scope_node),
+                    Self::scope_node_range(&balanced_scope_node),
+                ))
+            } else {
+                Some((
+                    Self::scope_node_range(&balanced_scope_node),
+                    Self::scope_node_range(&scope_node),
+                ))
+            }
+        } else {
+            None
+        }
+    }
+
     fn find_balanced_corresponding_scope_node<'a>(
         scope_node: &tree_sitter::Node<'a>,
     ) -> Option<tree_sitter::Node<'a>> {
@@ -161,6 +189,17 @@ impl ScopeBalancer {
                     .next()
                     .map(|n| n.start_position())
             })
+    }
+
+    fn scope_node_range(scope_node: &tree_sitter::Node) -> std::ops::Range<tree_sitter::Point> {
+        let start = scope_node.start_position();
+        let end = scope_node
+            .children(&mut scope_node.walk())
+            .take_while(|n| n.kind() == "keyword")
+            .last()
+            .map(|n| n.end_position())
+            .unwrap_or(scope_node.end_position());
+        start..end
     }
 }
 
@@ -357,6 +396,53 @@ mod tests {
         assert_eq!(
             format!("{:?}", edits),
             "Some(TextEdit { range: Point { row: 3, column: 0 }..Point { row: 3, column: 0 }, text: \"    End\\n\" })"
+        );
+    }
+
+    #[test]
+    fn test_open_and_close_scope_range_pair() {
+        let test_content = r#"
+Object oMyObject is a cObject
+    Procedure MyMethod
+        If foo Begin
+        End
+    End_Procedure
+End_Object
+    "#;
+        let index = index::IndexRef::make_test_index_ref();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(1, 0));
+        assert_eq!(
+            format!("{:?}", range_pair),
+            "Some((Point { row: 1, column: 0 }..Point { row: 1, column: 6 }, Point { row: 6, column: 0 }..Point { row: 6, column: 10 }))"
+        );
+        let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(1, 6));
+        assert_eq!(
+            format!("{:?}", range_pair),
+            "Some((Point { row: 1, column: 0 }..Point { row: 1, column: 6 }, Point { row: 6, column: 0 }..Point { row: 6, column: 10 }))"
+        );
+        let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(6, 0));
+        assert_eq!(
+            format!("{:?}", range_pair),
+            "Some((Point { row: 1, column: 0 }..Point { row: 1, column: 6 }, Point { row: 6, column: 0 }..Point { row: 6, column: 10 }))"
+        );
+        let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(6, 10));
+        assert_eq!(
+            format!("{:?}", range_pair),
+            "Some((Point { row: 1, column: 0 }..Point { row: 1, column: 6 }, Point { row: 6, column: 0 }..Point { row: 6, column: 10 }))"
+        );
+
+        let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(2, 4));
+        assert_eq!(
+            format!("{:?}", range_pair),
+            "Some((Point { row: 2, column: 4 }..Point { row: 2, column: 13 }, Point { row: 5, column: 4 }..Point { row: 5, column: 17 }))"
+        );
+
+        let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(3, 15));
+        assert_eq!(
+            format!("{:?}", range_pair),
+            "Some((Point { row: 3, column: 15 }..Point { row: 3, column: 20 }, Point { row: 4, column: 8 }..Point { row: 4, column: 11 }))"
         );
     }
 }

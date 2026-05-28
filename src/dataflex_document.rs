@@ -360,6 +360,43 @@ impl DataFlexDocument {
         )
     }
 
+    pub fn document_highlight(
+        &self,
+        position: lsp_types::Position,
+    ) -> Option<Vec<lsp_types::DocumentHighlight>> {
+        let position = Point {
+            row: position.line as usize,
+            column: position.character as usize,
+        };
+
+        if let Some(range_pair) =
+            scope_balancer::ScopeBalancer::open_and_close_scope_range_pair(self, position)
+            && (std::ops::RangeInclusive::new(range_pair.0.start, range_pair.0.end)
+                .contains(&position)
+                || std::ops::RangeInclusive::new(range_pair.1.start, range_pair.1.end)
+                    .contains(&position))
+        {
+            Some(
+                [range_pair.0, range_pair.1]
+                    .map(|r| lsp_types::DocumentHighlight {
+                        range: lsp_types::Range::new(
+                            lsp_types::Position::new(r.start.row as u32, r.start.column as u32),
+                            lsp_types::Position::new(r.end.row as u32, r.end.column as u32),
+                        ),
+                        kind: Some(lsp_types::DocumentHighlightKind::TEXT),
+                    })
+                    .to_vec(),
+            )
+        } else {
+            let allow_default_highlights = DocumentContext::context(self, position).is_some();
+            if allow_default_highlights {
+                None
+            } else {
+                Some(vec![])
+            }
+        }
+    }
+
     pub fn document_symbols(&self) -> Vec<lsp_types::DocumentSymbol> {
         let Some(tree) = self.tree() else {
             return Vec::new();
