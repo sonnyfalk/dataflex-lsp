@@ -87,6 +87,7 @@ impl LanguageServer for DataFlexLanguageServer {
                             SemanticTokenType::FUNCTION,
                             SemanticTokenType::STRUCT,
                             SemanticTokenType::ENUM_MEMBER,
+                            SemanticTokenType::NAMESPACE,
                         ],
                         token_modifiers: vec![],
                     },

@@ -216,6 +216,32 @@ impl SyntaxMap {
                                         Some(SyntaxToken::new(start, end, 4, prev_pos))
                                     } else if index.is_known_alias_symbol(&name) {
                                         Some(SyntaxToken::new(start, end, 7, prev_pos))
+                                    } else if index.is_known_dataflex_table(&name) {
+                                        Some(SyntaxToken::new(start, end, 8, prev_pos))
+                                    } else {
+                                        None
+                                    }
+                                }
+                                "entity.name.member" => {
+                                    let postfix_expr_node = doc.cursor().and_then(|mut cursor| {
+                                        (cursor.goto_descendant_node(&capture.node)
+                                            && cursor.goto_enclosing_postfix_expression())
+                                        .then_some(cursor.node())
+                                    });
+                                    if let Some(root_name) = postfix_expr_node
+                                        .and_then(|n| n.child_by_field_name("name"))
+                                        .map(|n| SymbolName::from(doc.line_map.text_for_node(&n)))
+                                    {
+                                        index.find_dataflex_table(&root_name).and_then(|table| {
+                                            table
+                                                .columns
+                                                .contains(
+                                                    &doc.line_map
+                                                        .text_for_node(&capture.node)
+                                                        .into(),
+                                                )
+                                                .then(|| SyntaxToken::new(start, end, 3, prev_pos))
+                                        })
                                     } else {
                                         None
                                     }

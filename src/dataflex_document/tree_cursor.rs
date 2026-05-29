@@ -1,5 +1,5 @@
 use std::ops::{Deref, DerefMut};
-use tree_sitter::TreeCursor;
+use tree_sitter::{Node, TreeCursor};
 
 use super::*;
 
@@ -173,6 +173,7 @@ pub trait TreeCursorExt {
     fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool;
     fn goto_leaf_node_before_point(&mut self, point: Point) -> bool;
     fn goto_descendant_for_point(&mut self, point: Point) -> bool;
+    fn goto_descendant_node(&mut self, node: &Node) -> bool;
     fn goto_leaf_node(&mut self) -> bool;
     fn goto_next_node(&mut self) -> bool;
     fn goto_previous_node(&mut self) -> bool;
@@ -225,6 +226,20 @@ impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
             }
         }
         did_descend
+    }
+
+    fn goto_descendant_node(&mut self, node: &Node) -> bool {
+        let current = self.clone();
+        while self.node() != *node {
+            if self
+                .goto_first_child_for_point(node.start_position())
+                .is_none()
+            {
+                self.reset_to(&current);
+                return false;
+            }
+        }
+        true
     }
 
     fn goto_next_node(&mut self) -> bool {
