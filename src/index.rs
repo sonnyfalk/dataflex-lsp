@@ -17,7 +17,7 @@ pub use index_symbol::*;
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
-pub use index_file::{IndexFile, IndexFileRef};
+pub use index_file::{DataFlexTable, IndexFile, IndexFileRef};
 
 use lookup_tables::LookupTables;
 
@@ -198,6 +198,35 @@ impl Index {
     pub fn all_known_structs(&self) -> Vec<SymbolName> {
         self.lookup_tables
             .struct_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    pub fn find_dataflex_table(&self, name: &SymbolName) -> Option<&DataFlexTable> {
+        let index_file = self
+            .lookup_tables
+            .dataflex_table_lookup_table()
+            .get(name)
+            .and_then(|f| self.files.get(f))?;
+        index_file
+            .tables
+            .as_ref()
+            .and_then(|t| t.iter().find(|t| t.name == *name))
+    }
+
+    pub fn is_known_dataflex_table(&self, name: &SymbolName) -> bool {
+        self.lookup_tables
+            .dataflex_table_lookup_table()
+            .get(name)
+            .is_some()
+    }
+
+    #[allow(dead_code)]
+    pub fn all_known_dataflex_tables(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .dataflex_table_lookup_table()
             .keys()
             .cloned()
             .collect()

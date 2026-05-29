@@ -10,6 +10,7 @@ pub struct LookupTables {
     property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     global_variable_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
     alias_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
+    table_lookup_table: HashMap<SymbolName, IndexFileRef>,
 }
 
 impl LookupTables {
@@ -22,6 +23,7 @@ impl LookupTables {
             property_lookup_table: MultiMap::new(),
             global_variable_lookup_table: HashMap::new(),
             alias_lookup_table: HashMap::new(),
+            table_lookup_table: HashMap::new(),
         }
     }
 
@@ -92,9 +94,36 @@ impl LookupTables {
         &mut self.alias_lookup_table
     }
 
-    pub fn update(&mut self, symbols_diff: SymbolsDiff, file_ref: IndexFileRef) {
-        self.remove_symbols(symbols_diff.removed_symbols.into_iter(), &file_ref);
-        self.add_symbols(symbols_diff.added_symbols.into_iter(), &file_ref);
+    pub fn dataflex_table_lookup_table(&self) -> &HashMap<SymbolName, IndexFileRef> {
+        &self.table_lookup_table
+    }
+
+    pub fn dataflex_table_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexFileRef> {
+        &mut self.table_lookup_table
+    }
+
+    pub fn update_symbols(&mut self, symbols_diff: SymbolsDiff, file_ref: &IndexFileRef) {
+        self.remove_symbols(symbols_diff.removed_symbols.into_iter(), file_ref);
+        self.add_symbols(symbols_diff.added_symbols.into_iter(), file_ref);
+    }
+
+    pub fn update_dataflex_table_references(
+        &mut self,
+        old_tables: Option<&Vec<DataFlexTable>>,
+        new_tables: Option<&Vec<DataFlexTable>>,
+        file_ref: &IndexFileRef,
+    ) {
+        if let Some(tables) = old_tables {
+            tables.iter().for_each(|table| {
+                self.dataflex_table_lookup_table_mut().remove(&table.name);
+            });
+        }
+        if let Some(tables) = new_tables {
+            tables.iter().for_each(|table| {
+                self.dataflex_table_lookup_table_mut()
+                    .insert(table.name.clone(), file_ref.clone());
+            });
+        }
     }
 
     fn remove_symbols<'a>(
@@ -821,6 +850,98 @@ mod tests {
                     .get(&"MyOtherAlias".into())
             ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyOtherAlias\") })"
+        );
+    }
+
+    #[test]
+    fn test_dataflex_table_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "#REPLACE OrderHeader.Order_Number |FN30,1\n",
+            "test.fd".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .dataflex_table_lookup_table()
+                    .get(&"OrderHeader".into())
+            ),
+            "Some(IndexFileRef(\"test.fd\"))"
+        );
+
+        Indexer::index_test_content("\n", "test.fd".into(), &index_ref);
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .dataflex_table_lookup_table()
+                    .get(&"OrderHeader".into())
+            ),
+            "None"
+        );
+
+        Indexer::index_test_content(
+            "#REPLACE OrderHeader.Order_Number |FN30,1\n",
+            "test.fd".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .dataflex_table_lookup_table()
+                    .get(&"OrderHeader".into())
+            ),
+            "Some(IndexFileRef(\"test.fd\"))"
+        );
+
+        Indexer::index_test_content(
+            "#REPLACE OrderHeaderRenamed.Order_Number |FN30,1\n",
+            "test.fd".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .dataflex_table_lookup_table()
+                    .get(&"OrderHeader".into())
+            ),
+            "None"
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .dataflex_table_lookup_table()
+                    .get(&"OrderHeader".into())
+            ),
+            "None"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .dataflex_table_lookup_table()
+                    .get(&"OrderHeaderRenamed".into())
+            ),
+            "Some(IndexFileRef(\"test.fd\"))"
         );
     }
 }

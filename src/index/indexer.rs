@@ -186,6 +186,7 @@ impl Indexer {
         let array_capture_index = query.capture_index_for_name("array").unwrap();
         let value_ref_capture_index = query.capture_index_for_name("value_reference").unwrap();
         let name_ref_capture_index = query.capture_index_for_name("name_reference").unwrap();
+        let arg_ref_capture_index = query.capture_index_for_name("arg_reference").unwrap();
         let parameter_capture_index = query.capture_index_for_name("parameter").unwrap();
         let return_type_capture_index = query.capture_index_for_name("return_type").unwrap();
         let element_node_capture_index = query.capture_index_for_name("element_node").unwrap();
@@ -472,29 +473,60 @@ impl Indexer {
                             .next()
                             && let Some(name) = name_node.utf8_text(content).ok()
                         {
-                            let value = if let Some(value) = query_match
-                                .nodes_for_capture_index(value_ref_capture_index)
+                            if let Some(arg_ref) = query_match
+                                .nodes_for_capture_index(arg_ref_capture_index)
                                 .next()
                                 .and_then(|n| n.utf8_text(content).ok())
+                                && (arg_ref.starts_with("|F") || arg_ref.starts_with("|f"))
                             {
-                                ValueReference::Value(value.into())
-                            } else if let Some(name_ref) = query_match
-                                .nodes_for_capture_index(name_ref_capture_index)
-                                .next()
-                                .and_then(|n| n.utf8_text(content).ok())
-                            {
-                                ValueReference::Symbol(name_ref.into())
+                                if let Some((table_name, column_name)) =
+                                    name.split_once('.').map(|parts| {
+                                        (SymbolName::from(parts.0), SymbolName::from(parts.1))
+                                    })
+                                {
+                                    let tables = index_file.tables.get_or_insert_default();
+                                    if let Some(table) =
+                                        tables.iter_mut().find(|t| t.name == table_name)
+                                    {
+                                        table.columns.push(column_name);
+                                    } else {
+                                        tables.push(DataFlexTable {
+                                            name: table_name,
+                                            columns: vec![column_name],
+                                        });
+                                    }
+                                }
                             } else {
-                                //FIXME: This should increment by one for enum list and use "1" otherwise
-                                ValueReference::Value(String::new())
-                            };
-                            let alias_symbol = AliasSymbol {
-                                location: name_node.start_position().into(),
-                                range: element_range.unwrap_or_else(|| name_node.range().into()),
-                                symbol_path: SymbolPath::with_name(name),
-                                alias: value,
-                            };
-                            index_file.symbols.push(IndexSymbol::Alias(alias_symbol));
+                                let value = if let Some(value) = query_match
+                                    .nodes_for_capture_index(value_ref_capture_index)
+                                    .next()
+                                    .or_else(|| {
+                                        query_match
+                                            .nodes_for_capture_index(arg_ref_capture_index)
+                                            .next()
+                                    })
+                                    .and_then(|n| n.utf8_text(content).ok())
+                                {
+                                    ValueReference::Value(value.into())
+                                } else if let Some(name_ref) = query_match
+                                    .nodes_for_capture_index(name_ref_capture_index)
+                                    .next()
+                                    .and_then(|n| n.utf8_text(content).ok())
+                                {
+                                    ValueReference::Symbol(name_ref.into())
+                                } else {
+                                    //FIXME: This should increment by one for enum list and use "1" otherwise
+                                    ValueReference::Value(String::new())
+                                };
+                                let alias_symbol = AliasSymbol {
+                                    location: name_node.start_position().into(),
+                                    range: element_range
+                                        .unwrap_or_else(|| name_node.range().into()),
+                                    symbol_path: SymbolPath::with_name(name),
+                                    alias: value,
+                                };
+                                index_file.symbols.push(IndexSymbol::Alias(alias_symbol));
+                            }
                         }
                     }
                     Some(TagsQueryIndexElement::MixinClass) => {
@@ -649,9 +681,14 @@ impl Index {
     fn update_file(&mut self, index_file: IndexFile) {
         let file_ref = IndexFileRef::from(&index_file.path);
         let old_index_file = self.files.insert(file_ref.clone(), index_file);
-        let symbols_diff =
-            SymbolsDiff::diff_index_files(old_index_file.as_ref(), self.files.get(&file_ref));
-        self.lookup_tables.update(symbols_diff, file_ref);
+        let new_index_file = self.files.get(&file_ref);
+        let symbols_diff = SymbolsDiff::diff_index_files(old_index_file.as_ref(), new_index_file);
+        self.lookup_tables.update_symbols(symbols_diff, &file_ref);
+        self.lookup_tables.update_dataflex_table_references(
+            old_index_file.as_ref().and_then(|f| f.tables.as_deref()),
+            new_index_file.and_then(|f| f.tables.as_deref()),
+            &file_ref,
+        );
     }
 }
 
@@ -927,7 +964,7 @@ Define someUndefinedValue
     }
 
     #[test]
-    fn test_mixin_class() {
+    fn test_index_mixin_class() {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             r#"
@@ -946,6 +983,29 @@ End_Class
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 9 } }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [SymbolName(\"cMyMixin\"), SymbolName(\"cMyOtherMixin\")], members: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_dataflex_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+#REPLACE OrderHeader.Recnum |FN30,0
+#REPLACE OrderHeader.Order_Number |FN30,1
+#REPLACE OrderHeader.Customer_Number |FN30,2
+#REPLACE OrderHeader.Order_Date |FD30,3
+            "#,
+            "test.fd".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.fd")].tables
+            ),
+            "Some([DataFlexTable { name: SymbolName(\"OrderHeader\"), columns: [SymbolName(\"Recnum\"), SymbolName(\"Order_Number\"), SymbolName(\"Customer_Number\"), SymbolName(\"Order_Date\")] }])"
         );
     }
 }

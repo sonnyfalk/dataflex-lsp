@@ -5,6 +5,7 @@ pub struct IndexFile {
     pub path: PathBuf,
     pub dependencies: Vec<IndexFileRef>,
     pub symbols: Vec<IndexSymbol>,
+    pub tables: Option<Box<Vec<DataFlexTable>>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -16,6 +17,7 @@ impl IndexFile {
             path,
             dependencies: Vec::new(),
             symbols: Vec::new(),
+            tables: None,
         }
     }
 
@@ -31,6 +33,13 @@ impl IndexFile {
             None
         }
     }
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct DataFlexTable {
+    pub name: SymbolName,
+    pub columns: Vec<SymbolName>,
 }
 
 impl From<&PathBuf> for IndexFileRef {
