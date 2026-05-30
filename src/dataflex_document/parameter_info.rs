@@ -70,6 +70,7 @@ impl ParameterInfo {
                                     || n.child(0).filter(|n| n.kind() == ",").is_some()
                             })
                             .take_while(|n| n.end_position() <= position)
+                            .filter(|n| !n.is_missing())
                             .skip(1)
                             .count()
                     } else {
@@ -78,7 +79,19 @@ impl ParameterInfo {
                             .children_by_field_name("argument", &mut cursor.node().walk())
                             .chain(cursor.node().child_by_field_name("result"))
                             .take_while(|n| n.end_position() < position)
-                            .count()
+                            .filter(|n| !n.is_missing())
+                            .map(|n| {
+                                if n.prev_sibling().is_some_and(|n| {
+                                    doc.line_map
+                                        .text_for_node(&n)
+                                        .eq_ignore_ascii_case("File_Field")
+                                }) {
+                                    2
+                                } else {
+                                    1
+                                }
+                            })
+                            .sum()
                     };
                     if active_parameter < parameters.len() || in_expression {
                         Some(ParameterInfo {
@@ -124,6 +137,34 @@ Send MyMethod of oTest "test" 1234
             "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 1 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 35));
+        assert_eq!(format!("{:?}", parameter_info), "Some([])");
+    }
+
+    #[test]
+    fn test_parameter_info_with_file_field() {
+        let test_content = r#"
+Object oTest is a cObject
+    Procedure MyMethod Integer iFile Integer iField String sArg1 
+    End_Procedure
+End_Object
+
+Send MyMethod of oTest File_Field OrderHeader.Order_Number "test"
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 34));
+        assert_eq!(
+            format!("{:?}", parameter_info),
+            "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 0 }])"
+        );
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 59));
+        assert_eq!(
+            format!("{:?}", parameter_info),
+            "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 2 }])"
+        );
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 66));
         assert_eq!(format!("{:?}", parameter_info), "Some([])");
     }
 
