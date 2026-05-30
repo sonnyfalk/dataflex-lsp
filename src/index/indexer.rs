@@ -339,6 +339,14 @@ impl Indexer {
                                 })
                                 .collect();
 
+                            let method_kind = if name_node.prev_sibling().is_some_and(|n| {
+                                n.utf8_text(content)
+                                    .is_ok_and(|text| text.eq_ignore_ascii_case("set"))
+                            }) {
+                                MethodKind::Set
+                            } else {
+                                MethodKind::Msg
+                            };
                             let method_symbol = MethodSymbol {
                                 location: name_node.start_position().into(),
                                 range: element_range.unwrap_or_else(|| name_node.range().into()),
@@ -346,7 +354,7 @@ impl Indexer {
                                     &class_symbol.symbol_path,
                                     name,
                                 ),
-                                kind: MethodKind::Msg,
+                                kind: method_kind,
                                 parameters: parameters,
                                 return_type: None,
                             };
@@ -788,6 +796,24 @@ mod tests {
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, range: SourceRange { start: SourceLocation { line: 1, column: 4 }, end: SourceLocation { line: 2, column: 17 } }, symbol_path: SymbolPath(\"cMyClass.SayHello\"), kind: Msg, parameters: [], return_type: None })] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_class_procedure_set_method() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\n    Procedure Set Server String sServer\n    End_Procedure\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 18 }, range: SourceRange { start: SourceLocation { line: 1, column: 4 }, end: SourceLocation { line: 2, column: 17 } }, symbol_path: SymbolPath(\"cMyClass.Server\"), kind: Set, parameters: [(SymbolName(\"sServer\"), DataFlexDataType(\"String\"))], return_type: None })] })]"
         );
     }
 
