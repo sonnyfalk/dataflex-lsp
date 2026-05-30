@@ -152,19 +152,19 @@ impl DocumentContext {
                 context_scanner_match!(scanner, identifier -> Self::ClassReference)
             }
             ("keyword", "send") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), ("to" | "of", expr)?, expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Msg), expr*)
             }
             ("keyword", "get") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), ("of", expr)?, expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), expr*)
             }
             ("keyword", "set") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", expr)?, "to", expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), expr*)
             }
             ("keyword", "webget") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), ("of", expr)?, expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Get), expr*)
             }
             ("keyword", "webset") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), ("of", expr)?, "to", expr*)
+                context_scanner_match!(scanner, identifier -> Self::MethodReference(MethodKind::Set), expr*)
             }
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
@@ -217,6 +217,7 @@ impl<'a> ContextScanner<'a> {
     ) -> Result<ContextScannerStatus, ContextScannerError> {
         if !self.cursor.goto_next_leaf_node()
             || self.cursor.node().is_missing()
+            || self.cursor.node().is_error()
             || self.cursor.node().start_position() > self.end
         {
             return Ok(ContextScannerStatus::Stop);
@@ -233,6 +234,7 @@ impl<'a> ContextScanner<'a> {
     fn accept_identifier(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
         if !self.cursor.goto_next_leaf_node()
             || self.cursor.node().is_missing()
+            || self.cursor.node().is_error()
             || self.cursor.node().start_position() > self.end
         {
             return Ok(ContextScannerStatus::Stop);
@@ -247,33 +249,61 @@ impl<'a> ContextScanner<'a> {
     }
 
     fn accept_expr(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
-        if !self.cursor.goto_next_node()
-            || self.cursor.node().is_missing()
-            || self.cursor.node().start_position() > self.end
-        {
+        log::trace!("accept_optional_expr() after {:?}", self.cursor.node());
+        if !self.cursor.goto_next_node() {
+            log::trace!(
+                "accept_optional_expr() - Ok(Yield) with {:?}",
+                self.cursor.node()
+            );
             return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
         }
 
         if (self.cursor.is_paren_expression() || self.cursor.is_postfix_expression())
             && self.cursor.node().end_position() < self.end
         {
+            log::trace!(
+                "accept_optional_expr() - Ok(Continue) with {:?}",
+                self.cursor.node()
+            );
             return Ok(ContextScannerStatus::Continue);
         }
 
         self.cursor.goto_leaf_node();
+        if self.cursor.node().is_missing()
+            || self.cursor.node().is_error()
+            || self.cursor.node().start_position() > self.end
+        {
+            log::trace!(
+                "accept_optional_expr() - Ok(Yield) with {:?}",
+                self.cursor.node()
+            );
+            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
+        }
 
         if self.cursor.is_identifier() {
             if self.cursor.node().end_position() >= self.end {
+                log::trace!(
+                    "accept_optional_expr() - Ok(Yield) with {:?}",
+                    self.cursor.node()
+                );
                 return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
             }
         }
 
         if self.cursor.node().end_position() >= self.end {
+            log::trace!(
+                "accept_optional_expr() - Ok(Stop) with {:?}",
+                self.cursor.node()
+            );
             return Ok(ContextScannerStatus::Stop);
         }
 
         // FIXME: Reject anything that's not valid expression.
 
+        log::trace!(
+            "accept_optional_expr() - Ok(Continue) with {:?}",
+            self.cursor.node()
+        );
         Ok(ContextScannerStatus::Continue)
     }
 
@@ -690,6 +720,14 @@ mod test {
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
+            "Set Foo arg1 to arg2\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "WebGet Foo of oMyObj arg1\n",
             index::IndexRef::make_test_index_ref(),
         );
@@ -718,6 +756,92 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 25 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+    }
+
+    #[test]
+    fn test_incomplete_call_expr() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set \nSend OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Set))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo arg1 \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo of \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 11 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo arg1 to \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 16 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo of oMyObj \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo of oMyObj to \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 21 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo of oMyObj arg1 \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Set Foo of oMyObj arg1 to \nSet OtherMessage\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 26 });
         assert_eq!(context, Some(DocumentContext::Expression));
     }
 
