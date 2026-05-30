@@ -500,7 +500,7 @@ impl Indexer {
                                     } else {
                                         tables.push(DataFlexTable {
                                             name: table_name,
-                                            columns: vec![column_name],
+                                            columns: vec!["File_Number".into(), column_name],
                                         });
                                     }
                                 }
@@ -1031,7 +1031,7 @@ End_Class
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.fd")].tables
             ),
-            "Some([DataFlexTable { name: SymbolName(\"OrderHeader\"), columns: [SymbolName(\"Recnum\"), SymbolName(\"Order_Number\"), SymbolName(\"Customer_Number\"), SymbolName(\"Order_Date\")] }])"
+            "Some([DataFlexTable { name: SymbolName(\"OrderHeader\"), columns: [SymbolName(\"File_Number\"), SymbolName(\"Recnum\"), SymbolName(\"Order_Number\"), SymbolName(\"Customer_Number\"), SymbolName(\"Order_Date\")] }])"
         );
     }
 }

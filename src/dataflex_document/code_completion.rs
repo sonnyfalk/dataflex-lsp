@@ -20,6 +20,8 @@ pub enum CompletionItemKind {
     Function,
     StructMember,
     EnumMember,
+    TableName,
+    TableColumn,
 }
 
 impl CodeCompletion {
@@ -118,6 +120,16 @@ impl CodeCompletion {
                         kind: CompletionItemKind::EnumMember,
                     }),
             )
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_dataflex_tables()
+                    .drain(..)
+                    .map(|table_name| CompletionItem {
+                        label: table_name.to_string(),
+                        kind: CompletionItemKind::TableName,
+                    }),
+            )
             .collect()
     }
 
@@ -184,6 +196,16 @@ impl CodeCompletion {
                         kind: CompletionItemKind::Class,
                     }),
             )
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_dataflex_tables()
+                    .drain(..)
+                    .map(|table_name| CompletionItem {
+                        label: table_name.to_string(),
+                        kind: CompletionItemKind::TableName,
+                    }),
+            )
             .collect()
     }
 
@@ -204,13 +226,20 @@ impl CodeCompletion {
         let index = doc.index.get();
         let reference_resolver = ReferenceResolver::new(doc);
 
-        let symbol_snapshot = if cursor.goto_enclosing_member_access()
+        let root_name = if cursor.goto_enclosing_member_access()
             && cursor.goto_previous_sibling()
             && cursor.is_identifier()
         {
-            let name = index::SymbolName::from(doc.line_map.text_for_node(&cursor.node()));
+            Some(index::SymbolName::from(
+                doc.line_map.text_for_node(&cursor.node()),
+            ))
+        } else {
+            None
+        };
+
+        let symbol_snapshot = if let Some(name) = root_name.as_ref() {
             reference_resolver
-                .resolve_type_of_variable(cursor.node().start_position(), &name)
+                .resolve_type_of_variable(cursor.node().start_position(), name)
                 .and_then(|data_type| index.find_struct(data_type.name()))
                 .and_then(|struct_ref| index.symbol_snapshot(struct_ref))
         } else {
@@ -219,19 +248,34 @@ impl CodeCompletion {
                 .next()
         };
 
-        symbol_snapshot
-            .and_then(|s| StructSymbol::from_index_symbol(s.symbol))
-            .map(|struct_symbol| {
-                struct_symbol
-                    .members
-                    .iter()
-                    .map(|member| CompletionItem {
-                        label: member.name().to_string(),
-                        kind: CompletionItemKind::StructMember,
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
+        if let Some(symbol_snapshot) = symbol_snapshot {
+            StructSymbol::from_index_symbol(symbol_snapshot.symbol)
+                .map(|struct_symbol| {
+                    struct_symbol
+                        .members
+                        .iter()
+                        .map(|member| CompletionItem {
+                            label: member.name().to_string(),
+                            kind: CompletionItemKind::StructMember,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else if let Some(table) = root_name
+            .as_ref()
+            .and_then(|name| index.find_dataflex_table(name))
+        {
+            table
+                .columns
+                .iter()
+                .map(|column| CompletionItem {
+                    label: column.to_string(),
+                    kind: CompletionItemKind::TableColumn,
+                })
+                .collect()
+        } else {
+            vec![]
+        }
     }
 
     fn local_variable_completions(

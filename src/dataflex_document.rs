@@ -421,6 +421,8 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
             code_completion::CompletionItemKind::Function => Self::FUNCTION,
             code_completion::CompletionItemKind::StructMember => Self::FIELD,
             code_completion::CompletionItemKind::EnumMember => Self::ENUM_MEMBER,
+            code_completion::CompletionItemKind::TableName => Self::FILE,
+            code_completion::CompletionItemKind::TableColumn => Self::FIELD,
         }
     }
 }
