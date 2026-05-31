@@ -108,7 +108,10 @@ impl LanguageServer for DataFlexLanguageServer {
                 )),
                 semantic_tokens_provider: semantic_tokens_options,
                 definition_provider: Some(OneOf::Left(true)),
-                completion_provider: Some(Default::default()),
+                completion_provider: Some(CompletionOptions {
+                    trigger_characters: Some(vec![String::from("."), String::from(" ")]),
+                    ..Default::default()
+                }),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 signature_help_provider: Some(SignatureHelpOptions {
                     trigger_characters: Some(vec![String::from(" "), String::from("(")]),
