@@ -635,6 +635,21 @@ mod tests {
     }
 
     #[test]
+    fn test_find_class_case_insensitive() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!("{:?}", index_ref.get().find_class(&"cmyclass".into())),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+        );
+    }
+
+    #[test]
     fn test_find_methods() {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(

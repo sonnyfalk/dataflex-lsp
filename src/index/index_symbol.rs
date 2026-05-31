@@ -95,7 +95,7 @@ pub enum ValueReference {
     Value(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub struct SymbolName(String);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -262,6 +262,20 @@ impl From<tree_sitter::Range> for SourceRange {
 impl SymbolName {
     pub fn starts_with(&self, pat: &str) -> bool {
         self.0.starts_with(pat)
+    }
+}
+
+impl PartialEq for SymbolName {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(&other.0)
+    }
+}
+
+impl Eq for SymbolName {}
+
+impl std::hash::Hash for SymbolName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_ascii_lowercase().hash(state);
     }
 }
 
