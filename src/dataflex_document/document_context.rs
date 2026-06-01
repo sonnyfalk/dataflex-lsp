@@ -971,4 +971,14 @@ mod test {
         let context = DocumentContext::context(&doc, Point { row: 0, column: 39 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
     }
+
+    #[test]
+    fn test_context_with_inline_comment() {
+        let test_content = "Move 1234 /* 123 test comment */ to iMyVar\n";
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 38 });
+        assert_eq!(context, Some(DocumentContext::Expression));
+    }
 }

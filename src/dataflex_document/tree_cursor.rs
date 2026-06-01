@@ -5,11 +5,20 @@ use super::*;
 pub struct DataFlexTreeCursor<'a> {
     inner: TreeCursor<'a>,
     doc: &'a DataFlexDocument,
+    skip_extraneous_nodes: bool,
 }
 
 impl<'a> DataFlexTreeCursor<'a> {
     pub fn new(inner: TreeCursor<'a>, doc: &'a DataFlexDocument) -> Self {
-        Self { inner, doc }
+        Self {
+            inner,
+            doc,
+            skip_extraneous_nodes: true,
+        }
+    }
+
+    pub fn set_skip_extraneous_nodes(&mut self, skip_extraneous_nodes: bool) {
+        self.skip_extraneous_nodes = skip_extraneous_nodes;
     }
 
     pub fn goto_enclosing_method_call(&mut self) -> bool {
@@ -247,11 +256,27 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn goto_first_child(&mut self) -> bool {
-        self.inner.goto_first_child()
+        if self.skip_extraneous_nodes {
+            let mut cursor = self.inner.clone();
+            cursor
+                .goto_first_child()
+                .then(|| skip_extraneous_nodes_forward(cursor).map(|cursor| self.inner = cursor))
+                .is_some()
+        } else {
+            self.inner.goto_first_child()
+        }
     }
 
     pub fn goto_last_child(&mut self) -> bool {
-        self.inner.goto_last_child()
+        if self.skip_extraneous_nodes {
+            let mut cursor = self.inner.clone();
+            cursor
+                .goto_last_child()
+                .then(|| skip_extraneous_nodes_backward(cursor).map(|cursor| self.inner = cursor))
+                .is_some()
+        } else {
+            self.inner.goto_last_child()
+        }
     }
 
     pub fn goto_parent(&mut self) -> bool {
@@ -259,15 +284,40 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn goto_next_sibling(&mut self) -> bool {
-        self.inner.goto_next_sibling()
+        if self.skip_extraneous_nodes {
+            let mut cursor = self.inner.clone();
+            cursor
+                .goto_next_sibling()
+                .then(|| skip_extraneous_nodes_forward(cursor).map(|cursor| self.inner = cursor))
+                .is_some()
+        } else {
+            self.inner.goto_next_sibling()
+        }
     }
 
     pub fn goto_previous_sibling(&mut self) -> bool {
-        self.inner.goto_previous_sibling()
+        if self.skip_extraneous_nodes {
+            let mut cursor = self.inner.clone();
+            cursor
+                .goto_previous_sibling()
+                .then(|| skip_extraneous_nodes_backward(cursor).map(|cursor| self.inner = cursor))
+                .is_some()
+        } else {
+            self.inner.goto_previous_sibling()
+        }
     }
 
     pub fn goto_first_child_for_point(&mut self, point: Point) -> bool {
-        self.inner.goto_first_child_for_point(point).is_some()
+        if self.skip_extraneous_nodes {
+            let mut cursor = self.inner.clone();
+            cursor
+                .goto_first_child_for_point(point)
+                .is_some()
+                .then(|| skip_extraneous_nodes_forward(cursor).map(|cursor| self.inner = cursor))
+                .is_some()
+        } else {
+            self.inner.goto_first_child_for_point(point).is_some()
+        }
     }
 
     pub fn reset_to(&mut self, cursor: &Self) {
@@ -279,6 +329,28 @@ impl<'a> Clone for DataFlexTreeCursor<'a> {
     fn clone(&self) -> Self {
         Self::new(self.inner.clone(), self.doc)
     }
+}
+
+fn skip_extraneous_nodes_forward(mut cursor: TreeCursor) -> Option<TreeCursor> {
+    while is_skippable_extraneous_node(&cursor.node()) && cursor.goto_next_sibling() {}
+    if is_skippable_extraneous_node(&cursor.node()) {
+        None
+    } else {
+        Some(cursor)
+    }
+}
+
+fn skip_extraneous_nodes_backward(mut cursor: TreeCursor) -> Option<TreeCursor> {
+    while is_skippable_extraneous_node(&cursor.node()) && cursor.goto_previous_sibling() {}
+    if is_skippable_extraneous_node(&cursor.node()) {
+        None
+    } else {
+        Some(cursor)
+    }
+}
+
+fn is_skippable_extraneous_node(node: &Node) -> bool {
+    node.is_extra() && !node.is_error() && !node.is_missing()
 }
 
 impl DataFlexDocument {
