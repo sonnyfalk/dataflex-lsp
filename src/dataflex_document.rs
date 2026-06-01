@@ -7,7 +7,7 @@ use crate::{dataflex_parser::DataFlexTreeParser, index};
 use document_context::DocumentContext;
 use reference_resolver::ReferenceResolver;
 use streaming_iterator::StreamingIterator;
-use tree_cursor::{DataFlexTreeCursor, TreeCursorExt};
+use tree_cursor::DataFlexTreeCursor;
 
 mod code_completion;
 mod document_context;

@@ -1,16 +1,15 @@
-use std::ops::{Deref, DerefMut};
 use tree_sitter::{Node, TreeCursor};
 
 use super::*;
 
 pub struct DataFlexTreeCursor<'a> {
-    cursor: TreeCursor<'a>,
+    inner: TreeCursor<'a>,
     doc: &'a DataFlexDocument,
 }
 
 impl<'a> DataFlexTreeCursor<'a> {
-    pub fn new(cursor: TreeCursor<'a>, doc: &'a DataFlexDocument) -> Self {
-        Self { cursor, doc }
+    pub fn new(inner: TreeCursor<'a>, doc: &'a DataFlexDocument) -> Self {
+        Self { inner, doc }
     }
 
     pub fn goto_enclosing_method_call(&mut self) -> bool {
@@ -113,23 +112,172 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 }
 
+impl<'a> DataFlexTreeCursor<'a> {
+    pub fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool {
+        if !self.goto_first_child_for_point(point) {
+            return false;
+        }
+        loop {
+            if !self.goto_first_child_for_point(point) {
+                break;
+            }
+        }
+        true
+    }
+
+    pub fn goto_leaf_node_before_point(&mut self, point: Point) -> bool {
+        self.goto_descendant_for_point(point);
+        while self.goto_last_child() {}
+        while self.node().start_position() > point {
+            self.goto_previous_leaf_node();
+        }
+        if self.node().start_position() == point {
+            let current = self.clone();
+            if self.goto_previous_leaf_node() && self.node().end_position() < point {
+                self.reset_to(&current);
+            }
+        }
+        true
+    }
+
+    pub fn goto_descendant_for_point(&mut self, point: Point) -> bool {
+        let mut current = self.clone();
+        let mut did_descend = false;
+        loop {
+            if self.goto_first_child_for_point(point)
+                && self.node().start_position() <= point
+                && self.node().end_position() >= point
+            {
+                did_descend = true;
+                current = self.clone();
+            } else {
+                self.reset_to(&current);
+                break;
+            }
+        }
+        did_descend
+    }
+
+    pub fn goto_descendant_node(&mut self, node: &Node) -> bool {
+        let current = self.clone();
+        while self.node() != *node {
+            if !self.goto_first_child_for_point(node.start_position()) {
+                self.reset_to(&current);
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn goto_next_node(&mut self) -> bool {
+        if self.goto_next_sibling() {
+            return true;
+        }
+
+        let current = self.clone();
+        while self.goto_parent() {
+            if self.goto_next_sibling() {
+                return true;
+            }
+        }
+
+        self.reset_to(&current);
+        false
+    }
+
+    pub fn goto_next_leaf_node(&mut self) -> bool {
+        if self.goto_next_node() {
+            self.goto_leaf_node();
+            return true;
+        }
+        false
+    }
+
+    pub fn goto_previous_node(&mut self) -> bool {
+        if self.goto_previous_sibling() {
+            return true;
+        }
+
+        let current = self.clone();
+        while self.goto_parent() {
+            if self.goto_previous_sibling() {
+                return true;
+            }
+        }
+
+        self.reset_to(&current);
+        false
+    }
+
+    pub fn goto_previous_leaf_node(&mut self) -> bool {
+        if self.goto_previous_node() {
+            while self.goto_last_child() {}
+            return true;
+        }
+        false
+    }
+
+    pub fn goto_leaf_node(&mut self) -> bool {
+        let mut did_descend = false;
+        while self.goto_first_child() {
+            did_descend = true;
+        }
+        did_descend
+    }
+
+    pub fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool {
+        let current = self.clone();
+        loop {
+            if kinds.contains(&self.node().kind()) {
+                return true;
+            }
+            if !self.goto_parent() {
+                break;
+            }
+        }
+
+        self.reset_to(&current);
+        false
+    }
+}
+
+impl<'a> DataFlexTreeCursor<'a> {
+    pub fn node(&self) -> Node<'a> {
+        self.inner.node()
+    }
+
+    pub fn goto_first_child(&mut self) -> bool {
+        self.inner.goto_first_child()
+    }
+
+    pub fn goto_last_child(&mut self) -> bool {
+        self.inner.goto_last_child()
+    }
+
+    pub fn goto_parent(&mut self) -> bool {
+        self.inner.goto_parent()
+    }
+
+    pub fn goto_next_sibling(&mut self) -> bool {
+        self.inner.goto_next_sibling()
+    }
+
+    pub fn goto_previous_sibling(&mut self) -> bool {
+        self.inner.goto_previous_sibling()
+    }
+
+    pub fn goto_first_child_for_point(&mut self, point: Point) -> bool {
+        self.inner.goto_first_child_for_point(point).is_some()
+    }
+
+    pub fn reset_to(&mut self, cursor: &Self) {
+        self.inner.reset_to(&cursor.inner);
+    }
+}
+
 impl<'a> Clone for DataFlexTreeCursor<'a> {
     fn clone(&self) -> Self {
-        Self::new(self.cursor.clone(), self.doc)
-    }
-}
-
-impl<'a> Deref for DataFlexTreeCursor<'a> {
-    type Target = tree_sitter::TreeCursor<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.cursor
-    }
-}
-
-impl<'a> DerefMut for DataFlexTreeCursor<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.cursor
+        Self::new(self.inner.clone(), self.doc)
     }
 }
 
@@ -166,150 +314,5 @@ impl TryFrom<DataFlexTreeCursor<'_>> for index::SymbolPath {
         } else {
             Err(())
         }
-    }
-}
-
-pub trait TreeCursorExt {
-    fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool;
-    fn goto_leaf_node_before_point(&mut self, point: Point) -> bool;
-    fn goto_descendant_for_point(&mut self, point: Point) -> bool;
-    fn goto_descendant_node(&mut self, node: &Node) -> bool;
-    fn goto_leaf_node(&mut self) -> bool;
-    fn goto_next_node(&mut self) -> bool;
-    fn goto_previous_node(&mut self) -> bool;
-    fn goto_next_leaf_node(&mut self) -> bool;
-    fn goto_previous_leaf_node(&mut self) -> bool;
-    fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool;
-}
-
-impl TreeCursorExt for tree_sitter::TreeCursor<'_> {
-    fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool {
-        if !self.goto_first_child_for_point(point).is_some() {
-            return false;
-        }
-        loop {
-            if !self.goto_first_child_for_point(point).is_some() {
-                break;
-            }
-        }
-        true
-    }
-
-    fn goto_leaf_node_before_point(&mut self, point: Point) -> bool {
-        self.goto_descendant_for_point(point);
-        while self.goto_last_child() {}
-        while self.node().start_position() > point {
-            self.goto_previous_leaf_node();
-        }
-        if self.node().start_position() == point {
-            let current = self.clone();
-            if self.goto_previous_leaf_node() && self.node().end_position() < point {
-                self.reset_to(&current);
-            }
-        }
-        true
-    }
-
-    fn goto_descendant_for_point(&mut self, point: Point) -> bool {
-        let mut current = self.clone();
-        let mut did_descend = false;
-        loop {
-            if self.goto_first_child_for_point(point).is_some()
-                && self.node().start_position() <= point
-                && self.node().end_position() >= point
-            {
-                did_descend = true;
-                current = self.clone();
-            } else {
-                self.reset_to(&current);
-                break;
-            }
-        }
-        did_descend
-    }
-
-    fn goto_descendant_node(&mut self, node: &Node) -> bool {
-        let current = self.clone();
-        while self.node() != *node {
-            if self
-                .goto_first_child_for_point(node.start_position())
-                .is_none()
-            {
-                self.reset_to(&current);
-                return false;
-            }
-        }
-        true
-    }
-
-    fn goto_next_node(&mut self) -> bool {
-        if self.goto_next_sibling() {
-            return true;
-        }
-
-        let current = self.clone();
-        while self.goto_parent() {
-            if self.goto_next_sibling() {
-                return true;
-            }
-        }
-
-        self.reset_to(&current);
-        false
-    }
-
-    fn goto_next_leaf_node(&mut self) -> bool {
-        if self.goto_next_node() {
-            self.goto_leaf_node();
-            return true;
-        }
-        false
-    }
-
-    fn goto_previous_node(&mut self) -> bool {
-        if self.goto_previous_sibling() {
-            return true;
-        }
-
-        let current = self.clone();
-        while self.goto_parent() {
-            if self.goto_previous_sibling() {
-                return true;
-            }
-        }
-
-        self.reset_to(&current);
-        false
-    }
-
-    fn goto_previous_leaf_node(&mut self) -> bool {
-        if self.goto_previous_node() {
-            while self.goto_last_child() {}
-            return true;
-        }
-        false
-    }
-
-    fn goto_leaf_node(&mut self) -> bool {
-        let mut did_descend = false;
-        while self.goto_first_child() {
-            did_descend = true;
-        }
-        did_descend
-    }
-
-    fn goto_enclosing_node_kind(&mut self, kinds: &[&str]) -> bool {
-        let current = self.clone();
-        loop {
-            if kinds.contains(&self.node().kind()) {
-                return true;
-            }
-            if !self.goto_parent() {
-                break;
-            }
-        }
-
-        self.reset_to(&current);
-        false
     }
 }
