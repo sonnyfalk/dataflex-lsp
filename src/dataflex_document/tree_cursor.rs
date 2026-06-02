@@ -137,6 +137,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         }
     }
 
+    pub fn is_any_keyword(&self) -> bool {
+        self.node().kind() == "keyword"
+    }
+
     pub fn is_in_line_continuation(&self) -> bool {
         self.node().kind() == "line_continuation"
             || self

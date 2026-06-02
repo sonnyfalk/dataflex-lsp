@@ -8,6 +8,7 @@ pub enum DocumentContext {
     Expression,
     ParenExpression,
     DotMemberExpression,
+    CommandReference,
 }
 
 struct ContextScanner<'a> {
@@ -129,10 +130,15 @@ impl DocumentContext {
             Self::ClassReference => false,
             Self::MethodReference(_) => false,
             Self::DotMemberExpression => false,
+            Self::CommandReference => false,
         }
     }
 
     fn context_with_scanner(mut scanner: ContextScanner, doc: &DataFlexDocument) -> Option<Self> {
+        if scanner.cursor.node().end_position() >= scanner.end {
+            return Some(Self::CommandReference);
+        }
+
         let node = scanner.cursor.node();
         let kind = node.kind();
         let text = doc.line_map.text_for_node(&node).to_lowercase();
@@ -167,6 +173,23 @@ impl DocumentContext {
             }
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
+            }
+            ("keyword", "if") => {
+                let context =
+                    context_scanner_match!(scanner, expr, identifier -> Self::CommandReference);
+                if context.is_none() && scanner.cursor.node().end_position() < scanner.end {
+                    Self::context_with_scanner(scanner, doc)
+                } else {
+                    context
+                }
+            }
+            ("keyword", "else") => {
+                let context = context_scanner_match!(scanner, identifier -> Self::CommandReference);
+                if context.is_none() && scanner.cursor.node().end_position() < scanner.end {
+                    Self::context_with_scanner(scanner, doc)
+                } else {
+                    context
+                }
             }
             ("keyword", "forward" | "delegate") => {
                 scanner.cursor.goto_next_leaf_node();
@@ -240,7 +263,7 @@ impl<'a> ContextScanner<'a> {
         {
             return Ok(ContextScannerStatus::Stop);
         }
-        if !self.cursor.is_identifier() {
+        if !self.cursor.is_identifier() && !self.cursor.is_any_keyword() {
             return Err(ContextScannerError::UnexpectedToken);
         }
         if self.cursor.node().end_position() >= self.end {
@@ -487,7 +510,7 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
-        assert_eq!(context, None);
+        assert_eq!(context, Some(DocumentContext::CommandReference));
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
@@ -971,6 +994,43 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 39 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+    }
+
+    #[test]
+    fn test_command_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
+        assert_eq!(context, Some(DocumentContext::CommandReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 0 });
+        assert_eq!(context, Some(DocumentContext::CommandReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "If bOk \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 7 });
+        assert_eq!(context, Some(DocumentContext::CommandReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "If bOk Move 1 to iVar\nElse \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 5 });
+        assert_eq!(context, Some(DocumentContext::CommandReference));
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 11 });
+        assert_eq!(context, Some(DocumentContext::CommandReference));
     }
 
     #[test]

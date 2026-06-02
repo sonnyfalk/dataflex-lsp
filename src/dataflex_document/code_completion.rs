@@ -22,6 +22,7 @@ pub enum CompletionItemKind {
     EnumMember,
     TableName,
     TableColumn,
+    Command,
 }
 
 impl CodeCompletion {
@@ -36,6 +37,7 @@ impl CodeCompletion {
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
+            DocumentContext::CommandReference => Some(Self::command_completions(doc)),
         };
 
         completions
@@ -278,6 +280,10 @@ impl CodeCompletion {
         }
     }
 
+    fn command_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+        Self::system_commands(doc).collect()
+    }
+
     fn local_variable_completions(
         doc: &DataFlexDocument,
         position: Point,
@@ -297,6 +303,17 @@ impl CodeCompletion {
             .map(|f| CompletionItem {
                 label: f.to_string(),
                 kind: CompletionItemKind::Function,
+            })
+    }
+
+    fn system_commands(doc: &DataFlexDocument) -> impl Iterator<Item = CompletionItem> {
+        doc.index
+            .get()
+            .all_commands()
+            .into_iter()
+            .map(|command| CompletionItem {
+                label: command.to_string(),
+                kind: CompletionItemKind::Command,
             })
     }
 }
