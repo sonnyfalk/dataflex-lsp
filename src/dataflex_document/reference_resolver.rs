@@ -68,22 +68,23 @@ impl<'a> ReferenceResolver<'a> {
             return IndexSymbolIter::empty();
         };
 
-        if let Some(class) = self.resolve_call_receiver(position) {
+        let member = self.resolve_call_receiver(position).and_then(|class| {
             let members: Vec<&index::IndexSymbolRef> =
                 self.index.find_members(&name, kind).collect();
-            let member = self
-                .index
+            self.index
                 .class_hierarchy(class)
                 .find_map(|class| {
                     members.iter().find(|member| {
                         member.symbol_path.parent_slice() == class.symbol_path.as_slice()
                     })
                 })
-                .cloned();
+                .cloned()
+        });
+
+        if let Some(member) = member {
             IndexSymbolIter::new(
-                member
-                    .into_iter()
-                    .filter_map(|member_ref| self.index.symbol_snapshot(&member_ref)),
+                std::iter::once(member)
+                    .filter_map(|member_ref| self.index.symbol_snapshot(member_ref)),
             )
         } else {
             let members = self.index.find_members(&name, kind);
