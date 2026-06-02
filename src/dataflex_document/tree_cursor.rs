@@ -21,6 +21,23 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.skip_extraneous_nodes = skip_extraneous_nodes;
     }
 
+    pub fn goto_start_of_command_for_line(&mut self, line: usize) -> bool {
+        let mut cursor = self.clone();
+        cursor.set_skip_extraneous_nodes(false);
+
+        let mut start_of_line = Point::new(line, 0);
+        while cursor.goto_leaf_node_preceding_point(start_of_line)
+            && cursor.is_in_line_continuation()
+        {
+            let line = cursor.node().start_position().row;
+            if start_of_line.row == line {
+                break;
+            }
+            start_of_line.row = line;
+        }
+        self.goto_leaf_node_at_or_after_point(start_of_line)
+    }
+
     pub fn goto_enclosing_method_call(&mut self) -> bool {
         self.goto_enclosing_node_kind(&[
             "send_statement",
@@ -119,6 +136,15 @@ impl<'a> DataFlexTreeCursor<'a> {
             false
         }
     }
+
+    pub fn is_in_line_continuation(&self) -> bool {
+        self.node().kind() == "line_continuation"
+            || self
+                .node()
+                .parent()
+                .map(|n| n.kind() == "line_continuation")
+                .unwrap_or(false)
+    }
 }
 
 impl<'a> DataFlexTreeCursor<'a> {
@@ -135,6 +161,7 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn goto_leaf_node_at_or_before_point(&mut self, point: Point) -> bool {
+        let current = self.clone();
         self.goto_descendant_for_point(point);
         while self.goto_last_child() {}
         while self.node().start_position() > point {
@@ -146,7 +173,26 @@ impl<'a> DataFlexTreeCursor<'a> {
                 self.reset_to(&current);
             }
         }
-        true
+        if self.node().start_position() <= point {
+            true
+        } else {
+            self.reset_to(&current);
+            false
+        }
+    }
+
+    pub fn goto_leaf_node_preceding_point(&mut self, point: Point) -> bool {
+        let current = self.clone();
+        self.goto_descendant_for_point(point);
+        while self.goto_last_child() {}
+        while self.node().end_position() >= point && self.goto_previous_leaf_node() {}
+
+        if self.node().end_position() < point {
+            true
+        } else {
+            self.reset_to(&current);
+            false
+        }
     }
 
     pub fn goto_descendant_for_point(&mut self, point: Point) -> bool {
@@ -327,7 +373,11 @@ impl<'a> DataFlexTreeCursor<'a> {
 
 impl<'a> Clone for DataFlexTreeCursor<'a> {
     fn clone(&self) -> Self {
-        Self::new(self.inner.clone(), self.doc)
+        Self {
+            inner: self.inner.clone(),
+            doc: self.doc,
+            skip_extraneous_nodes: self.skip_extraneous_nodes,
+        }
     }
 }
 
@@ -386,5 +436,50 @@ impl TryFrom<DataFlexTreeCursor<'_>> for index::SymbolPath {
         } else {
             Err(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_goto_start_of_command_for_line() {
+        let index = index::IndexRef::make_test_index_ref();
+        let test_content = "// Test\nSend foo\n";
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let mut cursor = doc.cursor().unwrap();
+        cursor.goto_start_of_command_for_line(1);
+        assert_eq!(
+            format!("{:?}", cursor.node()),
+            "{Node keyword (1, 0) - (1, 4)}"
+        );
+
+        let test_content = "Send ;\n foo\n";
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let mut cursor = doc.cursor().unwrap();
+        cursor.goto_start_of_command_for_line(1);
+        assert_eq!(
+            format!("{:?}", cursor.node()),
+            "{Node keyword (0, 0) - (0, 4)}"
+        );
+
+        let test_content = "Send ;\nfoo\n";
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let mut cursor = doc.cursor().unwrap();
+        cursor.goto_start_of_command_for_line(1);
+        assert_eq!(
+            format!("{:?}", cursor.node()),
+            "{Node keyword (0, 0) - (0, 4)}"
+        );
+
+        let test_content = "Send ; // Trailing comment\n foo\n";
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let mut cursor = doc.cursor().unwrap();
+        cursor.goto_start_of_command_for_line(1);
+        assert_eq!(
+            format!("{:?}", cursor.node()),
+            "{Node keyword (0, 0) - (0, 4)}"
+        );
     }
 }

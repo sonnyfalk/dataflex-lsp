@@ -116,8 +116,7 @@ impl DocumentContext {
         }
 
         let mut cursor = doc.cursor()?;
-        let start_of_line = Point::new(position.row, 0);
-        cursor.goto_leaf_node_at_or_after_point(start_of_line);
+        cursor.goto_start_of_command_for_line(position.row);
 
         let scanner = ContextScanner::new(cursor, position);
         Self::context_with_scanner(scanner, doc)
@@ -189,7 +188,9 @@ impl DocumentContext {
 
     fn dot_member_context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
         let mut cursor = doc.cursor()?;
-        if cursor.goto_leaf_node_at_or_before_point(position) && cursor.goto_enclosing_member_access() {
+        if cursor.goto_leaf_node_at_or_before_point(position)
+            && cursor.goto_enclosing_member_access()
+        {
             Some(Self::DotMemberExpression)
         } else {
             None
@@ -980,5 +981,18 @@ mod test {
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
         let context = DocumentContext::context(&doc, Point { row: 0, column: 38 });
         assert_eq!(context, Some(DocumentContext::Expression));
+    }
+
+    #[test]
+    fn test_context_with_line_continuation() {
+        let test_content = "Send ;\n foo\n";
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 3 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
     }
 }
