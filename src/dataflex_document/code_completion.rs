@@ -212,7 +212,7 @@ impl CodeCompletion {
     fn dot_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
         let Some(mut cursor) = doc.cursor().and_then(|mut cursor| {
             cursor
-                .goto_leaf_node_before_point(position)
+                .goto_leaf_node_at_or_before_point(position)
                 .then_some(cursor)
         }) else {
             return vec![];

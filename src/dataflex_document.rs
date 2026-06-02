@@ -67,7 +67,7 @@ impl DataFlexDocument {
         let Some(method_node) = self
             .cursor()
             .and_then(|mut cursor| {
-                cursor.goto_first_leaf_node_for_point(position).then(|| {
+                cursor.goto_leaf_node_at_or_after_point(position).then(|| {
                     cursor
                         .goto_enclosing_method_definition()
                         .then(|| cursor.node())

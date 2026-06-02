@@ -57,7 +57,8 @@ impl ScopeBalancer {
         trigger_text: &str,
     ) -> Option<TextEdit> {
         let mut cursor = doc.cursor()?;
-        if !cursor.goto_leaf_node_before_point(position) || cursor.node().kind() != "keyword" {
+        if !cursor.goto_leaf_node_at_or_before_point(position) || cursor.node().kind() != "keyword"
+        {
             return None;
         }
         let current_token = doc.line_map.text_for_node(&cursor.node());
@@ -119,7 +120,7 @@ impl ScopeBalancer {
         position: Point,
     ) -> Option<(std::ops::Range<Point>, std::ops::Range<Point>)> {
         let mut cursor = doc.cursor()?;
-        if !cursor.goto_leaf_node_before_point(position) || !cursor.goto_parent() {
+        if !cursor.goto_leaf_node_at_or_before_point(position) || !cursor.goto_parent() {
             return None;
         }
         let scope_node = cursor.node();

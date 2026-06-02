@@ -10,7 +10,7 @@ pub struct ParameterInfo {
 impl ParameterInfo {
     pub fn parameter_info(doc: &DataFlexDocument, position: Point) -> Option<Vec<ParameterInfo>> {
         let mut cursor = doc.cursor()?;
-        if !cursor.goto_leaf_node_before_point(position) {
+        if !cursor.goto_leaf_node_at_or_before_point(position) {
             return None;
         }
         if cursor.goto_enclosing_call_expression() || cursor.goto_enclosing_method_call() {

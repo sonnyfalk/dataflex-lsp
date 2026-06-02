@@ -122,7 +122,7 @@ impl<'a> DataFlexTreeCursor<'a> {
 }
 
 impl<'a> DataFlexTreeCursor<'a> {
-    pub fn goto_first_leaf_node_for_point(&mut self, point: Point) -> bool {
+    pub fn goto_leaf_node_at_or_after_point(&mut self, point: Point) -> bool {
         if !self.goto_first_child_for_point(point) {
             return false;
         }
@@ -134,7 +134,7 @@ impl<'a> DataFlexTreeCursor<'a> {
         true
     }
 
-    pub fn goto_leaf_node_before_point(&mut self, point: Point) -> bool {
+    pub fn goto_leaf_node_at_or_before_point(&mut self, point: Point) -> bool {
         self.goto_descendant_for_point(point);
         while self.goto_last_child() {}
         while self.node().start_position() > point {

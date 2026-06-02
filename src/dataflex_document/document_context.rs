@@ -117,7 +117,7 @@ impl DocumentContext {
 
         let mut cursor = doc.cursor()?;
         let start_of_line = Point::new(position.row, 0);
-        cursor.goto_first_leaf_node_for_point(start_of_line);
+        cursor.goto_leaf_node_at_or_after_point(start_of_line);
 
         let scanner = ContextScanner::new(cursor, position);
         Self::context_with_scanner(scanner, doc)
@@ -189,7 +189,7 @@ impl DocumentContext {
 
     fn dot_member_context(doc: &DataFlexDocument, position: Point) -> Option<Self> {
         let mut cursor = doc.cursor()?;
-        if cursor.goto_leaf_node_before_point(position) && cursor.goto_enclosing_member_access() {
+        if cursor.goto_leaf_node_at_or_before_point(position) && cursor.goto_enclosing_member_access() {
             Some(Self::DotMemberExpression)
         } else {
             None

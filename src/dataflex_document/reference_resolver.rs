@@ -95,7 +95,7 @@ impl<'a> ReferenceResolver<'a> {
     fn resolve_call_receiver(&self, position: Point) -> Option<&ClassSymbol> {
         let mut cursor = self.doc.cursor()?;
         cursor
-            .goto_first_leaf_node_for_point(position)
+            .goto_leaf_node_at_or_after_point(position)
             .then(|| cursor.goto_enclosing_method_call());
 
         if cursor.is_method_call_with_dynamic_receiver() {
@@ -183,7 +183,7 @@ impl<'a> ReferenceResolver<'a> {
 
     fn resolve_member_expr_reference(&self, position: Point) -> IndexSymbolIter<'_> {
         let Some(postfix_expr_node) = self.doc.cursor().and_then(|mut cursor| {
-            (cursor.goto_leaf_node_before_point(position)
+            (cursor.goto_leaf_node_at_or_before_point(position)
                 && cursor.goto_enclosing_postfix_expression())
             .then_some(cursor.node())
         }) else {
