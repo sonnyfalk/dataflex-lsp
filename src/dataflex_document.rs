@@ -303,13 +303,15 @@ impl DataFlexDocument {
     pub fn code_completion(
         &self,
         position: lsp_types::Position,
+        auto_complete: bool,
     ) -> Option<Vec<lsp_types::CompletionItem>> {
         let position = Point {
             row: position.line as usize,
             column: position.character as usize,
         };
 
-        let completions = code_completion::CodeCompletion::code_completion(self, position);
+        let completions =
+            code_completion::CodeCompletion::code_completion(self, position, auto_complete);
         completions.map(|mut completions| {
             completions
                 .drain(..)

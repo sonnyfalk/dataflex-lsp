@@ -266,7 +266,12 @@ impl LanguageServer for DataFlexLanguageServer {
             .get(&params.text_document_position.text_document.uri)
             .unwrap()
             .doc
-            .code_completion(params.text_document_position.position);
+            .code_completion(
+                params.text_document_position.position,
+                params.context.map_or(false, |c| {
+                    c.trigger_kind == CompletionTriggerKind::TRIGGER_CHARACTER
+                }),
+            );
         if let Some(completions) = completions {
             Ok(Some(CompletionResponse::List(CompletionList {
                 is_incomplete: false,

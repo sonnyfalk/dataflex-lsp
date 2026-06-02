@@ -26,10 +26,17 @@ pub enum CompletionItemKind {
 }
 
 impl CodeCompletion {
-    pub fn code_completion(doc: &DataFlexDocument, position: Point) -> Option<Vec<CompletionItem>> {
+    pub fn code_completion(
+        doc: &DataFlexDocument,
+        position: Point,
+        auto_complete: bool,
+    ) -> Option<Vec<CompletionItem>> {
         let Some(context) = DocumentContext::context(doc, position) else {
             return None;
         };
+        if auto_complete && !Self::should_auto_complete_with_context(&context) {
+            return None;
+        }
 
         let completions = match context {
             DocumentContext::ClassReference => Some(Self::class_completions(doc)),
@@ -41,6 +48,17 @@ impl CodeCompletion {
         };
 
         completions
+    }
+
+    fn should_auto_complete_with_context(context: &DocumentContext) -> bool {
+        match context {
+            DocumentContext::ClassReference => true,
+            DocumentContext::MethodReference(_) => true,
+            DocumentContext::DotMemberExpression => true,
+            DocumentContext::Expression => false,
+            DocumentContext::ParenExpression => false,
+            DocumentContext::CommandReference => false,
+        }
     }
 
     fn class_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
@@ -337,7 +355,7 @@ End_Procedure
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 28)).unwrap();
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 28), false).unwrap();
         assert_eq!(completions.len(), 1);
 
         let test_content = r#"
@@ -353,7 +371,7 @@ End_Procedure
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29)).unwrap();
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29), false).unwrap();
         assert_eq!(completions.len(), 1);
 
         let test_content = r#"
@@ -369,7 +387,7 @@ End_Procedure
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29)).unwrap();
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29), false).unwrap();
         assert_eq!(completions.len(), 1);
 
         let test_content = r#"
@@ -385,7 +403,7 @@ End_Procedure
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 34)).unwrap();
+        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 34), false).unwrap();
         assert_eq!(completions.len(), 0);
 
         let test_content = r#"
@@ -405,7 +423,7 @@ End_Procedure
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
         let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(11, 42)).unwrap();
+        let completions = CodeCompletion::code_completion(&doc, Point::new(11, 42), false).unwrap();
         assert_eq!(completions.len(), 1);
     }
 }
