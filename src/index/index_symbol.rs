@@ -1,17 +1,5 @@
 use super::*;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct SourceLocation {
-    pub line: usize,
-    pub column: usize,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct SourceRange {
-    pub start: SourceLocation,
-    pub end: SourceLocation,
-}
-
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum IndexSymbol {
@@ -33,6 +21,7 @@ pub struct ClassSymbol {
     pub superclass: SymbolName,
     pub mixins: Vec<SymbolName>,
     pub members: Vec<IndexSymbol>,
+    pub metadata: Vec<MetadataTagSet>,
 }
 
 #[derive(Debug)]
@@ -53,6 +42,7 @@ pub struct MethodSymbol {
     pub kind: MethodKind,
     pub parameters: Vec<(SymbolName, DataFlexDataType)>,
     pub return_type: Option<DataFlexDataType>,
+    pub metadata: Vec<MetadataTagSet>,
 }
 
 #[derive(Debug)]
@@ -62,6 +52,7 @@ pub struct VariableSymbol {
     pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub data_type: DataFlexDataType,
+    pub metadata: Vec<MetadataTagSet>,
 }
 
 #[derive(Debug)]
@@ -71,6 +62,18 @@ pub struct AliasSymbol {
     pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub alias: ValueReference,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceLocation {
+    pub line: usize,
+    pub column: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceRange {
+    pub start: SourceLocation,
+    pub end: SourceLocation,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -100,6 +103,19 @@ pub struct SymbolName(String);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SymbolPath(Vec<SymbolName>);
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct MetadataTagSet {
+    pub tags: Vec<MetadataTag>,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct MetadataTag {
+    pub name: SymbolName,
+    pub value: String,
+}
 
 #[derive(Debug)]
 pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {

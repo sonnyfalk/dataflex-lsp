@@ -934,11 +934,11 @@ mod tests {
         let mut class_hierarchy = index.class_hierarchy(class);
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: SourceLocation { line: 2, column: 6 }, range: SourceRange { start: SourceLocation { line: 2, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [], members: [] })"
+            "Some(ClassSymbol { location: SourceLocation { line: 2, column: 6 }, range: SourceRange { start: SourceLocation { line: 2, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [], members: [], metadata: [] })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [] })"
+            "Some(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [], metadata: [] })"
         );
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }
@@ -976,19 +976,19 @@ End_Class
         let mut class_hierarchy = index.class_hierarchy(class);
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: SourceLocation { line: 12, column: 6 }, range: SourceRange { start: SourceLocation { line: 12, column: 0 }, end: SourceLocation { line: 14, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [SymbolName(\"cMyOtherMixin\")], members: [] })"
+            "Some(ClassSymbol { location: SourceLocation { line: 12, column: 6 }, range: SourceRange { start: SourceLocation { line: 12, column: 0 }, end: SourceLocation { line: 14, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [SymbolName(\"cMyOtherMixin\")], members: [], metadata: [] })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: SourceLocation { line: 4, column: 6 }, range: SourceRange { start: SourceLocation { line: 4, column: 0 }, end: SourceLocation { line: 5, column: 9 } }, symbol_path: SymbolPath(\"cMyOtherMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [] })"
+            "Some(ClassSymbol { location: SourceLocation { line: 4, column: 6 }, range: SourceRange { start: SourceLocation { line: 4, column: 0 }, end: SourceLocation { line: 5, column: 9 } }, symbol_path: SymbolPath(\"cMyOtherMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: SourceLocation { line: 7, column: 6 }, range: SourceRange { start: SourceLocation { line: 7, column: 0 }, end: SourceLocation { line: 9, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [SymbolName(\"cMyMixin\")], members: [] })"
+            "Some(ClassSymbol { location: SourceLocation { line: 7, column: 6 }, range: SourceRange { start: SourceLocation { line: 7, column: 0 }, end: SourceLocation { line: 9, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [SymbolName(\"cMyMixin\")], members: [], metadata: [] })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [] })"
+            "Some(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] })"
         );
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }
