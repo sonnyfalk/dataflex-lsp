@@ -232,7 +232,15 @@ impl Indexer {
                                 superclass: superclass.into(),
                                 mixins: Vec::new(),
                                 members: Vec::new(),
-                                metadata: Vec::new(),
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
                             };
                             stack.push(IndexSymbol::Class(class_symbol));
                         }
@@ -360,7 +368,15 @@ impl Indexer {
                                 kind: method_kind,
                                 parameters: parameters,
                                 return_type: None,
-                                metadata: Vec::new(),
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
                             };
                             class_symbol
                                 .members
@@ -407,7 +423,15 @@ impl Indexer {
                                 kind: MethodKind::Get,
                                 parameters: parameters,
                                 return_type: return_type,
-                                metadata: Vec::new(),
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
                             };
                             class_symbol
                                 .members
@@ -444,7 +468,15 @@ impl Indexer {
                                     name,
                                 ),
                                 data_type: variable_type,
-                                metadata: Vec::new(),
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
                             };
                             class_symbol
                                 .members
@@ -727,6 +759,36 @@ impl DataFlexDataType {
         } else {
             Some(Self::Array(type_name.into(), array_dimension_count))
         }
+    }
+}
+
+impl MetadataTagSet {
+    fn associated_metadata_tag_sets(
+        symbol_node: &tree_sitter::Node,
+        content: &[u8],
+    ) -> Option<Vec<MetadataTagSet>> {
+        let tag_group = symbol_node
+            .prev_sibling()
+            .filter(|n| n.kind() == "metadata_tag_group")?;
+        let tag_sets = tag_group
+            .children_by_field_name("tag_set", &mut tag_group.walk())
+            .map(|tag_set| {
+                let tags = tag_set
+                    .children_by_field_name("tag", &mut tag_set.walk())
+                    .filter_map(|tag| {
+                        let name = tag.child_by_field_name("name").and_then(|name| {
+                            Some(SymbolName::from(name.utf8_text(content).ok()?))
+                        })?;
+                        let value = tag
+                            .child_by_field_name("value")
+                            .and_then(|value| Some(String::from(value.utf8_text(content).ok()?)))?;
+                        Some(MetadataTag { name, value })
+                    })
+                    .collect();
+                MetadataTagSet { tags }
+            })
+            .collect();
+        Some(tag_sets)
     }
 }
 
@@ -1039,6 +1101,77 @@ End_Class
                 index_ref.get().files[&IndexFileRef::from("test.fd")].tables
             ),
             "Some([DataFlexTable { name: SymbolName(\"OrderHeader\"), columns: [SymbolName(\"File_Number\"), SymbolName(\"Recnum\"), SymbolName(\"Order_Number\"), SymbolName(\"Customer_Number\"), SymbolName(\"Order_Date\")] }])"
+        );
+    }
+
+    #[test]
+    fn test_index_class_metadata() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+{ Visibility = Private }
+Class cFoo is a cBar
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: SourceLocation { line: 2, column: 6 }, range: SourceRange { start: SourceLocation { line: 2, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [], members: [], metadata: [MetadataTagSet { tags: [MetadataTag { name: SymbolName(\"Visibility\"), value: \"Private\" }] }] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_method_metadata() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Class cFoo is a cBar
+    { Visibility = Private }
+    Procedure MyPrivateMethod
+    End_Procedure
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 5, column: 9 } }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 3, column: 14 }, range: SourceRange { start: SourceLocation { line: 3, column: 4 }, end: SourceLocation { line: 4, column: 17 } }, symbol_path: SymbolPath(\"cFoo.MyPrivateMethod\"), kind: Msg, parameters: [], return_type: None, metadata: [MetadataTagSet { tags: [MetadataTag { name: SymbolName(\"Visibility\"), value: \"Private\" }] }] })], metadata: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_property_metadata() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Class cFoo is a cBar
+    Procedure Construct_Object
+        { Visibility = Private }
+        Property Integer piMyProperty
+    End_Procedure
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 6, column: 9 } }, symbol_path: SymbolPath(\"cFoo\"), superclass: SymbolName(\"cBar\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 5, column: 17 } }, symbol_path: SymbolPath(\"cFoo.Construct_Object\"), kind: Msg, parameters: [], return_type: None, metadata: [] }), Property(VariableSymbol { location: SourceLocation { line: 4, column: 25 }, range: SourceRange { start: SourceLocation { line: 4, column: 8 }, end: SourceLocation { line: 5, column: 0 } }, symbol_path: SymbolPath(\"cFoo.piMyProperty\"), data_type: DataFlexDataType(\"Integer\"), metadata: [MetadataTagSet { tags: [MetadataTag { name: SymbolName(\"Visibility\"), value: \"Private\" }] }] })], metadata: [] })]"
         );
     }
 }
