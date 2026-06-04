@@ -311,6 +311,7 @@ impl<'a> DataFlexTreeCursor<'a> {
             cursor
                 .goto_first_child()
                 .then(|| skip_extraneous_nodes_forward(cursor).map(|cursor| self.inner = cursor))
+                .flatten()
                 .is_some()
         } else {
             self.inner.goto_first_child()
@@ -323,6 +324,7 @@ impl<'a> DataFlexTreeCursor<'a> {
             cursor
                 .goto_last_child()
                 .then(|| skip_extraneous_nodes_backward(cursor).map(|cursor| self.inner = cursor))
+                .flatten()
                 .is_some()
         } else {
             self.inner.goto_last_child()
@@ -339,6 +341,7 @@ impl<'a> DataFlexTreeCursor<'a> {
             cursor
                 .goto_next_sibling()
                 .then(|| skip_extraneous_nodes_forward(cursor).map(|cursor| self.inner = cursor))
+                .flatten()
                 .is_some()
         } else {
             self.inner.goto_next_sibling()
@@ -351,6 +354,7 @@ impl<'a> DataFlexTreeCursor<'a> {
             cursor
                 .goto_previous_sibling()
                 .then(|| skip_extraneous_nodes_backward(cursor).map(|cursor| self.inner = cursor))
+                .flatten()
                 .is_some()
         } else {
             self.inner.goto_previous_sibling()
@@ -364,6 +368,7 @@ impl<'a> DataFlexTreeCursor<'a> {
                 .goto_first_child_for_point(point)
                 .is_some()
                 .then(|| skip_extraneous_nodes_forward(cursor).map(|cursor| self.inner = cursor))
+                .flatten()
                 .is_some()
         } else {
             self.inner.goto_first_child_for_point(point).is_some()
