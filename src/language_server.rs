@@ -119,6 +119,9 @@ impl LanguageServer for DataFlexLanguageServer {
                 }),
                 document_highlight_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
+                code_lens_provider: Some(CodeLensOptions {
+                    resolve_provider: Some(false),
+                }),
                 workspace_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
@@ -352,6 +355,17 @@ impl LanguageServer for DataFlexLanguageServer {
         Ok(Some(symbols.into()))
     }
 
+    async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
+        let code_lens_items = self
+            .inner
+            .open_files
+            .get(&params.text_document.uri)
+            .unwrap()
+            .doc
+            .code_lens_items();
+        Ok(Some(code_lens_items))
+    }
+
     async fn symbol(
         &self,
         params: WorkspaceSymbolParams,
@@ -441,6 +455,7 @@ impl index::IndexerObserver for IndexerCoordinator {
                 self.tasks.lock().unwrap().spawn_on(
                     async move {
                         _ = inner.client.semantic_tokens_refresh().await;
+                        _ = inner.client.code_lens_refresh().await;
                         Self::watch_and_index_edited_files(inner).await;
                     },
                     &self.runtime,

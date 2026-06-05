@@ -10,6 +10,7 @@ use streaming_iterator::StreamingIterator;
 use tree_cursor::DataFlexTreeCursor;
 
 mod code_completion;
+mod code_lens;
 mod document_context;
 mod line_map;
 mod parameter_info;
@@ -408,6 +409,26 @@ impl DataFlexDocument {
             .symbols
             .iter()
             .map(|s| s.into())
+            .collect()
+    }
+
+    pub fn code_lens_items(&self) -> Vec<lsp_types::CodeLens> {
+        code_lens::CodeLens::code_lens(self)
+            .into_iter()
+            .map(|code_lens| lsp_types::CodeLens {
+                range: lsp_types::Range::new(
+                    lsp_types::Position::new(
+                        code_lens.location.row as u32,
+                        code_lens.location.column as u32,
+                    ),
+                    lsp_types::Position::new(code_lens.location.row as u32 + 1, 0),
+                ),
+                command: Some(lsp_types::Command {
+                    title: code_lens.description,
+                    ..Default::default()
+                }),
+                data: None,
+            })
             .collect()
     }
 }
