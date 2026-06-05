@@ -1,6 +1,7 @@
 use super::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IndexFile {
     pub path: PathBuf,
     pub dependencies: Vec<IndexFileRef>,
@@ -8,7 +9,7 @@ pub struct IndexFile {
     pub tables: Option<Box<Vec<DataFlexTable>>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct IndexFileRef(std::ffi::OsString);
 
 impl IndexFile {
@@ -35,7 +36,7 @@ impl IndexFile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct DataFlexTable {
     pub name: SymbolName,

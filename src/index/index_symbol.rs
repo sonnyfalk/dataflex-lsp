@@ -1,6 +1,8 @@
 use super::*;
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub enum IndexSymbol {
     Class(ClassSymbol),
@@ -12,7 +14,7 @@ pub enum IndexSymbol {
     Alias(AliasSymbol),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct ClassSymbol {
     pub location: SourceLocation,
@@ -24,7 +26,7 @@ pub struct ClassSymbol {
     pub metadata: Vec<MetadataTagSet>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct StructSymbol {
     pub location: SourceLocation,
@@ -33,7 +35,7 @@ pub struct StructSymbol {
     pub members: Vec<IndexSymbol>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct MethodSymbol {
     pub location: SourceLocation,
@@ -45,7 +47,7 @@ pub struct MethodSymbol {
     pub metadata: Vec<MetadataTagSet>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct VariableSymbol {
     pub location: SourceLocation,
@@ -55,7 +57,7 @@ pub struct VariableSymbol {
     pub metadata: Vec<MetadataTagSet>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct AliasSymbol {
     pub location: SourceLocation,
@@ -64,19 +66,19 @@ pub struct AliasSymbol {
     pub alias: ValueReference,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SourceLocation {
     pub line: usize,
     pub column: usize,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SourceRange {
     pub start: SourceLocation,
     pub end: SourceLocation,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub enum MethodKind {
     Msg,
@@ -84,33 +86,33 @@ pub enum MethodKind {
     Set,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub enum DataFlexDataType {
     Simple(SymbolName),
     Array(SymbolName, usize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub enum ValueReference {
     Symbol(SymbolName),
     Value(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymbolName(String);
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SymbolPath(Vec<SymbolName>);
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct MetadataTagSet {
     pub tags: Vec<MetadataTag>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct MetadataTag {
     pub name: SymbolName,

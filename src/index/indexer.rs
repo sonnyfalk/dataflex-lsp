@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::sync::{OnceLock, mpsc};
 
 use crate::dataflex_parser::DataFlexTreeParser;
@@ -36,6 +37,20 @@ pub trait IndexerObserver {
     fn state_transition(&self, old_state: IndexerState, new_state: IndexerState);
 }
 
+const CURRENT_SERIALIZED_VERSION: usize = 1;
+
+#[derive(Deserialize)]
+struct DeserializedIndex {
+    version: usize,
+    files: Vec<IndexFile>,
+}
+
+#[derive(Serialize)]
+struct SerializableIndex<'a> {
+    version: usize,
+    files: Vec<&'a IndexFile>,
+}
+
 impl Indexer {
     pub fn new(workspace: WorkspaceInfo, config: IndexerConfig) -> Self {
         let dataflex_version = workspace.get_dataflex_version().cloned();
@@ -49,6 +64,50 @@ impl Indexer {
 
     pub fn get_index(&self) -> &IndexRef {
         &self.index
+    }
+
+    pub fn load_index(&self) -> bool {
+        if self.channel.get().is_some() {
+            log::error!(
+                "Indexer::load_index() cannot be called after indexer is started with Indexer::start_indexing()"
+            );
+            return false;
+        }
+        let mut index = self.index.get_mut();
+        let file_path = index
+            .workspace
+            .get_root_folder()
+            .join("IdeSrc")
+            .join("dataflex-lsp.index");
+        let content = std::fs::read(file_path).unwrap_or_default();
+        if let Ok(deserialized_index) = rmp_serde::from_slice::<DeserializedIndex>(&content)
+            && deserialized_index.version == CURRENT_SERIALIZED_VERSION
+        {
+            for index_file in deserialized_index.files {
+                index.update_file(index_file);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn save_index(&self) {
+        let index = self.index.get();
+
+        let content = rmp_serde::to_vec(&SerializableIndex {
+            version: CURRENT_SERIALIZED_VERSION,
+            files: index.files.values().collect(),
+        });
+
+        if let Ok(content) = content {
+            let file_path = index
+                .workspace
+                .get_root_folder()
+                .join("IdeSrc")
+                .join("dataflex-lsp.index");
+            _ = std::fs::write(file_path, content);
+        }
     }
 
     pub fn start_indexing<T: IndexerObserver + Send + 'static>(&self, observer: T) {

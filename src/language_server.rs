@@ -143,6 +143,15 @@ impl LanguageServer for DataFlexLanguageServer {
             workspace_info,
             index::IndexerConfig::new(),
         ));
+        if self
+            .inner
+            .indexer
+            .get()
+            .is_some_and(|indexer| indexer.load_index())
+        {
+            log::info!("Loaded index");
+        }
+
         self.inner
             .indexer
             .get()
@@ -160,10 +169,11 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 
     async fn shutdown(&self) -> Result<()> {
-        self.inner
-            .indexer
-            .get()
-            .map(|indexer| indexer.stop_indexing());
+        log::info!("shutdown() called");
+        self.inner.indexer.get().map(|indexer| {
+            indexer.stop_indexing();
+            indexer.save_index();
+        });
         Ok(())
     }
 
@@ -411,6 +421,8 @@ impl OpenFile {
 
 impl IndexerCoordinator {
     async fn watch_and_index_edited_files(inner: Arc<DataFlexLanguageServerInner>) {
+        inner.indexer.get().map(|indexer| indexer.save_index());
+
         loop {
             inner
                 .edited_files_notification
