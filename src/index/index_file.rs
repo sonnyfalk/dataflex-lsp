@@ -9,7 +9,7 @@ pub struct IndexFile {
     pub tables: Option<Box<Vec<DataFlexTable>>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IndexFileRef(std::ffi::OsString);
 
 impl IndexFile {
@@ -52,5 +52,25 @@ impl From<&PathBuf> for IndexFileRef {
 impl From<&str> for IndexFileRef {
     fn from(value: &str) -> Self {
         Self(value.into())
+    }
+}
+
+impl From<String> for IndexFileRef {
+    fn from(value: String) -> Self {
+        Self(value.into())
+    }
+}
+
+impl PartialEq for IndexFileRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(&other.0)
+    }
+}
+
+impl Eq for IndexFileRef {}
+
+impl std::hash::Hash for IndexFileRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_ascii_lowercase().hash(state);
     }
 }
