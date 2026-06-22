@@ -128,7 +128,6 @@ impl CodeLens {
                     )
                 })
                 .filter_map(|(position, name, kind)| {
-                    log::trace!("CodeLens candidate {name} at {position}");
                     let overrides: Vec<&SymbolName> = index
                         .find_methods(&name, kind)
                         .filter_map(|symbol_ref| symbol_ref.symbol_path.parent_name())
@@ -146,7 +145,6 @@ impl CodeLens {
                     }
                 })
                 .for_each(|(position, text)| {
-                    log::trace!("CodeLens {text} at {position}");
                     result.push(CodeLens {
                         location: position,
                         description: text,
