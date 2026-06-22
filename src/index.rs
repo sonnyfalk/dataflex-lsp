@@ -232,6 +232,10 @@ impl Index {
             .collect()
     }
 
+    pub fn find_file_path(&self, file: &IndexFileRef) -> Option<&PathBuf> {
+        self.files.get(file).map(|index_file| &index_file.path)
+    }
+
     pub fn all_system_functions(&self) -> Vec<SymbolName> {
         let functions = [
             "Abs",

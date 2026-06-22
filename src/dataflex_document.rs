@@ -271,13 +271,16 @@ impl DataFlexDocument {
         &self,
         position: lsp_types::Position,
     ) -> Option<Vec<lsp_types::Location>> {
+        log::trace!("find_definition {:?}", position);
         let position = Point {
             row: position.line as usize,
             column: position.character as usize,
         };
         let Some(context) = DocumentContext::context(self, position) else {
+            log::trace!("no context");
             return None;
         };
+        log::trace!("context {:?}", context);
 
         let locations = if context.can_reference_variables()
             && let Some(symbol_name) = self.symbol_at_position(position)
@@ -287,6 +290,22 @@ impl DataFlexDocument {
                 path: &self.file_path,
                 symbol: &index::IndexSymbol::Variable(variable),
             })]
+        } else if context.is_file_reference()
+            && let Some(file_ref) = self
+                .node_at_position(position)
+                .map(|node| self.line_map.text_for_node(&node).into())
+        {
+            self.index
+                .get()
+                .find_file_path(&file_ref)
+                .map(|path| {
+                    lsp_types::Location::new(
+                        lsp_types::Url::from_file_path(path).unwrap(),
+                        lsp_types::Range::default(),
+                    )
+                })
+                .into_iter()
+                .collect()
         } else {
             let reference_resolver = ReferenceResolver::new(self);
             let symbols = reference_resolver.resolve_reference(context, position);
