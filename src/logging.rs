@@ -1,16 +1,29 @@
 use std::path::PathBuf;
+use std::sync::OnceLock;
+
+use flexi_logger::{FileSpec, LogSpecification, Logger, LoggerHandle};
+
+static LOGGER_HANDLE: OnceLock<LoggerHandle> = OnceLock::new();
 
 pub fn initialize_logging() {
     let log_file_path = log_file_path();
-    simplelog::WriteLogger::init(
-        simplelog::LevelFilter::Info,
-        simplelog::ConfigBuilder::new()
-            .set_time_offset_to_local()
-            .expect("Failed to get local time offset")
-            .build(),
-        std::fs::File::create(log_file_path).unwrap(),
-    )
-    .expect("failed to initialize logger");
+    let file_spec = FileSpec::try_from(log_file_path)
+        .expect("failed to initialize logging with path: {log_file_path}");
+    _ = LOGGER_HANDLE.set(
+        Logger::with(LogSpecification::info())
+            .log_to_file(file_spec)
+            .format(|w, now, record| {
+                write!(
+                    w,
+                    "{} [{}] {}",
+                    now.format("%H:%M:%S%.3f"),
+                    record.level(),
+                    record.args()
+                )
+            })
+            .start()
+            .expect("failed to initialize logger"),
+    );
     log_panics::init();
 
     log::info!("Log initialized");
