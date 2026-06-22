@@ -3,6 +3,7 @@ mod dataflex_parser;
 mod index;
 mod language_server;
 mod logging;
+mod settings;
 
 #[tokio::main]
 async fn main() {

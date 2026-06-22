@@ -8,6 +8,7 @@ use tower_lsp::{Client, LanguageServer};
 
 use crate::dataflex_document::DataFlexDocument;
 use crate::index;
+use crate::settings::Settings;
 
 pub struct DataFlexLanguageServer {
     inner: Arc<DataFlexLanguageServerInner>,
@@ -161,6 +162,34 @@ impl LanguageServer for DataFlexLanguageServer {
                 runtime: tokio::runtime::Handle::current(),
                 tasks: Mutex::new(tokio::task::JoinSet::new()),
             });
+
+        _ = self
+            .inner
+            .client
+            .register_capability(vec![Registration {
+                id: String::from("dataflex-lsp"),
+                method: String::from("workspace/didChangeConfiguration"),
+                register_options: None,
+            }])
+            .await;
+
+        if let Ok(configs) = self
+            .inner
+            .client
+            .configuration(vec![ConfigurationItem {
+                section: Some(String::from("dataflex-lsp")),
+                ..Default::default()
+            }])
+            .await
+        {
+            if let Some(settings) = configs
+                .into_iter()
+                .next()
+                .and_then(|v| serde_json::from_value::<Settings>(v).ok())
+            {
+                Settings::set(settings);
+            }
+        }
 
         self.inner
             .client
@@ -407,6 +436,27 @@ impl LanguageServer for DataFlexLanguageServer {
             })
             .collect();
         Ok(Some(symbols))
+    }
+
+    async fn did_change_configuration(&self, _params: DidChangeConfigurationParams) {
+        log::info!("config changed");
+        if let Ok(configs) = self
+            .inner
+            .client
+            .configuration(vec![ConfigurationItem {
+                section: Some(String::from("dataflex-lsp")),
+                ..Default::default()
+            }])
+            .await
+        {
+            if let Some(settings) = configs
+                .into_iter()
+                .next()
+                .and_then(|v| serde_json::from_value::<Settings>(v).ok())
+            {
+                Settings::set(settings);
+            }
+        }
     }
 }
 

@@ -29,6 +29,22 @@ pub fn initialize_logging() {
     log::info!("Log initialized");
 }
 
+pub fn set_log_level_filter(level: log::LevelFilter) {
+    let Some(logger_handle) = LOGGER_HANDLE.get() else {
+        return;
+    };
+
+    let log_spec = match level {
+        log::LevelFilter::Off => LogSpecification::off(),
+        log::LevelFilter::Error => LogSpecification::error(),
+        log::LevelFilter::Warn => LogSpecification::warn(),
+        log::LevelFilter::Info => LogSpecification::info(),
+        log::LevelFilter::Debug => LogSpecification::debug(),
+        log::LevelFilter::Trace => LogSpecification::trace(),
+    };
+    logger_handle.set_new_spec(log_spec);
+}
+
 fn log_file_path() -> PathBuf {
     let log_dir = log_dir();
 
