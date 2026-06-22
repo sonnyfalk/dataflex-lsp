@@ -1,5 +1,5 @@
 (use_statement
-  (file_name) @name
+  (file_path) @name
   (#set! index.element file_dependency)) @element_node
 
 (class_definition

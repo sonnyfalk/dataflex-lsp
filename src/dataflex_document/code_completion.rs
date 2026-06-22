@@ -45,6 +45,7 @@ impl CodeCompletion {
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
             DocumentContext::CommandReference => Some(Self::command_completions(doc)),
+            DocumentContext::FileDependency => Some(vec![]),
         };
 
         completions
@@ -55,6 +56,7 @@ impl CodeCompletion {
             DocumentContext::ClassReference => true,
             DocumentContext::MethodReference(_) => true,
             DocumentContext::DotMemberExpression => true,
+            DocumentContext::FileDependency => true,
             DocumentContext::Expression => false,
             DocumentContext::ParenExpression => false,
             DocumentContext::CommandReference => false,

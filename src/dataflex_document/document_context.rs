@@ -9,6 +9,7 @@ pub enum DocumentContext {
     ParenExpression,
     DotMemberExpression,
     CommandReference,
+    FileDependency,
 }
 
 struct ContextScanner<'a> {
@@ -131,6 +132,19 @@ impl DocumentContext {
             Self::MethodReference(_) => false,
             Self::DotMemberExpression => false,
             Self::CommandReference => false,
+            Self::FileDependency => false,
+        }
+    }
+
+    pub fn is_file_reference(&self) -> bool {
+        match self {
+            Self::FileDependency => true,
+            Self::ClassReference => false,
+            Self::MethodReference(_) => false,
+            Self::Expression => false,
+            Self::ParenExpression => false,
+            Self::DotMemberExpression => false,
+            Self::CommandReference => false,
         }
     }
 
@@ -173,6 +187,9 @@ impl DocumentContext {
             }
             ("keyword", "move") => {
                 context_scanner_match!(scanner, expr, "to", expr)
+            }
+            ("keyword", "use") => {
+                context_scanner_match!(scanner, identifier -> Self::FileDependency)
             }
             ("keyword", "if") => {
                 let context =
@@ -263,7 +280,10 @@ impl<'a> ContextScanner<'a> {
         {
             return Ok(ContextScannerStatus::Stop);
         }
-        if !self.cursor.is_identifier() && !self.cursor.is_any_keyword() {
+        if !self.cursor.is_identifier()
+            && !self.cursor.is_any_keyword()
+            && !self.cursor.is_file_path()
+        {
             return Err(ContextScannerError::UnexpectedToken);
         }
         if self.cursor.node().end_position() >= self.end {
@@ -1031,6 +1051,25 @@ mod test {
         assert_eq!(context, Some(DocumentContext::CommandReference));
         let context = DocumentContext::context(&doc, Point { row: 0, column: 11 });
         assert_eq!(context, Some(DocumentContext::CommandReference));
+    }
+
+    #[test]
+    fn test_file_dependency_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Use \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
+        assert_eq!(context, Some(DocumentContext::FileDependency));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Use SomeFile.pkg\nUse OtherFile.pkg\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
+        assert_eq!(context, Some(DocumentContext::FileDependency));
     }
 
     #[test]
