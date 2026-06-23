@@ -236,6 +236,10 @@ impl Index {
         self.files.get(file).map(|index_file| &index_file.path)
     }
 
+    pub fn all_known_files(&self) -> Vec<IndexFileRef> {
+        self.files.keys().cloned().collect()
+    }
+
     pub fn all_system_functions(&self) -> Vec<SymbolName> {
         let functions = [
             "Abs",

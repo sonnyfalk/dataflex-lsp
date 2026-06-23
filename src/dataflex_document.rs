@@ -467,6 +467,7 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
             code_completion::CompletionItemKind::TableName => Self::FILE,
             code_completion::CompletionItemKind::TableColumn => Self::FIELD,
             code_completion::CompletionItemKind::Command => Self::KEYWORD,
+            code_completion::CompletionItemKind::File => Self::FILE,
         }
     }
 }

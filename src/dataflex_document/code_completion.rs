@@ -23,6 +23,7 @@ pub enum CompletionItemKind {
     TableName,
     TableColumn,
     Command,
+    File,
 }
 
 impl CodeCompletion {
@@ -45,7 +46,7 @@ impl CodeCompletion {
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
             DocumentContext::CommandReference => Some(Self::command_completions(doc)),
-            DocumentContext::FileDependency => Some(vec![]),
+            DocumentContext::FileDependency => Some(Self::file_completions(doc, position)),
         };
 
         completions
@@ -302,6 +303,20 @@ impl CodeCompletion {
 
     fn command_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
         Self::system_commands(doc).collect()
+    }
+
+    fn file_completions(doc: &DataFlexDocument, _position: Point) -> Vec<CompletionItem> {
+        doc.index
+            .get()
+            .all_known_files()
+            .into_iter()
+            .filter_map(|file_ref| {
+                Some(CompletionItem {
+                    label: file_ref.try_into().ok()?,
+                    kind: CompletionItemKind::File,
+                })
+            })
+            .collect()
     }
 
     fn local_variable_completions(

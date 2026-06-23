@@ -61,6 +61,14 @@ impl From<String> for IndexFileRef {
     }
 }
 
+impl TryFrom<IndexFileRef> for String {
+    type Error = IndexFileRef;
+
+    fn try_from(value: IndexFileRef) -> Result<Self, Self::Error> {
+        value.0.into_string().map_err(IndexFileRef)
+    }
+}
+
 impl PartialEq for IndexFileRef {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq_ignore_ascii_case(&other.0)
