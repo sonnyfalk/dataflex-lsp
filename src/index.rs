@@ -702,7 +702,7 @@ impl Index {
 
     pub fn matching_symbols<'a>(&'a self, query: &'a str) -> IndexSymbolIter<'a> {
         IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
-            let symbols: Vec<IndexSymbolSnapshot<'_, IndexSymbol>> = index_file
+            let symbols: Vec<IndexSymbolSnapshot<'_>> = index_file
                 .symbols
                 .par_iter()
                 .flat_map(|s| rayon::iter::walk_tree(s, |s| s.children()))
@@ -718,7 +718,7 @@ impl Index {
 
     pub fn top_level_class_and_object_symbols<'a>(&'a self) -> IndexSymbolIter<'a> {
         IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
-            let symbols: Vec<IndexSymbolSnapshot<'_, IndexSymbol>> = index_file
+            let symbols: Vec<IndexSymbolSnapshot<'_>> = index_file
                 .symbols
                 .par_iter()
                 .filter(|s| matches!(s, IndexSymbol::Class(_) | IndexSymbol::Object(_)))
@@ -739,10 +739,7 @@ impl Index {
         }
     }
 
-    pub fn symbol_snapshot(
-        &self,
-        symbol_ref: &IndexSymbolRef,
-    ) -> Option<IndexSymbolSnapshot<'_, IndexSymbol>> {
+    pub fn symbol_snapshot(&self, symbol_ref: &IndexSymbolRef) -> Option<IndexSymbolSnapshot<'_>> {
         if let Some(index_file) = self.files.get(&symbol_ref.file_ref) {
             index_file
                 .resolve(&symbol_ref.symbol_path)
@@ -794,11 +791,11 @@ impl<'a> Iterator for ClassHierarchyIter<'a> {
 }
 
 pub struct IndexSymbolIter<'a> {
-    inner: Box<dyn Iterator<Item = IndexSymbolSnapshot<'a, IndexSymbol>> + 'a>,
+    inner: Box<dyn Iterator<Item = IndexSymbolSnapshot<'a>> + 'a>,
 }
 
 impl<'a> IndexSymbolIter<'a> {
-    pub fn new(inner: impl Iterator<Item = IndexSymbolSnapshot<'a, IndexSymbol>> + 'a) -> Self {
+    pub fn new(inner: impl Iterator<Item = IndexSymbolSnapshot<'a>> + 'a) -> Self {
         Self {
             inner: Box::new(inner),
         }
@@ -810,7 +807,7 @@ impl<'a> IndexSymbolIter<'a> {
 }
 
 impl<'a> Iterator for IndexSymbolIter<'a> {
-    type Item = IndexSymbolSnapshot<'a, IndexSymbol>;
+    type Item = IndexSymbolSnapshot<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next()

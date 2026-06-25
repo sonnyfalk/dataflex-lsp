@@ -120,9 +120,9 @@ pub struct MetadataTag {
 }
 
 #[derive(Debug)]
-pub struct IndexSymbolSnapshot<'a, IndexSymbolType> {
+pub struct IndexSymbolSnapshot<'a> {
     pub path: &'a PathBuf,
-    pub symbol: &'a IndexSymbolType,
+    pub symbol: &'a IndexSymbol,
 }
 
 #[derive(Debug)]

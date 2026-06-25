@@ -472,8 +472,8 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
     }
 }
 
-impl From<&index::IndexSymbolSnapshot<'_, index::IndexSymbol>> for lsp_types::Location {
-    fn from(symbol_snapshot: &index::IndexSymbolSnapshot<index::IndexSymbol>) -> Self {
+impl From<&index::IndexSymbolSnapshot<'_>> for lsp_types::Location {
+    fn from(symbol_snapshot: &index::IndexSymbolSnapshot) -> Self {
         let location = symbol_snapshot.symbol.location();
         lsp_types::Location::new(
             lsp_types::Url::from_file_path(symbol_snapshot.path).unwrap(),
