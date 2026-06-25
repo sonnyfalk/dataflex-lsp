@@ -172,9 +172,7 @@ impl<'a> DataFlexTreeCursor<'a> {
         let current = self.clone();
         self.goto_descendant_for_point(point);
         while self.goto_last_child() {}
-        while self.node().start_position() > point {
-            self.goto_previous_leaf_node();
-        }
+        while self.node().start_position() > point && self.goto_previous_leaf_node() {}
         if self.node().start_position() == point {
             let current = self.clone();
             if self.goto_previous_leaf_node() && self.node().end_position() < point {
@@ -493,6 +491,19 @@ mod tests {
         assert_eq!(
             format!("{:?}", cursor.node()),
             "{Node keyword (0, 0) - (0, 4)}"
+        );
+    }
+
+    #[test]
+    fn test_goto_leaf_node_at_or_before_point() {
+        let index = index::IndexRef::make_test_index_ref();
+        let test_content = "// Test\nSend foo\n";
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let mut cursor = doc.cursor().unwrap();
+        cursor.goto_leaf_node_at_or_before_point(Point::new(0, 7));
+        assert_eq!(
+            format!("{:?}", cursor.node()),
+            "{Node source_file (0, 0) - (2, 0)}"
         );
     }
 }
