@@ -119,7 +119,7 @@ pub struct MetadataTag {
     pub value: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct IndexSymbolSnapshot<'a> {
     pub path: &'a PathBuf,
     pub symbol: &'a IndexSymbol,
@@ -144,15 +144,15 @@ impl IndexSymbol {
         }
     }
 
-    pub fn parent_name(&self) -> Option<&SymbolName> {
+    pub fn symbol_path(&self) -> &SymbolPath {
         match self {
-            Self::Class(class_symbol) => class_symbol.symbol_path.parent_name(),
-            Self::Object(class_symbol) => class_symbol.symbol_path.parent_name(),
-            Self::Struct(struct_symbol) => struct_symbol.symbol_path.parent_name(),
-            Self::Method(method_symbol) => method_symbol.symbol_path.parent_name(),
-            Self::Property(variable_symbol) => variable_symbol.symbol_path.parent_name(),
-            Self::Variable(variable_symbol) => variable_symbol.symbol_path.parent_name(),
-            Self::Alias(alias_symbol) => alias_symbol.symbol_path.parent_name(),
+            Self::Class(class_symbol) => &class_symbol.symbol_path,
+            Self::Object(class_symbol) => &class_symbol.symbol_path,
+            Self::Struct(struct_symbol) => &struct_symbol.symbol_path,
+            Self::Method(method_symbol) => &method_symbol.symbol_path,
+            Self::Property(variable_symbol) => &variable_symbol.symbol_path,
+            Self::Variable(variable_symbol) => &variable_symbol.symbol_path,
+            Self::Alias(alias_symbol) => &alias_symbol.symbol_path,
         }
     }
 
@@ -178,6 +178,21 @@ impl IndexSymbol {
             Self::Variable(variable_symbol) => variable_symbol.range,
             Self::Alias(alias_symbol) => alias_symbol.range,
         }
+    }
+
+    pub fn metadata_tags(&self) -> impl Iterator<Item = &MetadataTag> {
+        let metadata = match self {
+            Self::Class(class_symbol) => Some(&class_symbol.metadata),
+            Self::Object(class_symbol) => Some(&class_symbol.metadata),
+            Self::Method(method_symbol) => Some(&method_symbol.metadata),
+            Self::Property(variable_symbol) => Some(&variable_symbol.metadata),
+            Self::Variable(variable_symbol) => Some(&variable_symbol.metadata),
+            Self::Struct(_) => None,
+            Self::Alias(_) => None,
+        };
+        metadata
+            .into_iter()
+            .flat_map(|metadata| metadata.iter().flat_map(|tag_set| tag_set.tags.iter()))
     }
 
     pub fn is_matching(&self, other: &Self) -> bool {
@@ -359,6 +374,15 @@ impl SymbolPath {
 
     pub fn parent_name(&self) -> Option<&SymbolName> {
         self.parent_slice().last()
+    }
+
+    pub fn parent_path(&self) -> Option<SymbolPath> {
+        let parent_slice = self.parent_slice();
+        if !parent_slice.is_empty() {
+            Some(SymbolPath(parent_slice.to_vec()))
+        } else {
+            None
+        }
     }
 
     pub fn is_top_level(&self) -> bool {

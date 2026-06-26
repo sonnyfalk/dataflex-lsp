@@ -432,7 +432,11 @@ impl LanguageServer for DataFlexLanguageServer {
                 tags: None,
                 deprecated: None,
                 location: Location::from(&s),
-                container_name: s.symbol.parent_name().map(index::SymbolName::to_string),
+                container_name: s
+                    .symbol
+                    .symbol_path()
+                    .parent_name()
+                    .map(index::SymbolName::to_string),
             })
             .collect();
         Ok(Some(symbols))

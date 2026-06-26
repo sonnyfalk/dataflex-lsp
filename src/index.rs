@@ -731,6 +731,58 @@ impl Index {
         }))
     }
 
+    pub fn parent_symbol(
+        &self,
+        symbol_snapshot: &IndexSymbolSnapshot,
+    ) -> Option<IndexSymbolSnapshot<'_>> {
+        let Some(parent_path) = symbol_snapshot.symbol.symbol_path().parent_path() else {
+            return None;
+        };
+        self.symbol_snapshot(&IndexSymbolRef {
+            file_ref: IndexFileRef::from(symbol_snapshot.path),
+            symbol_path: parent_path,
+        })
+    }
+
+    pub fn associated_meta_tags<'a>(
+        &'a self,
+        tag_name: SymbolName,
+        symbol_snapshot: &IndexSymbolSnapshot<'a>,
+    ) -> impl Iterator<Item = &'a MetadataTag> {
+        let symbol_with_tag = match symbol_snapshot.symbol {
+            IndexSymbol::Class(_) | IndexSymbol::Object(_) => self
+                .class_hierarchy(*symbol_snapshot)
+                .find(|c| c.symbol.metadata_tags().any(|tag| tag.name == tag_name))
+                .map(|c| c.symbol),
+            IndexSymbol::Method(_) | IndexSymbol::Property(_) => {
+                if symbol_snapshot
+                    .symbol
+                    .metadata_tags()
+                    .any(|tag| tag.name == tag_name)
+                {
+                    Some(symbol_snapshot.symbol)
+                } else if let Some(class_symbol_snapshot) = self.parent_symbol(symbol_snapshot) {
+                    // TODO: Check class overrides property tag
+                    let name = symbol_snapshot.symbol.name();
+                    self.class_hierarchy(class_symbol_snapshot)
+                        .skip(1)
+                        .filter_map(|c| c.symbol.child(name))
+                        .find(|s| s.metadata_tags().any(|tag| tag.name == tag_name))
+                } else {
+                    None
+                }
+            }
+            IndexSymbol::Struct(_) => None,
+            IndexSymbol::Variable(_) => None,
+            IndexSymbol::Alias(_) => None,
+        };
+
+        symbol_with_tag
+            .into_iter()
+            .flat_map(|symbol| symbol.metadata_tags())
+            .filter(move |tag| tag.name == tag_name)
+    }
+
     pub fn class_hierarchy<'a>(&'a self, class: IndexSymbolSnapshot<'a>) -> ClassHierarchyIter<'a> {
         ClassHierarchyIter {
             index: self,
@@ -996,5 +1048,87 @@ End_Class
             "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
+    }
+
+    #[test]
+    fn test_class_metadata_attributes() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+{ Description = "A test description" }
+Class cMyBaseClass is a cBaseClass
+End_Class
+
+Class cMySubClass is a cMyBaseClass
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+        let index = index_ref.get();
+
+        let class = index
+            .find_class(&"cMyBaseClass".into())
+            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .unwrap();
+        let mut tags = index.associated_meta_tags("Description".into(), &class);
+        assert_eq!(
+            format!("{:?}", tags.next()),
+            "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description\\\"\" })"
+        );
+        assert_eq!(format!("{:?}", tags.next()), "None");
+
+        let class = index
+            .find_class(&"cMySubClass".into())
+            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .unwrap();
+        let mut tags = index.associated_meta_tags("Description".into(), &class);
+        assert_eq!(
+            format!("{:?}", tags.next()),
+            "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description\\\"\" })"
+        );
+        assert_eq!(format!("{:?}", tags.next()), "None");
+    }
+
+    #[test]
+    fn test_method_metadata_attributes() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Class cMyBaseClass is a cBaseClass
+    { Description = "A test description for method" }
+    Procedure TestMethod
+    End_Procedure
+End_Class
+
+Class cMySubClass is a cMyBaseClass
+    Procedure TestMethod
+        Forward Send TestMethod
+    End_Procedure
+End_Class
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+        let index = index_ref.get();
+        let mut methods = index
+            .find_methods(&"TestMethod".into(), MethodKind::Msg)
+            .filter_map(|symbol_ref| index.symbol_snapshot(symbol_ref));
+
+        let method = methods.next().unwrap();
+        let mut tags = index.associated_meta_tags("Description".into(), &method);
+        assert_eq!(
+            format!("{:?}", tags.next()),
+            "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description for method\\\"\" })"
+        );
+        assert_eq!(format!("{:?}", tags.next()), "None");
+
+        let method = methods.next().unwrap();
+        let mut tags = index.associated_meta_tags("Description".into(), &method);
+        assert_eq!(
+            format!("{:?}", tags.next()),
+            "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description for method\\\"\" })"
+        );
+        assert_eq!(format!("{:?}", tags.next()), "None");
     }
 }
