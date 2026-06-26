@@ -16,6 +16,7 @@ mod line_map;
 mod parameter_info;
 mod reference_resolver;
 mod scope_balancer;
+mod symbol_declaration;
 mod syntax_map;
 mod tree_cursor;
 
@@ -345,7 +346,10 @@ impl DataFlexDocument {
         })
     }
 
-    pub fn symbol_declaration(&self, position: lsp_types::Position) -> Option<String> {
+    pub fn symbol_declaration(
+        &self,
+        position: lsp_types::Position,
+    ) -> Option<lsp_types::MarkedString> {
         let position = Point {
             row: position.line as usize,
             column: position.character as usize,
@@ -358,11 +362,19 @@ impl DataFlexDocument {
             && let Some(symbol_name) = self.symbol_at_position(position)
             && let Some(variable) = self.find_local_variable(position, &symbol_name)
         {
-            Some(variable.to_string())
+            Some(lsp_types::MarkedString::from_language_code(
+                "dataflex".into(),
+                variable.to_string(),
+            ))
         } else {
             let reference_resolver = ReferenceResolver::new(self);
             let symbols = reference_resolver.resolve_reference(context, position);
-            symbols.map(|s| s.symbol.to_string()).next()
+            symbols
+                .map(|s| symbol_declaration::SymbolDeclaration::new(&s, &self.index.get()))
+                .map(|symbol_declaration| {
+                    lsp_types::MarkedString::from_markdown(symbol_declaration.to_string())
+                })
+                .next()
         }
     }
 

@@ -334,10 +334,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .symbol_declaration(params.text_document_position_params.position);
         if let Some(declaration) = declaration {
             Ok(Some(Hover {
-                contents: HoverContents::Scalar(MarkedString::from_language_code(
-                    "dataflex".into(),
-                    declaration,
-                )),
+                contents: HoverContents::Scalar(declaration),
                 range: None,
             }))
         } else {
