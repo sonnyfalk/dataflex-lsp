@@ -292,9 +292,9 @@ impl DataFlexDocument {
                 symbol: &index::IndexSymbol::Variable(variable),
             })]
         } else if context.is_file_reference()
-            && let Some(file_ref) = self
-                .node_at_position(position)
-                .map(|node| self.line_map.text_for_node(&node).into())
+            && let Some(file_ref) = self.node_at_position(position).map(|node| {
+                index::IndexFileRef::from(&PathBuf::from(self.line_map.text_for_node(&node)))
+            })
         {
             self.index
                 .get()
