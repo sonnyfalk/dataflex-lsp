@@ -97,9 +97,11 @@ impl CodeLens {
                 .map(|n| SymbolName::from(doc.line_map.text_for_node(&n)))
                 .and_then(|name| index.find_class(&name))
                 .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
-                .and_then(|s| ClassSymbol::from_index_symbol(s.symbol))
-                .iter()
+                .into_iter()
                 .flat_map(|c| index.class_hierarchy(c))
+                .filter_map(|symbol_snapshot| {
+                    ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
+                })
                 .map(|c| c.symbol_path.name())
                 .collect();
             let class_set: HashSet<_> = class_hierarchy.iter().collect();

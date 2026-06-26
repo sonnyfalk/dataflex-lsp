@@ -1,7 +1,7 @@
 use super::*;
 use index::{
-    ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
-    ReadableIndexRef, StructSymbol, SymbolName, VariableSymbol,
+    ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolSnapshot,
+    IndexSymbolType, MethodKind, ReadableIndexRef, StructSymbol, SymbolName, VariableSymbol,
 };
 
 pub struct ReferenceResolver<'a> {
@@ -74,6 +74,9 @@ impl<'a> ReferenceResolver<'a> {
                 self.index.find_members(&name, kind).collect();
             self.index
                 .class_hierarchy(class)
+                .filter_map(|symbol_snapshot| {
+                    ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
+                })
                 .find_map(|class| {
                     members.iter().find(|member| {
                         member.symbol_path.parent_slice() == class.symbol_path.as_slice()
@@ -95,7 +98,7 @@ impl<'a> ReferenceResolver<'a> {
         }
     }
 
-    fn resolve_call_receiver(&self, position: Point) -> Option<&ClassSymbol> {
+    fn resolve_call_receiver(&self, position: Point) -> Option<IndexSymbolSnapshot<'_>> {
         let mut cursor = self.doc.cursor()?;
         cursor
             .goto_leaf_node_at_or_after_point(position)
@@ -124,9 +127,6 @@ impl<'a> ReferenceResolver<'a> {
                                 symbol_path,
                             })
                             .and_then(|symbol_ref| self.index.symbol_snapshot(&symbol_ref))
-                            .and_then(|symbol_snapshot| {
-                                ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
-                            })
                     } else {
                         cursor
                             .node()
@@ -137,9 +137,6 @@ impl<'a> ReferenceResolver<'a> {
                                     .find_class(&self.doc.line_map.text_for_node(&n).into())
                             })
                             .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
-                            .and_then(|symbol_snapshot| {
-                                ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
-                            })
                     }
                 })
                 .flatten()
