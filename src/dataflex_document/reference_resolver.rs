@@ -1,7 +1,7 @@
 use super::*;
 use index::{
-    ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolSnapshot,
-    IndexSymbolType, MethodKind, ReadableIndexRef, StructSymbol, SymbolName, VariableSymbol,
+    ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
+    QualifiedIndexSymbol, ReadableIndexRef, StructSymbol, SymbolName, VariableSymbol,
 };
 
 pub struct ReferenceResolver<'a> {
@@ -45,7 +45,7 @@ impl<'a> ReferenceResolver<'a> {
                 self.index
                     .find_global_variables(&name)
                     .next()
-                    .and_then(|v| self.index.symbol_snapshot(v))
+                    .and_then(|v| self.index.resolve_symbol(v))
                     .and_then(|s| VariableSymbol::from_index_symbol(s.symbol))
             })
             .map(|variable| variable.data_type.clone())
@@ -59,7 +59,7 @@ impl<'a> ReferenceResolver<'a> {
         IndexSymbolIter::new(
             self.index
                 .find_class(&name)
-                .and_then(|s| self.index.symbol_snapshot(s))
+                .and_then(|s| self.index.resolve_symbol(s))
                 .into_iter(),
         )
     }
@@ -74,8 +74,8 @@ impl<'a> ReferenceResolver<'a> {
                 self.index.find_members(&name, kind).collect();
             self.index
                 .class_hierarchy(class)
-                .filter_map(|symbol_snapshot| {
-                    ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
+                .filter_map(|qualified_symbol| {
+                    ClassSymbol::from_index_symbol(qualified_symbol.symbol)
                 })
                 .find_map(|class| {
                     members.iter().find(|member| {
@@ -88,17 +88,17 @@ impl<'a> ReferenceResolver<'a> {
         if let Some(member) = member {
             IndexSymbolIter::new(
                 std::iter::once(member)
-                    .filter_map(|member_ref| self.index.symbol_snapshot(member_ref)),
+                    .filter_map(|member_ref| self.index.resolve_symbol(member_ref)),
             )
         } else {
             let members = self.index.find_members(&name, kind);
             IndexSymbolIter::new(
-                members.filter_map(|member_ref| self.index.symbol_snapshot(member_ref)),
+                members.filter_map(|member_ref| self.index.resolve_symbol(member_ref)),
             )
         }
     }
 
-    fn resolve_call_receiver(&self, position: Point) -> Option<IndexSymbolSnapshot<'_>> {
+    fn resolve_call_receiver(&self, position: Point) -> Option<QualifiedIndexSymbol<'_>> {
         let mut cursor = self.doc.cursor()?;
         cursor
             .goto_leaf_node_at_or_after_point(position)
@@ -126,7 +126,7 @@ impl<'a> ReferenceResolver<'a> {
                                 file_ref: index::IndexFileRef::from(&self.doc.file_path),
                                 symbol_path,
                             })
-                            .and_then(|symbol_ref| self.index.symbol_snapshot(&symbol_ref))
+                            .and_then(|symbol_ref| self.index.resolve_symbol(&symbol_ref))
                     } else {
                         cursor
                             .node()
@@ -136,7 +136,7 @@ impl<'a> ReferenceResolver<'a> {
                                 self.index
                                     .find_class(&self.doc.line_map.text_for_node(&n).into())
                             })
-                            .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+                            .and_then(|symbol_ref| self.index.resolve_symbol(symbol_ref))
                     }
                 })
                 .flatten()
@@ -157,7 +157,7 @@ impl<'a> ReferenceResolver<'a> {
                 .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
                 .chain(self.index.find_global_variables(&name))
                 .chain(self.index.find_alias_symbols(&name))
-                .filter_map(|s| self.index.symbol_snapshot(s)),
+                .filter_map(|s| self.index.resolve_symbol(s)),
         )
     }
 
@@ -177,7 +177,7 @@ impl<'a> ReferenceResolver<'a> {
                     //FIXME: Filter on call receiver, like `resolve_method_reference()`.
                     self.index.find_members(&name, MethodKind::Get),
                 )
-                .filter_map(|s| self.index.symbol_snapshot(s)),
+                .filter_map(|s| self.index.resolve_symbol(s)),
         )
     }
 
@@ -216,7 +216,7 @@ impl<'a> ReferenceResolver<'a> {
             let current_symbol = self
                 .resolve_type_of_variable(position, &variable_name)
                 .and_then(|data_type| self.index.find_struct(data_type.name()))
-                .and_then(|struct_ref| self.index.symbol_snapshot(struct_ref));
+                .and_then(|struct_ref| self.index.resolve_symbol(struct_ref));
 
             query_match
                 .nodes_for_capture_index(member_capture_index)
@@ -228,7 +228,7 @@ impl<'a> ReferenceResolver<'a> {
                     {
                         self.index
                             .find_struct(&variable.data_type.name())
-                            .and_then(|struct_ref| self.index.symbol_snapshot(struct_ref))
+                            .and_then(|struct_ref| self.index.resolve_symbol(struct_ref))
                     } else {
                         current_symbol
                     };
@@ -255,8 +255,8 @@ impl<'a> ReferenceResolver<'a> {
                             .members
                             .iter()
                             .find(|member| *member.name() == member_name)
-                            .map(|member| index::IndexSymbolSnapshot {
-                                path: current_symbol.path,
+                            .map(|member| index::QualifiedIndexSymbol {
+                                file: current_symbol.file,
                                 symbol: member,
                             })
                     } else {
@@ -301,7 +301,7 @@ End_Object
         let mut symbol = reference_resolver.resolve_class_reference(Point::new(2, 25));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -340,7 +340,7 @@ End_Object
             reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg, parameters: [], return_type: None, metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg, parameters: [], return_type: None, metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -369,7 +369,7 @@ End_Object
             reference_resolver.resolve_method_reference(Point::new(9, 15), MethodKind::Msg);
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 5, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 4 }, end: SourceLocation { line: 6, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None, metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 5, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 4 }, end: SourceLocation { line: 6, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None, metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -392,7 +392,7 @@ Send foo of oMyObject
         let mut symbol = reference_resolver.resolve_expr_reference(Point::new(6, 16));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Object(ClassSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 10 } }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None, metadata: [] })], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Object(ClassSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 10 } }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None, metadata: [] })], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -418,14 +418,14 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 21));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
     }
 
@@ -476,21 +476,21 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 35));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 25));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 6, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 0 }, end: SourceLocation { line: 8, column: 0 } }, symbol_path: SymbolPath(\"tMyOtherStruct.myStruct\"), data_type: DataFlexDataType(\"tMyStruct\"), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 6, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 0 }, end: SourceLocation { line: 8, column: 0 } }, symbol_path: SymbolPath(\"tMyOtherStruct.myStruct\"), data_type: DataFlexDataType(\"tMyStruct\"), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -515,7 +515,7 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(7, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -544,7 +544,7 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(11, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -569,7 +569,7 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         let mut symbol = reference_resolver.resolve_paren_expr_reference(Point::new(7, 10));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 13 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 16 } }, symbol_path: SymbolPath(\"oTest.MyMethod\"), kind: Get, parameters: [(SymbolName(\"sArg1\"), DataFlexDataType(\"String\")), (SymbolName(\"iArg2\"), DataFlexDataType(\"Integer\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 13 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 16 } }, symbol_path: SymbolPath(\"oTest.MyMethod\"), kind: Get, parameters: [(SymbolName(\"sArg1\"), DataFlexDataType(\"String\")), (SymbolName(\"iArg2\"), DataFlexDataType(\"Integer\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }

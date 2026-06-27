@@ -702,13 +702,13 @@ impl Index {
 
     pub fn matching_symbols<'a>(&'a self, query: &'a str) -> IndexSymbolIter<'a> {
         IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
-            let symbols: Vec<IndexSymbolSnapshot<'_>> = index_file
+            let symbols: Vec<QualifiedIndexSymbol<'_>> = index_file
                 .symbols
                 .par_iter()
                 .flat_map(|s| rayon::iter::walk_tree(s, |s| s.children()))
                 .filter(|s| s.name().starts_with(query))
-                .map(|s| IndexSymbolSnapshot {
-                    path: &index_file.path,
+                .map(|s| QualifiedIndexSymbol {
+                    file: index_file,
                     symbol: s,
                 })
                 .collect();
@@ -718,12 +718,12 @@ impl Index {
 
     pub fn top_level_class_and_object_symbols<'a>(&'a self) -> IndexSymbolIter<'a> {
         IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
-            let symbols: Vec<IndexSymbolSnapshot<'_>> = index_file
+            let symbols: Vec<QualifiedIndexSymbol<'_>> = index_file
                 .symbols
                 .par_iter()
                 .filter(|s| matches!(s, IndexSymbol::Class(_) | IndexSymbol::Object(_)))
-                .map(|s| IndexSymbolSnapshot {
-                    path: &index_file.path,
+                .map(|s| QualifiedIndexSymbol {
+                    file: index_file,
                     symbol: s,
                 })
                 .collect();
@@ -733,13 +733,13 @@ impl Index {
 
     pub fn parent_symbol(
         &self,
-        symbol_snapshot: &IndexSymbolSnapshot,
-    ) -> Option<IndexSymbolSnapshot<'_>> {
-        let Some(parent_path) = symbol_snapshot.symbol.symbol_path().parent_path() else {
+        qualified_symbol: &QualifiedIndexSymbol,
+    ) -> Option<QualifiedIndexSymbol<'_>> {
+        let Some(parent_path) = qualified_symbol.symbol.symbol_path().parent_path() else {
             return None;
         };
-        self.symbol_snapshot(&IndexSymbolRef {
-            file_ref: IndexFileRef::from(symbol_snapshot.path),
+        self.resolve_symbol(&IndexSymbolRef {
+            file_ref: IndexFileRef::from(&qualified_symbol.file.path),
             symbol_path: parent_path,
         })
     }
@@ -747,24 +747,24 @@ impl Index {
     pub fn associated_meta_tags<'a>(
         &'a self,
         tag_name: SymbolName,
-        symbol_snapshot: &IndexSymbolSnapshot<'a>,
+        qualified_symbol: &QualifiedIndexSymbol<'a>,
     ) -> impl Iterator<Item = &'a MetadataTag> {
-        let symbol_with_tag = match symbol_snapshot.symbol {
+        let symbol_with_tag = match qualified_symbol.symbol {
             IndexSymbol::Class(_) | IndexSymbol::Object(_) => self
-                .class_hierarchy(*symbol_snapshot)
+                .class_hierarchy(*qualified_symbol)
                 .find(|c| c.symbol.metadata_tags().any(|tag| tag.name == tag_name))
                 .map(|c| c.symbol),
             IndexSymbol::Method(_) | IndexSymbol::Property(_) => {
-                if symbol_snapshot
+                if qualified_symbol
                     .symbol
                     .metadata_tags()
                     .any(|tag| tag.name == tag_name)
                 {
-                    Some(symbol_snapshot.symbol)
-                } else if let Some(class_symbol_snapshot) = self.parent_symbol(symbol_snapshot) {
+                    Some(qualified_symbol.symbol)
+                } else if let Some(class_symbol) = self.parent_symbol(qualified_symbol) {
                     // TODO: Check class overrides property tag
-                    let name = symbol_snapshot.symbol.name();
-                    self.class_hierarchy(class_symbol_snapshot)
+                    let name = qualified_symbol.symbol.name();
+                    self.class_hierarchy(class_symbol)
                         .skip(1)
                         .filter_map(|c| c.symbol.child(name))
                         .find(|s| s.metadata_tags().any(|tag| tag.name == tag_name))
@@ -783,7 +783,10 @@ impl Index {
             .filter(move |tag| tag.name == tag_name)
     }
 
-    pub fn class_hierarchy<'a>(&'a self, class: IndexSymbolSnapshot<'a>) -> ClassHierarchyIter<'a> {
+    pub fn class_hierarchy<'a>(
+        &'a self,
+        class: QualifiedIndexSymbol<'a>,
+    ) -> ClassHierarchyIter<'a> {
         ClassHierarchyIter {
             index: self,
             current: Some(class),
@@ -791,12 +794,12 @@ impl Index {
         }
     }
 
-    pub fn symbol_snapshot(&self, symbol_ref: &IndexSymbolRef) -> Option<IndexSymbolSnapshot<'_>> {
+    pub fn resolve_symbol(&self, symbol_ref: &IndexSymbolRef) -> Option<QualifiedIndexSymbol<'_>> {
         if let Some(index_file) = self.files.get(&symbol_ref.file_ref) {
             index_file
                 .resolve(&symbol_ref.symbol_path)
-                .map(|index_symbol| IndexSymbolSnapshot {
-                    path: &index_file.path,
+                .map(|index_symbol| QualifiedIndexSymbol {
+                    file: index_file,
                     symbol: index_symbol,
                 })
         } else {
@@ -807,34 +810,38 @@ impl Index {
 
 pub struct ClassHierarchyIter<'a> {
     index: &'a Index,
-    current: Option<IndexSymbolSnapshot<'a>>,
+    current: Option<QualifiedIndexSymbol<'a>>,
     mixins: core::slice::Iter<'a, SymbolName>,
 }
 
 impl<'a> Iterator for ClassHierarchyIter<'a> {
-    type Item = IndexSymbolSnapshot<'a>;
+    type Item = QualifiedIndexSymbol<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(mixin) = self
             .mixins
             .next()
             .and_then(|class_name| self.index.find_class(class_name))
-            .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_ref| self.index.resolve_symbol(symbol_ref))
         {
             Some(mixin)
         } else {
             self.mixins = self
                 .current
                 .as_ref()
-                .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol))
+                .and_then(|qualified_symbol| {
+                    ClassSymbol::from_index_symbol(qualified_symbol.symbol)
+                })
                 .map(|class| class.mixins.iter())
                 .unwrap_or_default();
             let next = self
                 .current
                 .as_ref()
-                .and_then(|symbol_snapshot| ClassSymbol::from_index_symbol(symbol_snapshot.symbol))
+                .and_then(|qualified_symbol| {
+                    ClassSymbol::from_index_symbol(qualified_symbol.symbol)
+                })
                 .and_then(|class| self.index.find_class(&class.superclass))
-                .and_then(|symbol_ref| self.index.symbol_snapshot(symbol_ref));
+                .and_then(|symbol_ref| self.index.resolve_symbol(symbol_ref));
             if let Some(next) = next {
                 self.current.replace(next)
             } else {
@@ -845,11 +852,11 @@ impl<'a> Iterator for ClassHierarchyIter<'a> {
 }
 
 pub struct IndexSymbolIter<'a> {
-    inner: Box<dyn Iterator<Item = IndexSymbolSnapshot<'a>> + 'a>,
+    inner: Box<dyn Iterator<Item = QualifiedIndexSymbol<'a>> + 'a>,
 }
 
 impl<'a> IndexSymbolIter<'a> {
-    pub fn new(inner: impl Iterator<Item = IndexSymbolSnapshot<'a>> + 'a) -> Self {
+    pub fn new(inner: impl Iterator<Item = QualifiedIndexSymbol<'a>> + 'a) -> Self {
         Self {
             inner: Box::new(inner),
         }
@@ -861,7 +868,7 @@ impl<'a> IndexSymbolIter<'a> {
 }
 
 impl<'a> Iterator for IndexSymbolIter<'a> {
-    type Item = IndexSymbolSnapshot<'a>;
+    type Item = QualifiedIndexSymbol<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next()
@@ -986,17 +993,17 @@ mod tests {
         let index = index_ref.get();
         let class = index
             .find_class(&"cMySubClass".into())
-            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
 
         let mut class_hierarchy = index.class_hierarchy(class);
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 2, column: 6 }, range: SourceRange { start: SourceLocation { line: 2, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 2, column: 6 }, range: SourceRange { start: SourceLocation { line: 2, column: 0 }, end: SourceLocation { line: 3, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [], members: [], metadata: [] }) })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 0, column: 6 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }
@@ -1027,25 +1034,25 @@ End_Class
         let index = index_ref.get();
         let class = index
             .find_class(&"cMySubClass".into())
-            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
 
         let mut class_hierarchy = index.class_hierarchy(class);
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 12, column: 6 }, range: SourceRange { start: SourceLocation { line: 12, column: 0 }, end: SourceLocation { line: 14, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [SymbolName(\"cMyOtherMixin\")], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 12, column: 6 }, range: SourceRange { start: SourceLocation { line: 12, column: 0 }, end: SourceLocation { line: 14, column: 9 } }, symbol_path: SymbolPath(\"cMySubClass\"), superclass: SymbolName(\"cMyBaseClass\"), mixins: [SymbolName(\"cMyOtherMixin\")], members: [], metadata: [] }) })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 4, column: 6 }, range: SourceRange { start: SourceLocation { line: 4, column: 0 }, end: SourceLocation { line: 5, column: 9 } }, symbol_path: SymbolPath(\"cMyOtherMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 4, column: 6 }, range: SourceRange { start: SourceLocation { line: 4, column: 0 }, end: SourceLocation { line: 5, column: 9 } }, symbol_path: SymbolPath(\"cMyOtherMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] }) })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 7, column: 6 }, range: SourceRange { start: SourceLocation { line: 7, column: 0 }, end: SourceLocation { line: 9, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [SymbolName(\"cMyMixin\")], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 7, column: 6 }, range: SourceRange { start: SourceLocation { line: 7, column: 0 }, end: SourceLocation { line: 9, column: 9 } }, symbol_path: SymbolPath(\"cMyBaseClass\"), superclass: SymbolName(\"cBaseClass\"), mixins: [SymbolName(\"cMyMixin\")], members: [], metadata: [] }) })"
         );
         assert_eq!(
             format!("{:?}", class_hierarchy.next()),
-            "Some(IndexSymbolSnapshot { path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Class(ClassSymbol { location: SourceLocation { line: 1, column: 6 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 2, column: 9 } }, symbol_path: SymbolPath(\"cMyMixin\"), superclass: SymbolName(\"cMixin\"), mixins: [], members: [], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", class_hierarchy.next()), "None");
     }
@@ -1069,7 +1076,7 @@ End_Class
 
         let class = index
             .find_class(&"cMyBaseClass".into())
-            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
         let mut tags = index.associated_meta_tags("Description".into(), &class);
         assert_eq!(
@@ -1080,7 +1087,7 @@ End_Class
 
         let class = index
             .find_class(&"cMySubClass".into())
-            .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+            .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
         let mut tags = index.associated_meta_tags("Description".into(), &class);
         assert_eq!(
@@ -1113,7 +1120,7 @@ End_Class
         let index = index_ref.get();
         let mut methods = index
             .find_methods(&"TestMethod".into(), MethodKind::Msg)
-            .filter_map(|symbol_ref| index.symbol_snapshot(symbol_ref));
+            .filter_map(|symbol_ref| index.resolve_symbol(symbol_ref));
 
         let method = methods.next().unwrap();
         let mut tags = index.associated_meta_tags("Description".into(), &method);

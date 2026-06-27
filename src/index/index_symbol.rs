@@ -119,9 +119,9 @@ pub struct MetadataTag {
     pub value: String,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct IndexSymbolSnapshot<'a> {
-    pub path: &'a PathBuf,
+#[derive(Clone, Copy)]
+pub struct QualifiedIndexSymbol<'a> {
+    pub file: &'a IndexFile,
     pub symbol: &'a IndexSymbol,
 }
 
@@ -417,6 +417,16 @@ impl std::fmt::Debug for SymbolPath {
 impl From<Vec<SymbolName>> for SymbolPath {
     fn from(value: Vec<SymbolName>) -> Self {
         SymbolPath(value)
+    }
+}
+
+impl std::fmt::Debug for QualifiedIndexSymbol<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "QualifiedIndexSymbol {{ file.path: {:?}, symbol: {:?} }}",
+            self.file.path, self.symbol
+        )
     }
 }
 

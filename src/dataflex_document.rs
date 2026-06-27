@@ -287,10 +287,10 @@ impl DataFlexDocument {
             && let Some(symbol_name) = self.symbol_at_position(position)
             && let Some(variable) = self.find_local_variable(position, &symbol_name)
         {
-            vec![lsp_types::Location::from(&index::IndexSymbolSnapshot {
-                path: &self.file_path,
-                symbol: &index::IndexSymbol::Variable(variable),
-            })]
+            vec![lsp_types::Location::new(
+                lsp_types::Url::from_file_path(&self.file_path).unwrap(),
+                lsp_types::Range::from(index::SourceRange::with_location(variable.location)),
+            )]
         } else if context.is_file_reference()
             && let Some(file_ref) = self.node_at_position(position).map(|node| {
                 index::IndexFileRef::from(&PathBuf::from(self.line_map.text_for_node(&node)))
@@ -311,7 +311,7 @@ impl DataFlexDocument {
             let reference_resolver = ReferenceResolver::new(self);
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols
-                .map(|symbol_snapshot| lsp_types::Location::from(&symbol_snapshot))
+                .map(|qualified_symbol| lsp_types::Location::from(&qualified_symbol))
                 .collect()
         };
 
@@ -484,21 +484,27 @@ impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind
     }
 }
 
-impl From<&index::IndexSymbolSnapshot<'_>> for lsp_types::Location {
-    fn from(symbol_snapshot: &index::IndexSymbolSnapshot) -> Self {
-        let location = symbol_snapshot.symbol.location();
+impl From<&index::QualifiedIndexSymbol<'_>> for lsp_types::Location {
+    fn from(qualified_symbol: &index::QualifiedIndexSymbol) -> Self {
+        let location = qualified_symbol.symbol.location();
         lsp_types::Location::new(
-            lsp_types::Url::from_file_path(symbol_snapshot.path).unwrap(),
-            lsp_types::Range::new(
-                lsp_types::Position {
-                    line: location.line as u32,
-                    character: location.column as u32,
-                },
-                lsp_types::Position {
-                    line: location.line as u32,
-                    character: location.column as u32,
-                },
-            ),
+            lsp_types::Url::from_file_path(&qualified_symbol.file.path).unwrap(),
+            lsp_types::Range::from(index::SourceRange::with_location(location)),
+        )
+    }
+}
+
+impl From<index::SourceRange> for lsp_types::Range {
+    fn from(range: index::SourceRange) -> Self {
+        lsp_types::Range::new(
+            lsp_types::Position {
+                line: range.start.line as u32,
+                character: range.start.column as u32,
+            },
+            lsp_types::Position {
+                line: range.end.line as u32,
+                character: range.end.column as u32,
+            },
         )
     }
 }

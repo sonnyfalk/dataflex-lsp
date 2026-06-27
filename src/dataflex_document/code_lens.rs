@@ -96,11 +96,11 @@ impl CodeLens {
                 .next()
                 .map(|n| SymbolName::from(doc.line_map.text_for_node(&n)))
                 .and_then(|name| index.find_class(&name))
-                .and_then(|symbol_ref| index.symbol_snapshot(symbol_ref))
+                .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
                 .into_iter()
                 .flat_map(|c| index.class_hierarchy(c))
-                .filter_map(|symbol_snapshot| {
-                    ClassSymbol::from_index_symbol(symbol_snapshot.symbol)
+                .filter_map(|qualified_symbol| {
+                    ClassSymbol::from_index_symbol(qualified_symbol.symbol)
                 })
                 .map(|c| c.symbol_path.name())
                 .collect();

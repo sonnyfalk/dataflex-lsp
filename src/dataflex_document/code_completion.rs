@@ -260,19 +260,19 @@ impl CodeCompletion {
             None
         };
 
-        let symbol_snapshot = if let Some(name) = root_name.as_ref() {
+        let qualified_symbol = if let Some(name) = root_name.as_ref() {
             reference_resolver
                 .resolve_type_of_variable(cursor.node().start_position(), name)
                 .and_then(|data_type| index.find_struct(data_type.name()))
-                .and_then(|struct_ref| index.symbol_snapshot(struct_ref))
+                .and_then(|struct_ref| index.resolve_symbol(struct_ref))
         } else {
             reference_resolver
                 .resolve_reference(DocumentContext::DotMemberExpression, position)
                 .next()
         };
 
-        if let Some(symbol_snapshot) = symbol_snapshot {
-            StructSymbol::from_index_symbol(symbol_snapshot.symbol)
+        if let Some(qualified_symbol) = qualified_symbol {
+            StructSymbol::from_index_symbol(qualified_symbol.symbol)
                 .map(|struct_symbol| {
                     struct_symbol
                         .members

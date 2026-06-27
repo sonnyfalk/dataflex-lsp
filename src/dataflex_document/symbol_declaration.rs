@@ -1,4 +1,4 @@
-use crate::index::{Index, IndexSymbolSnapshot};
+use crate::index::{Index, QualifiedIndexSymbol};
 
 pub struct SymbolDeclaration {
     pub declaration: String,
@@ -6,14 +6,14 @@ pub struct SymbolDeclaration {
 }
 
 impl SymbolDeclaration {
-    pub fn new(symbol_snapshot: &IndexSymbolSnapshot<'_>, index: &Index) -> Self {
+    pub fn new(qualified_symbol: &QualifiedIndexSymbol<'_>, index: &Index) -> Self {
         let description: String = index
-            .associated_meta_tags("Description".into(), symbol_snapshot)
+            .associated_meta_tags("Description".into(), qualified_symbol)
             .map(|tag| tag.value.trim_matches('"'))
             .collect::<Vec<&str>>()
             .join("\n");
         Self {
-            declaration: symbol_snapshot.symbol.to_string(),
+            declaration: qualified_symbol.symbol.to_string(),
             description: if description.is_empty() {
                 None
             } else {
