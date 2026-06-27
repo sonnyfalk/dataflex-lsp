@@ -731,19 +731,6 @@ impl Index {
         }))
     }
 
-    pub fn parent_symbol(
-        &self,
-        qualified_symbol: &QualifiedIndexSymbol,
-    ) -> Option<QualifiedIndexSymbol<'_>> {
-        let Some(parent_path) = qualified_symbol.symbol.symbol_path().parent_path() else {
-            return None;
-        };
-        self.resolve_symbol(&IndexSymbolRef {
-            file_ref: IndexFileRef::from(&qualified_symbol.file.path),
-            symbol_path: parent_path,
-        })
-    }
-
     pub fn associated_meta_tags<'a>(
         &'a self,
         tag_name: SymbolName,
@@ -761,7 +748,7 @@ impl Index {
                     .any(|tag| tag.name == tag_name)
                 {
                     Some(qualified_symbol.symbol)
-                } else if let Some(class_symbol) = self.parent_symbol(qualified_symbol) {
+                } else if let Some(class_symbol) = qualified_symbol.parent_symbol() {
                     // TODO: Check class overrides property tag
                     let name = qualified_symbol.symbol.name();
                     self.class_hierarchy(class_symbol)

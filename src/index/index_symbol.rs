@@ -420,6 +420,19 @@ impl From<Vec<SymbolName>> for SymbolPath {
     }
 }
 
+impl<'a> QualifiedIndexSymbol<'a> {
+    pub fn parent_symbol(&self) -> Option<QualifiedIndexSymbol<'a>> {
+        self.symbol
+            .symbol_path()
+            .parent_path()
+            .and_then(|parent_path| self.file.resolve(&parent_path))
+            .map(|parent_symbol| QualifiedIndexSymbol {
+                file: self.file,
+                symbol: parent_symbol,
+            })
+    }
+}
+
 impl std::fmt::Debug for QualifiedIndexSymbol<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
