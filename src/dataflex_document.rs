@@ -20,7 +20,6 @@ mod symbol_declaration;
 mod syntax_map;
 mod tree_cursor;
 
-#[allow(dead_code)]
 pub struct DataFlexDocument {
     file_path: PathBuf,
     line_map: line_map::LineMap,

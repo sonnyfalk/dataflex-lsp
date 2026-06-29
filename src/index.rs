@@ -28,7 +28,6 @@ pub struct Index {
     lookup_tables: LookupTables,
 }
 
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct IndexRef {
     index: std::sync::Arc<std::sync::RwLock<Index>>,
@@ -185,7 +184,6 @@ impl Index {
             .into_iter()
     }
 
-    #[allow(dead_code)]
     pub fn find_struct(&self, name: &SymbolName) -> Option<&IndexSymbolRef> {
         self.lookup_tables.struct_lookup_table().get(name)
     }
@@ -194,7 +192,6 @@ impl Index {
         self.lookup_tables.struct_lookup_table().get(name).is_some()
     }
 
-    #[allow(dead_code)]
     pub fn all_known_structs(&self) -> Vec<SymbolName> {
         self.lookup_tables
             .struct_lookup_table()
@@ -203,7 +200,6 @@ impl Index {
             .collect()
     }
 
-    #[allow(dead_code)]
     pub fn find_dataflex_table(&self, name: &SymbolName) -> Option<&DataFlexTable> {
         let index_file = self
             .lookup_tables
@@ -223,7 +219,6 @@ impl Index {
             .is_some()
     }
 
-    #[allow(dead_code)]
     pub fn all_known_dataflex_tables(&self) -> Vec<SymbolName> {
         self.lookup_tables
             .dataflex_table_lookup_table()

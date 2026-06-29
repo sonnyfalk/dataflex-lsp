@@ -3,7 +3,6 @@ use super::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub enum IndexSymbol {
     Class(ClassSymbol),
     Object(ClassSymbol),
@@ -15,7 +14,6 @@ pub enum IndexSymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct ClassSymbol {
     pub location: SourceLocation,
     pub range: SourceRange,
@@ -27,7 +25,6 @@ pub struct ClassSymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct StructSymbol {
     pub location: SourceLocation,
     pub range: SourceRange,
@@ -36,7 +33,6 @@ pub struct StructSymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct MethodSymbol {
     pub location: SourceLocation,
     pub range: SourceRange,
@@ -48,7 +44,6 @@ pub struct MethodSymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct VariableSymbol {
     pub location: SourceLocation,
     pub range: SourceRange,
@@ -58,7 +53,6 @@ pub struct VariableSymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AliasSymbol {
     pub location: SourceLocation,
     pub range: SourceRange,
@@ -79,7 +73,6 @@ pub struct SourceRange {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub enum MethodKind {
     Msg,
     Get,
@@ -87,14 +80,12 @@ pub enum MethodKind {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub enum DataFlexDataType {
     Simple(SymbolName),
     Array(SymbolName, usize),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub enum ValueReference {
     Symbol(SymbolName),
     Value(String),
@@ -107,13 +98,11 @@ pub struct SymbolName(String);
 pub struct SymbolPath(Vec<SymbolName>);
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct MetadataTagSet {
     pub tags: Vec<MetadataTag>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct MetadataTag {
     pub name: SymbolName,
     pub value: String,
@@ -444,7 +433,6 @@ impl std::fmt::Debug for QualifiedIndexSymbol<'_> {
 }
 
 pub trait IndexSymbolType {
-    #[allow(dead_code)]
     fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self>;
     fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self>;
 }

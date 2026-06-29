@@ -37,7 +37,6 @@ impl IndexFile {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct DataFlexTable {
     pub name: SymbolName,
     pub columns: Vec<SymbolName>,
