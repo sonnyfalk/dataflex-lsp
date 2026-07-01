@@ -339,6 +339,13 @@ impl DataFlexDocument {
                 .map(|item| lsp_types::CompletionItem {
                     label: item.label,
                     kind: Some(lsp_types::CompletionItemKind::from(item.kind)),
+                    label_details: item.details.map(|details| {
+                        lsp_types::CompletionItemLabelDetails {
+                            detail: Some(details),
+                            description: None,
+                        }
+                    }),
+                    insert_text: item.insert_text,
                     ..Default::default()
                 })
                 .collect()
@@ -466,6 +473,7 @@ impl DataFlexDocument {
 impl From<code_completion::CompletionItemKind> for lsp_types::CompletionItemKind {
     fn from(kind: code_completion::CompletionItemKind) -> Self {
         match kind {
+            code_completion::CompletionItemKind::Text => Self::TEXT,
             code_completion::CompletionItemKind::Class => Self::CLASS,
             code_completion::CompletionItemKind::Method => Self::METHOD,
             code_completion::CompletionItemKind::Property => Self::PROPERTY,

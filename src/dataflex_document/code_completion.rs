@@ -1,16 +1,22 @@
+use std::fmt::Write;
+
 use super::*;
-use index::{IndexSymbolType, MethodKind, StructSymbol};
+use index::{IndexSymbolType, MethodKind, MethodSymbol, StructSymbol};
 
 pub struct CodeCompletion {}
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CompletionItem {
     pub label: String,
     pub kind: CompletionItemKind,
+    pub details: Option<String>,
+    pub insert_text: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum CompletionItemKind {
+    #[default]
+    Text,
     Class,
     Object,
     Method,
@@ -47,7 +53,9 @@ impl CodeCompletion {
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
             DocumentContext::CommandReference => Some(Self::command_completions(doc)),
             DocumentContext::FileDependency => Some(Self::file_completions(doc, position)),
-            DocumentContext::MethodDeclaration(_) => None,
+            DocumentContext::MethodDeclaration(kind) => {
+                Some(Self::override_completions(doc, position, kind))
+            }
         };
 
         completions
@@ -62,6 +70,7 @@ impl CodeCompletion {
             DocumentContext::Expression => false,
             DocumentContext::ParenExpression => false,
             DocumentContext::CommandReference => false,
+            DocumentContext::MethodDeclaration(_) => false,
         }
     }
 
@@ -73,6 +82,7 @@ impl CodeCompletion {
             .map(|class_name| CompletionItem {
                 label: class_name.to_string(),
                 kind: CompletionItemKind::Class,
+                ..Default::default()
             })
             .collect()
     }
@@ -87,6 +97,7 @@ impl CodeCompletion {
                 .map(|method_name| CompletionItem {
                     label: method_name.to_string(),
                     kind: CompletionItemKind::Method,
+                    ..Default::default()
                 })
                 .collect(),
             MethodKind::Get | MethodKind::Set => doc
@@ -97,6 +108,7 @@ impl CodeCompletion {
                 .map(|method_name| CompletionItem {
                     label: method_name.to_string(),
                     kind: CompletionItemKind::Method,
+                    ..Default::default()
                 })
                 .chain(
                     doc.index
@@ -106,9 +118,55 @@ impl CodeCompletion {
                         .map(|property_name| CompletionItem {
                             label: property_name.to_string(),
                             kind: CompletionItemKind::Property,
+                            ..Default::default()
                         }),
                 )
                 .collect(),
+        }
+    }
+
+    fn override_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        kind: index::MethodKind,
+    ) -> Vec<CompletionItem> {
+        let index = doc.index.get();
+        if let Some(mut cursor) = doc.cursor()
+            && cursor.goto_descendant_for_point(position)
+            && cursor.goto_enclosing_object_or_class()
+        {
+            let superclass = cursor
+                .node()
+                .child(0)
+                .and_then(|n| n.child_by_field_name("superclass"))
+                .map(|n| doc.line_map.text_for_node(&n))
+                .and_then(|superclass_name| index.find_class(&superclass_name.into()))
+                .and_then(|symbol_ref| index.resolve_symbol(symbol_ref));
+
+            // TODO: Filter out already overridden methods.
+            superclass
+                .into_iter()
+                .flat_map(|superclass| index.inherited_class_members(superclass, kind))
+                .map(|m| {
+                    let mut details = String::new();
+                    if let Some(method_symbol) = MethodSymbol::from_index_symbol(m.symbol) {
+                        for (name, data_type) in &method_symbol.parameters {
+                            _ = write!(details, " {} {}", data_type.to_string(), name.to_string());
+                        }
+                        if let Some(return_type) = &method_symbol.return_type {
+                            _ = write!(details, " Returns {}", return_type.to_string());
+                        }
+                    }
+                    CompletionItem {
+                        label: m.symbol.name().to_string(),
+                        kind: CompletionItemKind::Method,
+                        details: Some(details.clone()),
+                        insert_text: Some(format!("{}{}\n    ", m.symbol.name(), details)),
+                    }
+                })
+                .collect()
+        } else {
+            vec![]
         }
     }
 
@@ -122,6 +180,7 @@ impl CodeCompletion {
                     .map(|variable_name| CompletionItem {
                         label: variable_name.to_string(),
                         kind: CompletionItemKind::GlobalVariable,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -132,6 +191,7 @@ impl CodeCompletion {
                     .map(|object_name| CompletionItem {
                         label: object_name.to_string(),
                         kind: CompletionItemKind::Object,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -142,6 +202,7 @@ impl CodeCompletion {
                     .map(|alias_name| CompletionItem {
                         label: alias_name.to_string(),
                         kind: CompletionItemKind::EnumMember,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -152,6 +213,7 @@ impl CodeCompletion {
                     .map(|table_name| CompletionItem {
                         label: table_name.to_string(),
                         kind: CompletionItemKind::TableName,
+                        ..Default::default()
                     }),
             )
             .collect()
@@ -168,6 +230,7 @@ impl CodeCompletion {
                     .map(|variable_name| CompletionItem {
                         label: variable_name.to_string(),
                         kind: CompletionItemKind::GlobalVariable,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -178,6 +241,7 @@ impl CodeCompletion {
                     .map(|object_name| CompletionItem {
                         label: object_name.to_string(),
                         kind: CompletionItemKind::Object,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -188,6 +252,7 @@ impl CodeCompletion {
                     .map(|alias_name| CompletionItem {
                         label: alias_name.to_string(),
                         kind: CompletionItemKind::EnumMember,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -198,6 +263,7 @@ impl CodeCompletion {
                     .map(|method_name| CompletionItem {
                         label: method_name.to_string(),
                         kind: CompletionItemKind::Method,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -208,6 +274,7 @@ impl CodeCompletion {
                     .map(|property_name| CompletionItem {
                         label: property_name.to_string(),
                         kind: CompletionItemKind::Property,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -218,6 +285,7 @@ impl CodeCompletion {
                     .map(|class_name| CompletionItem {
                         label: class_name.to_string(),
                         kind: CompletionItemKind::Class,
+                        ..Default::default()
                     }),
             )
             .chain(
@@ -228,6 +296,7 @@ impl CodeCompletion {
                     .map(|table_name| CompletionItem {
                         label: table_name.to_string(),
                         kind: CompletionItemKind::TableName,
+                        ..Default::default()
                     }),
             )
             .collect()
@@ -281,6 +350,7 @@ impl CodeCompletion {
                         .map(|member| CompletionItem {
                             label: member.name().to_string(),
                             kind: CompletionItemKind::StructMember,
+                            ..Default::default()
                         })
                         .collect()
                 })
@@ -295,6 +365,7 @@ impl CodeCompletion {
                 .map(|column| CompletionItem {
                     label: column.to_string(),
                     kind: CompletionItemKind::TableColumn,
+                    ..Default::default()
                 })
                 .collect()
         } else {
@@ -315,6 +386,7 @@ impl CodeCompletion {
                 Some(CompletionItem {
                     label: file_ref.try_into().ok()?,
                     kind: CompletionItemKind::File,
+                    ..Default::default()
                 })
             })
             .collect()
@@ -328,6 +400,7 @@ impl CodeCompletion {
             .map(|variable| CompletionItem {
                 label: variable.symbol_path.name().to_string(),
                 kind: CompletionItemKind::LocalVariable,
+                ..Default::default()
             })
     }
 
@@ -339,6 +412,7 @@ impl CodeCompletion {
             .map(|f| CompletionItem {
                 label: f.to_string(),
                 kind: CompletionItemKind::Function,
+                ..Default::default()
             })
     }
 
@@ -350,6 +424,7 @@ impl CodeCompletion {
             .map(|command| CompletionItem {
                 label: command.to_string(),
                 kind: CompletionItemKind::Command,
+                ..Default::default()
             })
     }
 }

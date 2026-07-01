@@ -1,4 +1,6 @@
-use std::{collections::HashMap, ffi::OsStr, path::PathBuf};
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsStr;
+use std::path::PathBuf;
 
 use multimap::MultiMap;
 use rayon::prelude::*;
@@ -774,6 +776,24 @@ impl Index {
             current: Some(class),
             mixins: Default::default(),
         }
+    }
+
+    pub fn inherited_class_members<'a>(
+        &'a self,
+        class: QualifiedIndexSymbol<'a>,
+        kind: MethodKind,
+    ) -> IndexSymbolIter<'a> {
+        let mut dedup_set: HashSet<&SymbolName> = HashSet::new();
+        IndexSymbolIter::new(
+            self.class_hierarchy(class)
+                .flat_map(|c| c.children())
+                .filter(move |m| {
+                    MethodSymbol::from_index_symbol(m.symbol).is_some_and(|m| m.kind == kind)
+                        || VariableSymbol::from_index_symbol(m.symbol)
+                            .is_some_and(|_| kind == MethodKind::Get || kind == MethodKind::Set)
+                })
+                .filter(move |m| dedup_set.insert(m.symbol.name())),
+        )
     }
 
     pub fn resolve_symbol(&self, symbol_ref: &IndexSymbolRef) -> Option<QualifiedIndexSymbol<'_>> {

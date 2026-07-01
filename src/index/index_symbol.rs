@@ -420,6 +420,13 @@ impl<'a> QualifiedIndexSymbol<'a> {
                 symbol: parent_symbol,
             })
     }
+
+    pub fn children(&self) -> impl DoubleEndedIterator<Item = QualifiedIndexSymbol<'a>> + use<'a> {
+        self.symbol.children().map(|s| QualifiedIndexSymbol {
+            file: self.file,
+            symbol: s,
+        })
+    }
 }
 
 impl std::fmt::Debug for QualifiedIndexSymbol<'_> {
