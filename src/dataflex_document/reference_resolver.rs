@@ -30,6 +30,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::DotMemberExpression => self.resolve_member_expr_reference(position),
             DocumentContext::CommandReference => IndexSymbolIter::empty(),
             DocumentContext::FileDependency => IndexSymbolIter::empty(),
+            DocumentContext::MethodDeclaration(_) => IndexSymbolIter::empty(),
         }
     }
 

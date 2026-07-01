@@ -10,6 +10,7 @@ pub enum DocumentContext {
     DotMemberExpression,
     CommandReference,
     FileDependency,
+    MethodDeclaration(MethodKind),
 }
 
 struct ContextScanner<'a> {
@@ -133,6 +134,7 @@ impl DocumentContext {
             Self::DotMemberExpression => false,
             Self::CommandReference => false,
             Self::FileDependency => false,
+            Self::MethodDeclaration(_) => false,
         }
     }
 
@@ -145,6 +147,7 @@ impl DocumentContext {
             Self::ParenExpression => false,
             Self::DotMemberExpression => false,
             Self::CommandReference => false,
+            Self::MethodDeclaration(_) => false,
         }
     }
 
@@ -190,6 +193,20 @@ impl DocumentContext {
             }
             ("keyword", "use") => {
                 context_scanner_match!(scanner, identifier -> Self::FileDependency)
+            }
+            ("keyword", "function") => {
+                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(MethodKind::Get))
+            }
+            ("keyword", "procedure") => {
+                let method_kind = if scanner
+                    .accept_optional_keyword_if(|kw| matches!(kw, "set"))
+                    .is_ok_and(|s| matches!(s, ContextScannerStatus::Continue))
+                {
+                    MethodKind::Set
+                } else {
+                    MethodKind::Msg
+                };
+                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(method_kind))
             }
             ("keyword", "if") => {
                 let context =
@@ -370,7 +387,11 @@ impl<'a> ContextScanner<'a> {
     ) -> Result<ContextScannerStatus, ContextScannerError> {
         let current = self.cursor.clone();
         let result = self.accept_keyword_if(pred);
-        if result.is_err() {
+        if result.is_err()
+            || self.cursor.node().is_missing()
+            || self.cursor.node().is_error()
+            || self.cursor.node().start_position() > self.end
+        {
             self.cursor.reset_to(&current);
         }
         result
@@ -1070,6 +1091,42 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(context, Some(DocumentContext::FileDependency));
+    }
+
+    #[test]
+    fn test_method_decl_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure \nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodDeclaration(MethodKind::Msg))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure Set \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodDeclaration(MethodKind::Set))
+        );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Function \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodDeclaration(MethodKind::Get))
+        );
     }
 
     #[test]

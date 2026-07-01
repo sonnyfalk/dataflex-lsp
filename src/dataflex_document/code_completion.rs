@@ -47,6 +47,7 @@ impl CodeCompletion {
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
             DocumentContext::CommandReference => Some(Self::command_completions(doc)),
             DocumentContext::FileDependency => Some(Self::file_completions(doc, position)),
+            DocumentContext::MethodDeclaration(_) => None,
         };
 
         completions
