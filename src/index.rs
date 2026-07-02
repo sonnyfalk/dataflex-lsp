@@ -28,6 +28,7 @@ pub struct Index {
     workspace: WorkspaceInfo,
     files: HashMap<IndexFileRef, IndexFile>,
     lookup_tables: LookupTables,
+    updated_file_count: usize,
 }
 
 #[derive(Clone)]
@@ -44,6 +45,7 @@ impl Index {
             workspace,
             files: HashMap::new(),
             lookup_tables: LookupTables::new(),
+            updated_file_count: 0,
         }
     }
 

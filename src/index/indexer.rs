@@ -164,6 +164,10 @@ impl Indexer {
         _ = channel.send(IndexerMessage::IndexModifiedFileBuffer(path, tree, content));
     }
 
+    pub fn indexed_file_count(&self) -> usize {
+        self.index.get().updated_file_count
+    }
+
     fn index_system_paths(paths: &Vec<PathBuf>, index: &IndexRef) {
         rayon::in_place_scope(|scope| {
             for path in paths {
@@ -795,6 +799,7 @@ impl Index {
             new_index_file.and_then(|f| f.tables.as_deref()),
             &file_ref,
         );
+        self.updated_file_count += 1;
     }
 }
 

@@ -30,7 +30,14 @@ struct OpenFile {
 struct IndexerCoordinator {
     inner: Weak<DataFlexLanguageServerInner>,
     runtime: tokio::runtime::Handle,
+    progress_reporter: Arc<IndexerProgressReporter>,
     tasks: Mutex<tokio::task::JoinSet<()>>,
+}
+
+struct IndexerProgressReporter {
+    inner: Weak<DataFlexLanguageServerInner>,
+    completed_notification: Arc<tokio::sync::Notify>,
+    task: tokio::sync::Mutex<tokio::task::JoinSet<()>>,
 }
 
 impl DataFlexLanguageServer {
@@ -160,6 +167,9 @@ impl LanguageServer for DataFlexLanguageServer {
             .start_indexing(IndexerCoordinator {
                 inner: Arc::downgrade(&self.inner),
                 runtime: tokio::runtime::Handle::current(),
+                progress_reporter: Arc::new(IndexerProgressReporter::new(Arc::downgrade(
+                    &self.inner,
+                ))),
                 tasks: Mutex::new(tokio::task::JoinSet::new()),
             });
 
@@ -503,6 +513,7 @@ impl index::IndexerObserver for IndexerCoordinator {
         let Some(inner) = self.inner.upgrade() else {
             return;
         };
+        let progress_reporter = self.progress_reporter.clone();
 
         log::info!(
             "Indexing state changed from {:?} to {:?}",
@@ -510,6 +521,14 @@ impl index::IndexerObserver for IndexerCoordinator {
             new_state
         );
         match (old_state, new_state) {
+            (index::IndexerState::Initializing, index::IndexerState::InitialIndexing) => {
+                self.tasks.lock().unwrap().spawn_on(
+                    async move {
+                        progress_reporter.start_progress_report().await;
+                    },
+                    &self.runtime,
+                );
+            }
             (index::IndexerState::InitialIndexing, index::IndexerState::Inactive) => {
                 for mut file in inner.open_files.iter_mut() {
                     file.doc.update_syntax_map();
@@ -519,6 +538,9 @@ impl index::IndexerObserver for IndexerCoordinator {
                     async move {
                         _ = inner.client.semantic_tokens_refresh().await;
                         _ = inner.client.code_lens_refresh().await;
+                        progress_reporter.end_progress_report().await;
+                        drop(progress_reporter);
+
                         Self::watch_and_index_edited_files(inner).await;
                     },
                     &self.runtime,
@@ -528,6 +550,111 @@ impl index::IndexerObserver for IndexerCoordinator {
                 self.tasks.lock().unwrap().abort_all();
             }
             _ => (),
+        }
+    }
+}
+
+impl IndexerProgressReporter {
+    fn new(inner: Weak<DataFlexLanguageServerInner>) -> Self {
+        Self {
+            inner,
+            completed_notification: Arc::new(tokio::sync::Notify::new()),
+            task: tokio::sync::Mutex::new(tokio::task::JoinSet::new()),
+        }
+    }
+
+    fn indexing_progress_token() -> NumberOrString {
+        NumberOrString::String("Indexing".into())
+    }
+
+    async fn start_progress_report(&self) {
+        if let Some(inner) = self.inner.upgrade() {
+            _ = inner
+                .client
+                .send_request::<request::WorkDoneProgressCreate>(WorkDoneProgressCreateParams {
+                    token: Self::indexing_progress_token(),
+                })
+                .await;
+
+            _ = inner
+                .client
+                .send_notification::<notification::Progress>(ProgressParams {
+                    token: Self::indexing_progress_token(),
+                    value: ProgressParamsValue::WorkDone(WorkDoneProgress::Begin(
+                        WorkDoneProgressBegin {
+                            title: "DataFlex-LSP".into(),
+                            message: Some("Indexing...".into()),
+                            percentage: None,
+                            cancellable: Some(false),
+                            ..Default::default()
+                        },
+                    )),
+                })
+                .await;
+        } else {
+            return;
+        }
+
+        let inner = self.inner.clone();
+        let completed_notification = self.completed_notification.clone();
+        self.task.lock().await.spawn(async move {
+            let start_file_count = inner
+                .upgrade()
+                .and_then(|inner| {
+                    inner
+                        .indexer
+                        .get()
+                        .map(|indexer| indexer.indexed_file_count())
+                })
+                .unwrap_or_default();
+            while tokio::time::timeout(
+                std::time::Duration::from_millis(250),
+                completed_notification.notified(),
+            )
+            .await
+            .is_err()
+            {
+                if let Some(inner) = inner.upgrade()
+                    && let Some(file_count) = inner
+                        .indexer
+                        .get()
+                        .map(|indexer| indexer.indexed_file_count() - start_file_count)
+                {
+                    _ = inner
+                        .client
+                        .send_notification::<notification::Progress>(ProgressParams {
+                            token: Self::indexing_progress_token(),
+                            value: ProgressParamsValue::WorkDone(WorkDoneProgress::Report(
+                                WorkDoneProgressReport {
+                                    message: Some(format!("Indexing {file_count} files...")),
+                                    ..Default::default()
+                                },
+                            )),
+                        })
+                        .await;
+                } else {
+                    break;
+                }
+            }
+        });
+    }
+
+    async fn end_progress_report(&self) {
+        self.completed_notification.notify_one();
+        self.task.lock().await.join_next().await;
+
+        if let Some(inner) = self.inner.upgrade() {
+            _ = inner
+                .client
+                .send_notification::<notification::Progress>(ProgressParams {
+                    token: Self::indexing_progress_token(),
+                    value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(
+                        WorkDoneProgressEnd {
+                            message: Some("Indexing complete".into()),
+                        },
+                    )),
+                })
+                .await;
         }
     }
 }
