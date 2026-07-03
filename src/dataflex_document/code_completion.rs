@@ -30,6 +30,7 @@ pub enum CompletionItemKind {
     TableColumn,
     Command,
     File,
+    Struct,
 }
 
 impl CodeCompletion {
@@ -52,11 +53,11 @@ impl CodeCompletion {
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
             DocumentContext::CommandReference => Some(Self::command_completions(doc)),
-            DocumentContext::FileDependency => Some(Self::file_completions(doc, position)),
+            DocumentContext::FileDependency => Some(Self::file_completions(doc)),
             DocumentContext::MethodDeclaration(kind) => {
                 Some(Self::override_completions(doc, position, kind))
             }
-            DocumentContext::TypeReference => None,
+            DocumentContext::TypeReference => Some(Self::type_completions(doc)),
         };
 
         completions
@@ -379,7 +380,7 @@ impl CodeCompletion {
         Self::system_commands(doc).collect()
     }
 
-    fn file_completions(doc: &DataFlexDocument, _position: Point) -> Vec<CompletionItem> {
+    fn file_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
         doc.index
             .get()
             .all_known_files()
@@ -390,6 +391,20 @@ impl CodeCompletion {
                     kind: CompletionItemKind::File,
                     ..Default::default()
                 })
+            })
+            .collect()
+    }
+
+    fn type_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+        doc.index
+            .get()
+            .all_known_structs()
+            .into_iter()
+            .chain(doc.index.get().all_system_types())
+            .map(|name| CompletionItem {
+                label: name.to_string(),
+                kind: CompletionItemKind::Struct,
+                ..Default::default()
             })
             .collect()
     }

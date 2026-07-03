@@ -692,6 +692,17 @@ impl Index {
         commands.into_iter().map(SymbolName::from).collect()
     }
 
+    pub fn all_system_types(&self) -> Vec<SymbolName> {
+        let types = [
+            "Boolean", "Date", "Integer", "Number", "Real", "RowID", "String", "Address", "BigInt",
+            "Char", "Currency", "DateTime", "Decimal", "DWord", "Float", "Handle", "LongPtr",
+            "Pointer", "Short", "Time", "Timespan", "UBigInt", "UChar", "UInteger", "ULongPtr",
+            "UShort", "WString", "Variant",
+        ];
+
+        types.into_iter().map(SymbolName::from).collect()
+    }
+
     pub fn is_system_function(&self, name: &SymbolName) -> bool {
         self.all_system_functions()
             .into_iter()

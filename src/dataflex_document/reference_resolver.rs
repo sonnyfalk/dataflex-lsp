@@ -31,7 +31,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::CommandReference => IndexSymbolIter::empty(),
             DocumentContext::FileDependency => IndexSymbolIter::empty(),
             DocumentContext::MethodDeclaration(_) => IndexSymbolIter::empty(),
-            DocumentContext::TypeReference => IndexSymbolIter::empty(),
+            DocumentContext::TypeReference => self.resolve_type_reference(position),
         }
     }
 
@@ -270,6 +270,19 @@ impl<'a> ReferenceResolver<'a> {
         };
 
         IndexSymbolIter::new(symbol.into_iter())
+    }
+
+    fn resolve_type_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+        let Some(name) = self.doc.symbol_at_position(position) else {
+            return IndexSymbolIter::empty();
+        };
+        IndexSymbolIter::new(
+            self.index
+                .find_struct(&name)
+                .into_iter()
+                .chain(self.index.find_alias_symbols(&name))
+                .filter_map(|s| self.index.resolve_symbol(s)),
+        )
     }
 }
 
@@ -572,6 +585,28 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         assert_eq!(
             format!("{:?}", symbol.next()),
             "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 13 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 16 } }, symbol_path: SymbolPath(\"oTest.MyMethod\"), kind: Get, parameters: [(SymbolName(\"sArg1\"), DataFlexDataType(\"String\")), (SymbolName(\"iArg2\"), DataFlexDataType(\"Integer\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+    }
+
+    #[test]
+    fn test_resolve_type_reference() {
+        let test_content = r#"
+Struct tMyStruct
+End_Struct
+
+Procedure test tMyStruct myStruct
+End_Procedure
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+
+        let reference_resolver = ReferenceResolver::new(&doc);
+        let mut symbol = reference_resolver.resolve_type_reference(Point::new(4, 20));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
