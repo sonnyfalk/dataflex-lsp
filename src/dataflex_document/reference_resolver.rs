@@ -28,7 +28,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::Expression => self.resolve_expr_reference(position),
             DocumentContext::ParenExpression => self.resolve_paren_expr_reference(position),
             DocumentContext::DotMemberExpression => self.resolve_member_expr_reference(position),
-            DocumentContext::CommandReference => IndexSymbolIter::empty(),
+            DocumentContext::CommandReference => self.resolve_type_reference(position),
             DocumentContext::FileDependency => IndexSymbolIter::empty(),
             DocumentContext::MethodDeclaration(_) => IndexSymbolIter::empty(),
             DocumentContext::TypeReference => self.resolve_type_reference(position),

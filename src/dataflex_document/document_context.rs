@@ -256,6 +256,9 @@ impl DocumentContext {
                 };
                 context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(method_kind), (typedecl, ("byref")?, identifier)*)
             }
+            ("keyword", "property") => {
+                context_scanner_match!(scanner, typedecl, identifier, expr)
+            }
             ("keyword", "if") => {
                 let context =
                     context_scanner_match!(scanner, expr, identifier -> Self::CommandReference);
@@ -1282,6 +1285,33 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 40 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
+    }
+
+    #[test]
+    fn test_property_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Property \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Property String \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 16 });
+        assert_eq!(context, None);
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Property String psName \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
+        assert_eq!(context, Some(DocumentContext::Expression));
     }
 
     #[test]

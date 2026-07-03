@@ -69,11 +69,11 @@ impl CodeCompletion {
             DocumentContext::MethodReference(_) => true,
             DocumentContext::DotMemberExpression => true,
             DocumentContext::FileDependency => true,
-            DocumentContext::TypeReference => true,
             DocumentContext::Expression => false,
             DocumentContext::ParenExpression => false,
             DocumentContext::CommandReference => false,
             DocumentContext::MethodDeclaration(_) => false,
+            DocumentContext::TypeReference => false,
         }
     }
 
@@ -377,7 +377,20 @@ impl CodeCompletion {
     }
 
     fn command_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
-        Self::system_commands(doc).collect()
+        Self::system_commands(doc)
+            .chain(
+                doc.index
+                    .get()
+                    .all_known_structs()
+                    .into_iter()
+                    .chain(doc.index.get().all_system_types())
+                    .map(|name| CompletionItem {
+                        label: name.to_string(),
+                        kind: CompletionItemKind::Struct,
+                        ..Default::default()
+                    }),
+            )
+            .collect()
     }
 
     fn file_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
