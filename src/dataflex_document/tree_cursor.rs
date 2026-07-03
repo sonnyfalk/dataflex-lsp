@@ -76,6 +76,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["call_expression"])
     }
 
+    pub fn goto_descendant_typedecl(&mut self) -> bool {
+        self.goto_descendant_node_kind(&["system_typedecl", "custom_typedecl"])
+    }
+
     pub fn is_object_definition(&self) -> bool {
         self.node().kind() == "object_definition"
     }
@@ -228,6 +232,21 @@ impl<'a> DataFlexTreeCursor<'a> {
             }
         }
         true
+    }
+
+    pub fn goto_descendant_node_kind(&mut self, kinds: &[&str]) -> bool {
+        let current = self.clone();
+        loop {
+            if kinds.contains(&self.node().kind()) {
+                return true;
+            }
+            if !self.goto_first_child() {
+                break;
+            }
+        }
+
+        self.reset_to(&current);
+        false
     }
 
     pub fn goto_next_node(&mut self) -> bool {

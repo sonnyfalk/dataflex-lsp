@@ -11,6 +11,7 @@ pub enum DocumentContext {
     CommandReference,
     FileDependency,
     MethodDeclaration(MethodKind),
+    TypeReference,
 }
 
 struct ContextScanner<'a> {
@@ -18,6 +19,7 @@ struct ContextScanner<'a> {
     end: Point,
 }
 
+#[derive(Debug)]
 enum ContextScannerStatus {
     Continue,
     Stop,
@@ -55,6 +57,11 @@ macro_rules! context_scanner_match {
             return None;
         }
         context_scanner_match!(@rules $scanner, $($rest)*);
+    };
+    (@rules $scanner:ident, identifier) => {
+        if matches!($scanner.accept_identifier().ok()?,  ContextScannerStatus::Stop) {
+            return None;
+        }
     };
     (@rules $scanner:ident, expr*, $($rest:tt)*) => {
         loop {
@@ -100,6 +107,45 @@ macro_rules! context_scanner_match {
         }
         context_scanner_match!(@rules $scanner, $($rest)*);
     };
+    (@rules $scanner:ident, ($keyword:pat)?, $($rest:tt)*) => {
+        match $scanner.accept_optional_keyword_if(|kw| matches!(kw, $keyword)).ok() {
+            Some(ContextScannerStatus::Stop) => { return None; }
+            _ => {}
+        }
+        context_scanner_match!(@rules $scanner, $($rest)*);
+    };
+    (@rules $scanner:ident, typedecl, $($rest:tt)*) => {
+        if matches!($scanner.accept_typedecl().ok()?, ContextScannerStatus::Stop) {
+            if $scanner.cursor.node().child_by_field_name("name").filter(|n| !n.is_missing()).is_some_and(|n| n.end_position() < $scanner.end) {
+                return None;
+            }
+            return Some(DocumentContext::TypeReference);
+        }
+        context_scanner_match!(@rules $scanner, $($rest)*);
+    };
+    (@rules $scanner:ident, (typedecl, $($inner_rest:tt)+)*, $($rest:tt)*) => {
+        while let Ok(status) = $scanner.accept_optional_typedecl() {
+            if matches!(status, ContextScannerStatus::Stop) {
+                if $scanner.cursor.node().child_by_field_name("name").filter(|n| !n.is_missing()).is_some_and(|n| n.end_position() < $scanner.end) {
+                    return None;
+                }
+                return Some(DocumentContext::TypeReference);
+            }
+            context_scanner_match!(@rules $scanner, $($inner_rest)*);
+        }
+        context_scanner_match!(@rules $scanner, $($rest)*);
+    };
+    (@rules $scanner:ident, (typedecl, $($inner_rest:tt)+)*) => {
+        while let Ok(status) = $scanner.accept_optional_typedecl() {
+            if matches!(status, ContextScannerStatus::Stop) {
+                if $scanner.cursor.node().child_by_field_name("name").filter(|n| !n.is_missing()).is_some_and(|n| n.end_position() < $scanner.end) {
+                    return None;
+                }
+                return Some(DocumentContext::TypeReference);
+            }
+            context_scanner_match!(@rules $scanner, $($inner_rest)*);
+        }
+    };
     (@rules $scanner:ident, $keyword:pat, $($rest:tt)*) => {
         if matches!($scanner.accept_keyword_if(|kw| matches!(kw, $keyword)).ok()?, ContextScannerStatus::Stop) {
             return None;
@@ -135,6 +181,7 @@ impl DocumentContext {
             Self::CommandReference => false,
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
+            Self::TypeReference => false,
         }
     }
 
@@ -148,6 +195,7 @@ impl DocumentContext {
             Self::DotMemberExpression => false,
             Self::CommandReference => false,
             Self::MethodDeclaration(_) => false,
+            Self::TypeReference => false,
         }
     }
 
@@ -195,7 +243,7 @@ impl DocumentContext {
                 context_scanner_match!(scanner, identifier -> Self::FileDependency)
             }
             ("keyword", "function") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(MethodKind::Get))
+                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(MethodKind::Get), (typedecl, ("byref")?, identifier)*, "returns", typedecl,)
             }
             ("keyword", "procedure") => {
                 let method_kind = if scanner
@@ -206,7 +254,7 @@ impl DocumentContext {
                 } else {
                     MethodKind::Msg
                 };
-                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(method_kind))
+                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(method_kind), (typedecl, ("byref")?, identifier)*)
             }
             ("keyword", "if") => {
                 let context =
@@ -307,6 +355,30 @@ impl<'a> ContextScanner<'a> {
             return Ok(ContextScannerStatus::Stop);
         }
         Ok(ContextScannerStatus::Continue)
+    }
+
+    fn accept_typedecl(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
+        if !self.cursor.goto_next_node() || self.cursor.node().start_position() > self.end {
+            return Ok(ContextScannerStatus::Stop);
+        }
+        if !self.cursor.goto_descendant_typedecl() {
+            return Err(ContextScannerError::UnexpectedToken);
+        }
+        if self.cursor.node().end_position() >= self.end
+            || self.cursor.node().start_position() == self.cursor.node().end_position()
+        {
+            return Ok(ContextScannerStatus::Stop);
+        }
+        Ok(ContextScannerStatus::Continue)
+    }
+
+    fn accept_optional_typedecl(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
+        let current = self.cursor.clone();
+        let result = self.accept_typedecl();
+        if result.is_err() {
+            self.cursor.reset_to(&current);
+        }
+        result
     }
 
     fn accept_expr(&mut self) -> Result<ContextScannerStatus, ContextScannerError> {
@@ -1127,6 +1199,89 @@ mod test {
             context,
             Some(DocumentContext::MethodDeclaration(MethodKind::Get))
         );
+    }
+
+    #[test]
+    fn test_parameter_type_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure SayHello \nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 19 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure SayHello I\nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure SayHello Integer \nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 27 });
+        assert_eq!(context, None);
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure SayHello Integer i\nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 28 });
+        assert_eq!(context, None);
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure SayHello Integer iArg1 \nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 33 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Procedure SayHello Integer iArg1 I\nEnd_Procedure\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 34 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Function SayHello \nEnd_Function\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Function SayHello Integer iArg1 \nEnd_Function\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 32 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Function SayHello Integer ByRef iArg1 \nEnd_Function\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 38 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Function SayHello Integer iArg1 Returns \nEnd_Function\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 40 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
     }
 
     #[test]

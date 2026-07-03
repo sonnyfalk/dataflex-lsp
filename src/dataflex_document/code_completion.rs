@@ -56,6 +56,7 @@ impl CodeCompletion {
             DocumentContext::MethodDeclaration(kind) => {
                 Some(Self::override_completions(doc, position, kind))
             }
+            DocumentContext::TypeReference => None,
         };
 
         completions
@@ -67,6 +68,7 @@ impl CodeCompletion {
             DocumentContext::MethodReference(_) => true,
             DocumentContext::DotMemberExpression => true,
             DocumentContext::FileDependency => true,
+            DocumentContext::TypeReference => true,
             DocumentContext::Expression => false,
             DocumentContext::ParenExpression => false,
             DocumentContext::CommandReference => false,

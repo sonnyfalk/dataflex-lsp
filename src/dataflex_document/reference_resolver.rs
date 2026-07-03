@@ -31,6 +31,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::CommandReference => IndexSymbolIter::empty(),
             DocumentContext::FileDependency => IndexSymbolIter::empty(),
             DocumentContext::MethodDeclaration(_) => IndexSymbolIter::empty(),
+            DocumentContext::TypeReference => IndexSymbolIter::empty(),
         }
     }
 
