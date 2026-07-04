@@ -26,6 +26,7 @@ enum ContextScannerStatus {
     Yield(DocumentContext),
 }
 
+#[derive(Debug)]
 enum ContextScannerError {
     UnexpectedToken,
 }
@@ -243,7 +244,7 @@ impl DocumentContext {
                 context_scanner_match!(scanner, identifier -> Self::FileDependency)
             }
             ("keyword", "function") => {
-                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(MethodKind::Get), (typedecl, ("byref")?, identifier)*, "returns", typedecl,)
+                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(MethodKind::Get), ("global")?, (typedecl, ("byref")?, identifier)*, "returns", typedecl,)
             }
             ("keyword", "procedure") => {
                 let method_kind = if scanner
@@ -254,7 +255,7 @@ impl DocumentContext {
                 } else {
                     MethodKind::Msg
                 };
-                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(method_kind), (typedecl, ("byref")?, identifier)*)
+                context_scanner_match!(scanner, identifier -> Self::MethodDeclaration(method_kind), ("global")?, (typedecl, ("byref")?, identifier)*)
             }
             ("keyword", "property") => {
                 context_scanner_match!(scanner, typedecl, identifier, expr)
@@ -468,8 +469,10 @@ impl<'a> ContextScanner<'a> {
             || self.cursor.node().start_position() > self.end
         {
             self.cursor.reset_to(&current);
+            Err(ContextScannerError::UnexpectedToken)
+        } else {
+            result
         }
-        result
     }
 }
 
@@ -1284,6 +1287,14 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 40 });
+        assert_eq!(context, Some(DocumentContext::TypeReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Function SayHello Global \nEnd_Function\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 25 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
     }
 
