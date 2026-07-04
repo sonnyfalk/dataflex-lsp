@@ -61,111 +61,6 @@ impl DataFlexDocument {
             .map(|node| self.line_map.text_for_node(&node).into())
     }
 
-    fn local_variables(
-        &self,
-        position: Point,
-    ) -> impl Iterator<Item = index::VariableSymbol> + use<'_> {
-        let Some(method_node) = self
-            .cursor()
-            .and_then(|mut cursor| {
-                cursor.goto_leaf_node_at_or_after_point(position).then(|| {
-                    cursor
-                        .goto_enclosing_method_definition()
-                        .then(|| cursor.node())
-                })
-            })
-            .flatten()
-        else {
-            return Vec::new().into_iter();
-        };
-
-        let query = tree_sitter::Query::new(
-            &tree_sitter_dataflex::LANGUAGE.into(),
-            r#"
-            (parameter
-              [
-                (system_typedecl
-                  (system_type) @type
-                  (array_decl)* @array_decl)
-                (custom_typedecl
-                  (identifier) @type
-                  (array_decl)* @array_decl)
-              ]
-              name: (identifier)+ @name)
-
-            (variable_declaration
-              (system_typedecl
-                (system_type) @type
-                (array_decl)* @array)
-              (identifier)+ @name)
-
-            (potential_variable_declaration
-              (custom_typedecl
-                (identifier) @type
-                (array_decl)* @array)
-              (identifier)+ @name)
-            "#,
-        )
-        .expect("Error loading local variables query");
-
-        let name_capture_index = query.capture_index_for_name("name").unwrap();
-        let type_capture_index = query.capture_index_for_name("type").unwrap();
-        let array_capture_index = query.capture_index_for_name("array").unwrap();
-
-        let mut query_cursor = tree_sitter::QueryCursor::new();
-        let matches = query_cursor.matches(&query, method_node, self.line_map.text_provider());
-
-        let vars: Vec<index::VariableSymbol> = matches.fold(Vec::new(), |mut vars, query_match| {
-            if let Some(type_node) = query_match
-                .nodes_for_capture_index(type_capture_index)
-                .next()
-            {
-                let variable_type = self.line_map.text_for_node(&type_node);
-                if type_node.kind() != "system_type"
-                    && !self
-                        .index
-                        .get()
-                        .is_known_struct(&variable_type.clone().into())
-                {
-                    return vars;
-                }
-
-                let array_dimension_count = query_match
-                    .nodes_for_capture_index(array_capture_index)
-                    .count();
-                for name_node in query_match.nodes_for_capture_index(name_capture_index) {
-                    let variable_name = self.line_map.text_for_node(&name_node);
-                    let variable_type = if array_dimension_count == 0 {
-                        index::DataFlexDataType::Simple(variable_type.clone().into())
-                    } else {
-                        index::DataFlexDataType::Array(
-                            variable_type.clone().into(),
-                            array_dimension_count,
-                        )
-                    };
-                    vars.push(index::VariableSymbol {
-                        location: name_node.start_position().into(),
-                        range: name_node.range().into(),
-                        symbol_path: index::SymbolPath::with_name(variable_name),
-                        data_type: variable_type,
-                        metadata: Vec::new(),
-                    });
-                }
-            }
-            vars
-        });
-        vars.into_iter()
-    }
-
-    fn find_local_variable(
-        &self,
-        position: Point,
-        name: &index::SymbolName,
-    ) -> Option<index::VariableSymbol> {
-        self.local_variables(position)
-            .find(|variable| variable.symbol_path.name() == name)
-    }
-
     pub fn text_content(&self) -> String {
         self.line_map.text()
     }
@@ -282,9 +177,9 @@ impl DataFlexDocument {
         };
         log::trace!("context {:?}", context);
 
+        let reference_resolver = ReferenceResolver::new(self);
         let locations = if context.can_reference_variables()
-            && let Some(symbol_name) = self.symbol_at_position(position)
-            && let Some(variable) = self.find_local_variable(position, &symbol_name)
+            && let Some(variable) = reference_resolver.resolve_local_variable(position)
         {
             vec![lsp_types::Location::new(
                 lsp_types::Url::from_file_path(&self.file_path).unwrap(),
@@ -307,7 +202,6 @@ impl DataFlexDocument {
                 .into_iter()
                 .collect()
         } else {
-            let reference_resolver = ReferenceResolver::new(self);
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols
                 .map(|qualified_symbol| lsp_types::Location::from(&qualified_symbol))
@@ -364,16 +258,15 @@ impl DataFlexDocument {
             return None;
         };
 
+        let reference_resolver = ReferenceResolver::new(self);
         if context.can_reference_variables()
-            && let Some(symbol_name) = self.symbol_at_position(position)
-            && let Some(variable) = self.find_local_variable(position, &symbol_name)
+            && let Some(variable) = reference_resolver.resolve_local_variable(position)
         {
             Some(lsp_types::MarkedString::from_language_code(
                 "dataflex".into(),
                 variable.to_string(),
             ))
         } else {
-            let reference_resolver = ReferenceResolver::new(self);
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols
                 .map(|s| symbol_declaration::SymbolDeclaration::new(&s, &self.index.get()))
@@ -649,102 +542,5 @@ mod tests {
             doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))) (object_footer (keyword))))"
         );
-    }
-
-    #[test]
-    fn test_local_variables() {
-        let test_content = r#"
-Object oMyObject is a cObject
-    Procedure foo
-        Integer iMyInt
-        String sMyStr
-        Move 1 to iMyInt
-        Move "hello" to sMyStr
-    End_Procedure
-
-    Procedure bar Integer iArg1 String sArg2
-        Integer iMyOtherInt iMyOtherIntOnSameLine
-        Move 1 to iMyOtherInt
-        Move i
-    End_Procedure
-End_Object
-
-Send foo of oMyObject
-            "#;
-        let index = index::IndexRef::make_test_index_ref();
-        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-
-        let mut variables = doc.local_variables(Point::new(5, 21));
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 3, column: 16 }, range: SourceRange { start: SourceLocation { line: 3, column: 16 }, end: SourceLocation { line: 3, column: 22 } }, symbol_path: SymbolPath(\"iMyInt\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 4, column: 15 }, range: SourceRange { start: SourceLocation { line: 4, column: 15 }, end: SourceLocation { line: 4, column: 21 } }, symbol_path: SymbolPath(\"sMyStr\"), data_type: DataFlexDataType(\"String\"), metadata: [] })"
-        );
-        assert_eq!(format!("{:?}", variables.next()), "None");
-
-        let mut variables = doc.local_variables(Point::new(11, 23));
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 26 }, range: SourceRange { start: SourceLocation { line: 9, column: 26 }, end: SourceLocation { line: 9, column: 31 } }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 39 }, range: SourceRange { start: SourceLocation { line: 9, column: 39 }, end: SourceLocation { line: 9, column: 44 } }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 16 }, range: SourceRange { start: SourceLocation { line: 10, column: 16 }, end: SourceLocation { line: 10, column: 27 } }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 28 }, range: SourceRange { start: SourceLocation { line: 10, column: 28 }, end: SourceLocation { line: 10, column: 49 } }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(format!("{:?}", variables.next()), "None");
-
-        let mut variables = doc.local_variables(Point::new(12, 14));
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 26 }, range: SourceRange { start: SourceLocation { line: 9, column: 26 }, end: SourceLocation { line: 9, column: 31 } }, symbol_path: SymbolPath(\"iArg1\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 9, column: 39 }, range: SourceRange { start: SourceLocation { line: 9, column: 39 }, end: SourceLocation { line: 9, column: 44 } }, symbol_path: SymbolPath(\"sArg2\"), data_type: DataFlexDataType(\"String\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 16 }, range: SourceRange { start: SourceLocation { line: 10, column: 16 }, end: SourceLocation { line: 10, column: 27 } }, symbol_path: SymbolPath(\"iMyOtherInt\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 10, column: 28 }, range: SourceRange { start: SourceLocation { line: 10, column: 28 }, end: SourceLocation { line: 10, column: 49 } }, symbol_path: SymbolPath(\"iMyOtherIntOnSameLine\"), data_type: DataFlexDataType(\"Integer\"), metadata: [] })"
-        );
-        assert_eq!(format!("{:?}", variables.next()), "None");
-    }
-
-    #[test]
-    fn test_struct_local_variables() {
-        let test_content = r#"
-Struct tMyStruct
-End_Struct
-
-Procedure testIt
-    tMyStruct myStructVar
-    tNotExistingStruct myOtherStructVar
-End_Procedure
-            "#;
-        let index = index::IndexRef::make_test_index_ref();
-        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-
-        let mut variables = doc.local_variables(Point::new(5, 21));
-        assert_eq!(
-            format!("{:?}", variables.next()),
-            "Some(VariableSymbol { location: SourceLocation { line: 5, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 14 }, end: SourceLocation { line: 5, column: 25 } }, symbol_path: SymbolPath(\"myStructVar\"), data_type: DataFlexDataType(\"tMyStruct\"), metadata: [] })"
-        );
-        assert_eq!(format!("{:?}", variables.next()), "None");
     }
 }

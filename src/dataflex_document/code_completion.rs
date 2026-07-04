@@ -426,7 +426,9 @@ impl CodeCompletion {
         doc: &DataFlexDocument,
         position: Point,
     ) -> impl Iterator<Item = CompletionItem> {
-        doc.local_variables(position)
+        let reference_resolver = ReferenceResolver::new(doc);
+        reference_resolver
+            .local_variables(position)
             .map(|variable| CompletionItem {
                 label: variable.symbol_path.name().to_string(),
                 kind: CompletionItemKind::LocalVariable,
