@@ -1,7 +1,8 @@
 use super::*;
 use index::{
     ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
-    QualifiedIndexSymbol, ReadableIndexRef, StructSymbol, SymbolName, VariableSymbol,
+    QualifiedDataFlexTableRef, QualifiedIndexSymbol, ReadableIndexRef, StructSymbol, SymbolName,
+    VariableSymbol,
 };
 
 pub struct ReferenceResolver<'a> {
@@ -56,6 +57,25 @@ impl<'a> ReferenceResolver<'a> {
         self.doc
             .symbol_at_position(position)
             .and_then(|name| self.find_local_variable(&name, position))
+    }
+
+    pub fn resolve_table_reference(
+        &self,
+        position: Point,
+    ) -> Option<QualifiedDataFlexTableRef<'_>> {
+        let mut cursor = self.doc.cursor()?;
+        if !cursor.goto_descendant_for_point(position) {
+            return None;
+        }
+        let node = if cursor.goto_enclosing_postfix_expression() {
+            cursor.node().child_by_field_name("name")
+        } else {
+            cursor.is_identifier().then_some(cursor.node())
+        };
+        node.and_then(|n| {
+            self.index
+                .find_dataflex_table(&self.doc.line_map.text_for_node(&n).into())
+        })
     }
 
     pub fn find_local_variable(

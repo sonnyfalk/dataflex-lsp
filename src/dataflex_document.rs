@@ -185,6 +185,16 @@ impl DataFlexDocument {
                 lsp_types::Url::from_file_path(&self.file_path).unwrap(),
                 lsp_types::Range::from(index::SourceRange::with_location(variable.location)),
             )]
+        } else if context.can_reference_tables()
+            && let Some(table_ref) = reference_resolver.resolve_table_reference(position)
+        {
+            vec![lsp_types::Location::new(
+                lsp_types::Url::from_file_path(&table_ref.file.path).unwrap(),
+                lsp_types::Range::from(index::SourceRange::with_location(index::SourceLocation {
+                    line: 0,
+                    column: 0,
+                })),
+            )]
         } else if context.is_file_reference()
             && let Some(file_ref) = self.node_at_position(position).map(|node| {
                 index::IndexFileRef::from(&PathBuf::from(self.line_map.text_for_node(&node)))
@@ -266,6 +276,13 @@ impl DataFlexDocument {
                 "dataflex".into(),
                 variable.to_string(),
             ))
+        } else if context.can_reference_tables()
+            && let Some(table_ref) = reference_resolver.resolve_table_reference(position)
+        {
+            Some(lsp_types::MarkedString::String(format!(
+                "Table: {}",
+                table_ref.table.name
+            )))
         } else {
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols

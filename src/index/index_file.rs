@@ -42,6 +42,12 @@ pub struct DataFlexTable {
     pub columns: Vec<SymbolName>,
 }
 
+#[derive(Debug)]
+pub struct QualifiedDataFlexTableRef<'a> {
+    pub file: &'a IndexFile,
+    pub table: &'a DataFlexTable,
+}
+
 impl From<&PathBuf> for IndexFileRef {
     fn from(value: &PathBuf) -> Self {
         Self(value.file_name().unwrap_or_default().into())

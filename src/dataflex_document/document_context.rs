@@ -186,6 +186,20 @@ impl DocumentContext {
         }
     }
 
+    pub fn can_reference_tables(&self) -> bool {
+        match self {
+            Self::ClassReference => false,
+            Self::MethodReference(_) => false,
+            Self::Expression => true,
+            Self::ParenExpression => true,
+            Self::DotMemberExpression => true,
+            Self::CommandReference => false,
+            Self::FileDependency => false,
+            Self::MethodDeclaration(_) => false,
+            Self::TypeReference => false,
+        }
+    }
+
     pub fn is_file_reference(&self) -> bool {
         match self {
             Self::FileDependency => true,

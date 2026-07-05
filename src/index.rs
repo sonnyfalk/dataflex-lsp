@@ -19,7 +19,7 @@ pub use index_symbol::*;
 pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
 pub use workspace::{DataFlexVersion, WorkspaceInfo};
 
-pub use index_file::{DataFlexTable, IndexFile, IndexFileRef};
+pub use index_file::{DataFlexTable, IndexFile, IndexFileRef, QualifiedDataFlexTableRef};
 
 use lookup_tables::LookupTables;
 
@@ -204,7 +204,7 @@ impl Index {
             .collect()
     }
 
-    pub fn find_dataflex_table(&self, name: &SymbolName) -> Option<&DataFlexTable> {
+    pub fn find_dataflex_table(&self, name: &SymbolName) -> Option<QualifiedDataFlexTableRef<'_>> {
         let index_file = self
             .lookup_tables
             .dataflex_table_lookup_table()
@@ -214,6 +214,10 @@ impl Index {
             .tables
             .as_ref()
             .and_then(|t| t.iter().find(|t| t.name == *name))
+            .map(|table| QualifiedDataFlexTableRef {
+                file: index_file,
+                table: table,
+            })
     }
 
     pub fn is_known_dataflex_table(&self, name: &SymbolName) -> bool {

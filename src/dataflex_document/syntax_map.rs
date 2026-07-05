@@ -232,16 +232,21 @@ impl SyntaxMap {
                                         .and_then(|n| n.child_by_field_name("name"))
                                         .map(|n| SymbolName::from(doc.line_map.text_for_node(&n)))
                                     {
-                                        index.find_dataflex_table(&root_name).and_then(|table| {
-                                            table
-                                                .columns
-                                                .contains(
-                                                    &doc.line_map
-                                                        .text_for_node(&capture.node)
-                                                        .into(),
-                                                )
-                                                .then(|| SyntaxToken::new(start, end, 3, prev_pos))
-                                        })
+                                        index
+                                            .find_dataflex_table(&root_name)
+                                            .map(|t| t.table)
+                                            .and_then(|table| {
+                                                table
+                                                    .columns
+                                                    .contains(
+                                                        &doc.line_map
+                                                            .text_for_node(&capture.node)
+                                                            .into(),
+                                                    )
+                                                    .then(|| {
+                                                        SyntaxToken::new(start, end, 3, prev_pos)
+                                                    })
+                                            })
                                     } else {
                                         None
                                     }

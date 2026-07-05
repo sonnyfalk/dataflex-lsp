@@ -360,7 +360,7 @@ impl CodeCompletion {
                 .unwrap_or_default()
         } else if let Some(table) = root_name
             .as_ref()
-            .and_then(|name| index.find_dataflex_table(name))
+            .and_then(|name| index.find_dataflex_table(name).map(|t| t.table))
         {
             table
                 .columns
