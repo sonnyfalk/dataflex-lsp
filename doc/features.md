@@ -42,5 +42,4 @@ All workspace symbols available for navigation between files across the workspac
 
 - Fuzzy matching for workspace symbols not implemented yet, only strict case-sensitive prefix matching.
 - Non-package manager style libraries not indexed yet. Only indexing workspace folder, including package manager-style libraries in DfPkg.
-- Goto definition and code completion for variable and parameter types not implemented yet.
 - Non-editor file changes, e.g. `git pull` not re-indexed automatically yet.
