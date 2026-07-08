@@ -33,77 +33,76 @@ impl ParameterInfo {
         let in_expression = matches!(context, DocumentContext::ParenExpression);
         let resolver = ReferenceResolver::new(doc);
         let mut dedup_set = std::collections::HashSet::new();
-        let parameter_info: Vec<ParameterInfo> =
-            resolver
-                .resolve_reference(context, name_position)
-                .filter_map(|s| {
-                    let signature = s.symbol.to_string();
-                    if !dedup_set.insert(signature.clone()) {
-                        // Skip duplicate signature.
-                        return None;
+        let parameter_info: Vec<ParameterInfo> = resolver
+            .resolve_reference(context, name_position)
+            .filter_map(|s| {
+                let signature = s.symbol.to_string();
+                if !dedup_set.insert(signature.clone()) {
+                    // Skip duplicate signature.
+                    return None;
+                }
+                let parameters: Vec<String> = match s.symbol {
+                    index::IndexSymbol::Method(method_symbol) => method_symbol
+                        .parameters
+                        .iter()
+                        .map(|(name, data_type)| format!("{} {}", data_type, name))
+                        .chain(
+                            method_symbol
+                                .return_type
+                                .as_ref()
+                                .map(|return_type| format!("Returns {}", return_type)),
+                        )
+                        .collect(),
+                    index::IndexSymbol::Property(variable_symbol) => {
+                        vec![variable_symbol.to_string()]
                     }
-                    let parameters: Vec<String> =
-                        match s.symbol {
-                            index::IndexSymbol::Method(method_symbol) => method_symbol
-                                .parameters
-                                .iter()
-                                .map(|(name, data_type)| {
-                                    format!("{} {}", data_type.to_string(), name.to_string())
-                                })
-                                .chain(method_symbol.return_type.as_ref().map(|return_type| {
-                                    format!("Returns {}", return_type.to_string())
-                                }))
-                                .collect(),
-                            index::IndexSymbol::Property(variable_symbol) => {
-                                vec![variable_symbol.to_string()]
-                            }
-                            _ => vec![],
-                        };
+                    _ => vec![],
+                };
 
-                    let active_parameter = if in_expression {
-                        cursor
-                            .node()
-                            .children(&mut cursor.node().walk())
-                            .filter(|n| {
-                                n.kind() == ","
-                                    || n.kind() == ")"
-                                    || n.child(0).filter(|n| n.kind() == ",").is_some()
-                            })
-                            .take_while(|n| n.end_position() <= position)
-                            .filter(|n| !n.is_missing())
-                            .skip(1)
-                            .count()
-                    } else {
-                        cursor
-                            .node()
-                            .children_by_field_name("argument", &mut cursor.node().walk())
-                            .chain(cursor.node().child_by_field_name("result"))
-                            .take_while(|n| n.end_position() < position)
-                            .filter(|n| !n.is_missing())
-                            .map(|n| {
-                                if n.prev_sibling().is_some_and(|n| {
-                                    doc.line_map
-                                        .text_for_node(&n)
-                                        .eq_ignore_ascii_case("File_Field")
-                                }) {
-                                    2
-                                } else {
-                                    1
-                                }
-                            })
-                            .sum()
-                    };
-                    if active_parameter < parameters.len() || in_expression {
-                        Some(ParameterInfo {
-                            signature,
-                            parameters,
-                            active_parameter,
+                let active_parameter = if in_expression {
+                    cursor
+                        .node()
+                        .children(&mut cursor.node().walk())
+                        .filter(|n| {
+                            n.kind() == ","
+                                || n.kind() == ")"
+                                || n.child(0).filter(|n| n.kind() == ",").is_some()
                         })
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+                        .take_while(|n| n.end_position() <= position)
+                        .filter(|n| !n.is_missing())
+                        .skip(1)
+                        .count()
+                } else {
+                    cursor
+                        .node()
+                        .children_by_field_name("argument", &mut cursor.node().walk())
+                        .chain(cursor.node().child_by_field_name("result"))
+                        .take_while(|n| n.end_position() < position)
+                        .filter(|n| !n.is_missing())
+                        .map(|n| {
+                            if n.prev_sibling().is_some_and(|n| {
+                                doc.line_map
+                                    .text_for_node(&n)
+                                    .eq_ignore_ascii_case("File_Field")
+                            }) {
+                                2
+                            } else {
+                                1
+                            }
+                        })
+                        .sum()
+                };
+                if active_parameter < parameters.len() || in_expression {
+                    Some(ParameterInfo {
+                        signature,
+                        parameters,
+                        active_parameter,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
         Some(parameter_info)
     }
 }

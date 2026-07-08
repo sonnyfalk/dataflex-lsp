@@ -264,9 +264,7 @@ impl DataFlexDocument {
             row: position.line as usize,
             column: position.character as usize,
         };
-        let Some(context) = DocumentContext::context(self, position) else {
-            return None;
-        };
+        let context = DocumentContext::context(self, position)?;
 
         let reference_resolver = ReferenceResolver::new(self);
         if context.can_reference_variables()
@@ -521,7 +519,7 @@ mod tests {
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))"
         );
 
-        doc.replace_content(&"Procedure test\nEnd_Procedure\n".to_string());
+        doc.replace_content("Procedure test\nEnd_Procedure\n");
         assert_eq!(
             doc.root_node().unwrap().to_sexp(),
             "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))"

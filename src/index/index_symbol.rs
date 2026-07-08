@@ -243,7 +243,7 @@ impl IndexSymbol {
 
     pub fn resolve(&self, mut sym_path_it: core::slice::Iter<SymbolName>) -> Option<&Self> {
         if let Some(name) = sym_path_it.next() {
-            self.child(name).map(|s| s.resolve(sym_path_it)).flatten()
+            self.child(name).and_then(|s| s.resolve(sym_path_it))
         } else {
             Some(self)
         }
@@ -341,7 +341,7 @@ impl std::fmt::Display for DataFlexDataType {
 
 impl std::fmt::Debug for DataFlexDataType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DataFlexDataType(\"{}\")", self.to_string())
+        write!(f, "DataFlexDataType(\"{}\")", self)
     }
 }
 
@@ -547,7 +547,7 @@ impl std::fmt::Display for IndexSymbol {
             Self::Struct(struct_symbol) => {
                 writeln!(f, "Struct {}", struct_symbol.symbol_path.name())?;
                 for member in &struct_symbol.members {
-                    writeln!(f, "   {}", member.to_string())?;
+                    writeln!(f, "   {}", member)?;
                 }
                 writeln!(f, "End_Struct")
             }
@@ -563,22 +563,22 @@ impl std::fmt::Display for IndexSymbol {
                     method_symbol.symbol_path.name()
                 )?;
                 for (name, data_type) in &method_symbol.parameters {
-                    write!(f, " {} {}", data_type.to_string(), name.to_string())?;
+                    write!(f, " {} {}", data_type, name)?;
                 }
                 if let Some(return_type) = &method_symbol.return_type {
-                    write!(f, " Returns {}", return_type.to_string())?;
+                    write!(f, " Returns {}", return_type)?;
                 }
                 Ok(())
             }
             Self::Property(variable_symbol) => {
-                write!(f, "Property {}", variable_symbol.to_string(),)
+                write!(f, "Property {}", variable_symbol,)
             }
-            Self::Variable(variable_symbol) => write!(f, "{}", variable_symbol.to_string()),
+            Self::Variable(variable_symbol) => write!(f, "{}", variable_symbol),
             Self::Alias(alias_symbol) => write!(
                 f,
                 "{} = {}",
                 alias_symbol.symbol_path.name(),
-                alias_symbol.alias.to_string()
+                alias_symbol.alias
             ),
         }
     }

@@ -188,11 +188,11 @@ impl LookupTables {
                 }
                 IndexSymbol::Variable(variable_symbol) => {
                     self.global_variable_lookup_table_mut()
-                        .remove(&variable_symbol.symbol_path.name());
+                        .remove(variable_symbol.symbol_path.name());
                 }
                 IndexSymbol::Alias(alias_symbol) => {
                     self.alias_lookup_table_mut()
-                        .remove(&alias_symbol.symbol_path.name());
+                        .remove(alias_symbol.symbol_path.name());
                 }
             }
         }

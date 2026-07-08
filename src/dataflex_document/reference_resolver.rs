@@ -41,11 +41,11 @@ impl<'a> ReferenceResolver<'a> {
         scope: Point,
         name: &SymbolName,
     ) -> Option<DataFlexDataType> {
-        self.find_local_variable(&name, scope)
+        self.find_local_variable(name, scope)
             .as_ref()
             .or_else(|| {
                 self.index
-                    .find_global_variables(&name)
+                    .find_global_variables(name)
                     .next()
                     .and_then(|v| self.index.resolve_symbol(v))
                     .and_then(|s| VariableSymbol::from_index_symbol(s.symbol))
@@ -359,7 +359,7 @@ impl<'a> ReferenceResolver<'a> {
                         .and_then(|cs| VariableSymbol::from_index_symbol(cs.symbol))
                     {
                         self.index
-                            .find_struct(&variable.data_type.name())
+                            .find_struct(variable.data_type.name())
                             .and_then(|struct_ref| self.index.resolve_symbol(struct_ref))
                     } else {
                         current_symbol

@@ -431,14 +431,12 @@ impl<'a> ContextScanner<'a> {
             return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
         }
 
-        if self.cursor.is_identifier() {
-            if self.cursor.node().end_position() >= self.end {
-                log::trace!(
-                    "accept_optional_expr() - Ok(Yield) with {:?}",
-                    self.cursor.node()
-                );
-                return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
-            }
+        if self.cursor.is_identifier() && self.cursor.node().end_position() >= self.end {
+            log::trace!(
+                "accept_optional_expr() - Ok(Yield) with {:?}",
+                self.cursor.node()
+            );
+            return Ok(ContextScannerStatus::Yield(DocumentContext::Expression));
         }
 
         if self.cursor.node().end_position() >= self.end {

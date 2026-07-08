@@ -77,10 +77,11 @@ impl LanguageServer for DataFlexLanguageServer {
             .workspace_root
             .set(workspace_root.unwrap_or_default());
 
-        let semantic_tokens_options = if let Some(_) = params
+        let semantic_tokens_options = if params
             .capabilities
             .text_document
             .and_then(|t| t.semantic_tokens)
+            .is_some()
         {
             Some(SemanticTokensServerCapabilities::from(
                 SemanticTokensOptions {
@@ -144,7 +145,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .inner
             .workspace_root
             .get()
-            .map(|ref path| index::WorkspaceInfo::load_from_path(path))
+            .map(|path| index::WorkspaceInfo::load_from_path(path))
             .unwrap_or(index::WorkspaceInfo::new());
 
         _ = self.inner.indexer.set(index::Indexer::new(
@@ -191,14 +192,12 @@ impl LanguageServer for DataFlexLanguageServer {
                 ..Default::default()
             }])
             .await
-        {
-            if let Some(settings) = configs
+            && let Some(settings) = configs
                 .into_iter()
                 .next()
                 .and_then(|v| serde_json::from_value::<Settings>(v).ok())
-            {
-                Settings::set(settings);
-            }
+        {
+            Settings::set(settings);
         }
 
         self.inner
@@ -209,10 +208,10 @@ impl LanguageServer for DataFlexLanguageServer {
 
     async fn shutdown(&self) -> Result<()> {
         log::info!("shutdown() called");
-        self.inner.indexer.get().map(|indexer| {
+        if let Some(indexer) = self.inner.indexer.get() {
             indexer.stop_indexing();
             indexer.save_index();
-        });
+        };
         Ok(())
     }
 
@@ -251,7 +250,7 @@ impl LanguageServer for DataFlexLanguageServer {
                         params.text_document.uri,
                         params.text_document.version,
                     ),
-                    edits: edits.into_iter().map(|e| OneOf::Left(e)).collect(),
+                    edits: edits.into_iter().map(OneOf::Left).collect(),
                 })
             } else {
                 None
@@ -320,9 +319,9 @@ impl LanguageServer for DataFlexLanguageServer {
             .doc
             .code_completion(
                 params.text_document_position.position,
-                params.context.map_or(false, |c| {
-                    c.trigger_kind == CompletionTriggerKind::TRIGGER_CHARACTER
-                }),
+                params
+                    .context
+                    .is_some_and(|c| c.trigger_kind == CompletionTriggerKind::TRIGGER_CHARACTER),
             );
         if let Some(completions) = completions {
             Ok(Some(CompletionResponse::List(CompletionList {
@@ -459,14 +458,12 @@ impl LanguageServer for DataFlexLanguageServer {
                 ..Default::default()
             }])
             .await
-        {
-            if let Some(settings) = configs
+            && let Some(settings) = configs
                 .into_iter()
                 .next()
                 .and_then(|v| serde_json::from_value::<Settings>(v).ok())
-            {
-                Settings::set(settings);
-            }
+        {
+            Settings::set(settings);
         }
     }
 }
@@ -482,7 +479,9 @@ impl OpenFile {
 
 impl IndexerCoordinator {
     async fn watch_and_index_edited_files(inner: Arc<DataFlexLanguageServerInner>) {
-        inner.indexer.get().map(|indexer| indexer.save_index());
+        if let Some(indexer) = inner.indexer.get() {
+            indexer.save_index()
+        }
 
         loop {
             inner
@@ -586,7 +585,6 @@ impl IndexerProgressReporter {
                             message: Some("Indexing...".into()),
                             percentage: None,
                             cancellable: Some(false),
-                            ..Default::default()
                         },
                     )),
                 })

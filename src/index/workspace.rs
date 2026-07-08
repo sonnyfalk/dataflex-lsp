@@ -53,15 +53,15 @@ impl WorkspaceInfo {
     }
 
     pub fn load_from_path(path: &PathBuf) -> Self {
-        if path.is_dir() {
-            if let Some(file) = Self::find_first_sws(path) {
-                return Self::load_from_path(&file);
-            }
+        if path.is_dir()
+            && let Some(file) = Self::find_first_sws(path)
+        {
+            return Self::load_from_path(&file);
         }
 
         let content = std::fs::read_to_string(path).unwrap_or_default();
 
-        if let Some(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content).ok() {
+        if let Ok(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content) {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
             let dataflex_version = Some(DataFlexVersion::from(raw_workspace_file.df.to_string()));
             let projects: Vec<ProjectInfo> = raw_workspace_file
@@ -77,7 +77,7 @@ impl WorkspaceInfo {
                 dataflex_version,
                 projects,
             }
-        } else if let Some(ini_file) = ini::Ini::load_from_str(&content).ok() {
+        } else if let Ok(ini_file) = ini::Ini::load_from_str(&content) {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
             let dataflex_version = ini_file
                 .section(Some("Properties"))

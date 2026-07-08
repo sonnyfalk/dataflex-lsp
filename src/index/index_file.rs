@@ -29,7 +29,7 @@ impl IndexFile {
     pub fn resolve(&self, path: &SymbolPath) -> Option<&IndexSymbol> {
         let mut sym_path_it = path.as_slice().iter();
         if let Some(name) = sym_path_it.next() {
-            self.child(name).map(|s| s.resolve(sym_path_it)).flatten()
+            self.child(name).and_then(|s| s.resolve(sym_path_it))
         } else {
             None
         }

@@ -173,7 +173,7 @@ impl Indexer {
             for path in paths {
                 if path.is_absolute() {
                     log::trace!("Indexing {:?}", path);
-                    Self::index_directory(path, index, &scope);
+                    Self::index_directory(path, index, scope);
                 }
             }
         });
@@ -182,7 +182,7 @@ impl Indexer {
     fn index_workspace(index: &IndexRef) {
         let root_folder = index.get().workspace.get_root_folder().clone();
         rayon::in_place_scope(|scope| {
-            Self::index_directory(&root_folder, index, &scope);
+            Self::index_directory(&root_folder, index, scope);
         });
     }
 
@@ -269,8 +269,7 @@ impl Indexer {
                         if let Some(file_dependency) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
-                            .map(|node| node.utf8_text(content).ok())
-                            .flatten()
+                            .and_then(|node| node.utf8_text(content).ok())
                         {
                             index_file
                                 .dependencies
@@ -696,12 +695,10 @@ impl Indexer {
     }
 
     fn should_index_file(path: &PathBuf) -> bool {
-        match path.extension().and_then(OsStr::to_str) {
-            Some("pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc") => {
-                true
-            }
-            _ => false,
-        }
+        matches!(
+            path.extension().and_then(OsStr::to_str),
+            Some("pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc")
+        )
     }
 
     fn indexer_query() -> &'static str {
@@ -713,9 +710,9 @@ impl IndexerConfig {
     pub fn new() -> Self {
         if let Some(versioned_system_paths) = Self::versioned_system_paths() {
             let default_version = versioned_system_paths
-                .iter()
-                .map(|(version, _)| version.clone())
+                .keys()
                 .next()
+                .cloned()
                 .unwrap_or_default();
             Self {
                 versioned_system_paths,

@@ -28,7 +28,7 @@ impl LineMap {
         if self
             .lines
             .last()
-            .and_then(|l| Some(l.has_line_ending()))
+            .map(|l| l.has_line_ending())
             .unwrap_or(true)
         {
             self.lines.push(Line {
@@ -58,7 +58,7 @@ impl LineMap {
         TextInRangeIterator::new(self, start, end)
     }
 
-    pub fn text_provider<'a>(&'a self) -> impl tree_sitter::TextProvider<&'a [u8]> {
+    pub fn text_provider(&self) -> impl tree_sitter::TextProvider<&[u8]> {
         |node: Node| {
             self.text_in_range_iterator(node.start_position(), node.end_position())
                 .map(|t| t.as_bytes())
@@ -216,9 +216,7 @@ impl<'a> Iterator for TextInRangeIterator<'a> {
     type Item = &'a str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(current_line) = self.next_line else {
-            return None;
-        };
+        let current_line = self.next_line?;
 
         if self.start.row == self.end.row {
             self.next_line = None;
@@ -247,8 +245,7 @@ impl<'a> Iterator for TextInRangeIterator<'a> {
         } else {
             self.next_line = Some(current_line + 1);
             Some(
-                &self
-                    .line_map
+                self.line_map
                     .line_text_with_ending(current_line)
                     .unwrap_or(""),
             )

@@ -39,9 +39,7 @@ impl CodeCompletion {
         position: Point,
         auto_complete: bool,
     ) -> Option<Vec<CompletionItem>> {
-        let Some(context) = DocumentContext::context(doc, position) else {
-            return None;
-        };
+        let context = DocumentContext::context(doc, position)?;
         if auto_complete && !Self::should_auto_complete_with_context(&context) {
             return None;
         }
@@ -154,10 +152,10 @@ impl CodeCompletion {
                     let mut details = String::new();
                     if let Some(method_symbol) = MethodSymbol::from_index_symbol(m.symbol) {
                         for (name, data_type) in &method_symbol.parameters {
-                            _ = write!(details, " {} {}", data_type.to_string(), name.to_string());
+                            _ = write!(details, " {} {}", data_type, name);
                         }
                         if let Some(return_type) = &method_symbol.return_type {
-                            _ = write!(details, " Returns {}", return_type.to_string());
+                            _ = write!(details, " Returns {}", return_type);
                         }
                     }
                     CompletionItem {

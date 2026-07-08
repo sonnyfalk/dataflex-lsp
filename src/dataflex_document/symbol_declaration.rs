@@ -29,7 +29,7 @@ impl std::fmt::Display for SymbolDeclaration {
         writeln!(f, "{}", self.declaration)?;
         writeln!(f, "```")?;
         if let Some(description) = &self.description {
-            writeln!(f, "")?;
+            writeln!(f)?;
             writeln!(f, "---")?;
             writeln!(f, "{description}")?;
         }
