@@ -19,7 +19,7 @@ pub struct IndexerConfig {
     default_version: DataFlexVersion,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum IndexerState {
     Initializing,
     InitialIndexing,
