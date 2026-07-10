@@ -30,6 +30,8 @@ pub enum IndexerState {
 #[derive(Debug)]
 enum IndexerMessage {
     IndexModifiedFileBuffer(PathBuf, tree_sitter::Tree, String),
+    IndexModifiedFiles(Vec<PathBuf>),
+    RemoveIndexedFiles(Vec<PathBuf>),
     StopIndexing,
 }
 
@@ -162,6 +164,26 @@ impl Indexer {
             return;
         };
         _ = channel.send(IndexerMessage::IndexModifiedFileBuffer(path, tree, content));
+    }
+
+    pub fn index_modified_files(&self, paths: Vec<PathBuf>) {
+        let Some(channel) = self.channel.get() else {
+            log::error!(
+                "Indexer::index_modified_file_buffer() cannot be called before indexer is started with Indexer::start_indexing()"
+            );
+            return;
+        };
+        _ = channel.send(IndexerMessage::IndexModifiedFiles(paths));
+    }
+
+    pub fn remove_indexed_files(&self, paths: Vec<PathBuf>) {
+        let Some(channel) = self.channel.get() else {
+            log::error!(
+                "Indexer::index_modified_file_buffer() cannot be called before indexer is started with Indexer::start_indexing()"
+            );
+            return;
+        };
+        _ = channel.send(IndexerMessage::RemoveIndexedFiles(paths));
     }
 
     pub fn indexed_file_count(&self) -> usize {
@@ -683,9 +705,27 @@ impl Indexer {
         for msg in channel {
             match msg {
                 IndexerMessage::IndexModifiedFileBuffer(path, tree, content) => {
-                    log::info!("Request to index file buffer for {path:?}");
+                    log::trace!("Request to index file buffer for {path:?}");
                     let index_file = Self::index_parse_tree(&tree, content.as_bytes(), path);
                     index.get_mut().update_file(index_file);
+                }
+                IndexerMessage::IndexModifiedFiles(paths) => {
+                    log::trace!("Request to index files {paths:?}");
+                    rayon::in_place_scope(|scope| {
+                        for path in paths {
+                            if path.is_dir() {
+                                Self::index_directory(&path, index, scope);
+                            } else {
+                                Self::index_file(path, index, scope);
+                            }
+                        }
+                    });
+                }
+                IndexerMessage::RemoveIndexedFiles(paths) => {
+                    log::trace!("Request to remove indexed files {paths:?}");
+                    for file_ref in paths.iter().map(IndexFileRef::from) {
+                        index.get_mut().remove_file(file_ref);
+                    }
                 }
                 IndexerMessage::StopIndexing => {
                     break;
@@ -797,6 +837,19 @@ impl Index {
             &file_ref,
         );
         self.updated_file_count += 1;
+    }
+
+    fn remove_file(&mut self, file_ref: IndexFileRef) {
+        if let Some(index_file) = self.files.remove(&file_ref) {
+            let symbols_diff = SymbolsDiff::diff_index_files(Some(&index_file), None);
+            self.lookup_tables.update_symbols(symbols_diff, &file_ref);
+            self.lookup_tables.update_dataflex_table_references(
+                index_file.tables.as_deref(),
+                None,
+                &file_ref,
+            );
+            self.updated_file_count += 1;
+        }
     }
 }
 

@@ -30,16 +30,19 @@ The index is populated by `Indexer`, which takes the workspace paths and recusiv
 
 ## Open tasks / known issues
 - Fuzzy matching for workspace symbols
-- Support `External_Function`, `Register_Function`, in parser and indexing
+- Support `External_Function`, `Register_Function` and related, in parser and indexing
+- Support `Open`, `Add/Subtract/Subtotal`, `Find`, `For_All`, `Function_Return/Procedure_Return`, `WebPublishFunction/WebPublishProcedure`, `WebSetResponsive, WebRegisterPath` in parser, code completion etc.
 - Handle `#ifdef` in parser
-- Support LSP file watcher notifications to re-index externally modified files, e.g. from git pull
-- Handle renamed files, added/removed files, updating index appropriately
+- Support embedded SQL nested syntax highlighting
+- Run df-cli to fetch packages when opening workspace
 - Handle non-package manager libraries, indexing additional paths
 - Avoid re-indexing all files after opening workspace and loading index
 - Support project/file-dependency aware index lookups
 - Support separate toolchains for each project
 - Code completion sorting/ranking, local variables before global etc.
+- Enhance code completion for `WebGet/WebSet` to filter on `WebProperty` methods/properties
 - Collect doc comments/comments in addition to "description" for mouse hover details
+- Add parameter information to system expr evaluator functions
 - Enhance code completion with documentation and additional details
 - Enhance goto definition to narrow down candidates based on object receiver class
 - Show inline hint after `end` block, indicating matching `begin`
@@ -47,5 +50,5 @@ The index is populated by `Indexer`, which takes the workspace paths and recusiv
 - Rename Symbol feature
 - Find References feature
 - Consider relevant code actions
-- Diagnostic warnings, e.g. likely unreachable method call
+- Diagnostic warnings, e.g. likely unreachable method call, likely incorrect use of `Get` instead of `WebGet` with `WebProperty`
 - Expand support for additional editors, Zed, Neovim, etc.

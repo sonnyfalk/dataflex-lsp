@@ -177,11 +177,26 @@ impl LanguageServer for DataFlexLanguageServer {
         _ = self
             .inner
             .client
-            .register_capability(vec![Registration {
-                id: String::from("dataflex-lsp"),
-                method: String::from("workspace/didChangeConfiguration"),
-                register_options: None,
-            }])
+            .register_capability(vec![
+                Registration {
+                    id: String::from("dataflex-lsp/workspace/didChangeConfiguration"),
+                    method: String::from("workspace/didChangeConfiguration"),
+                    register_options: None,
+                },
+                Registration {
+                    id: String::from("dataflex-lsp/workspace/didChangeWatchedFiles"),
+                    method: String::from("workspace/didChangeWatchedFiles"),
+                    register_options: Some(
+                        serde_json::to_value(DidChangeWatchedFilesRegistrationOptions {
+                            watchers: vec![FileSystemWatcher {
+                                glob_pattern: GlobPattern::String("**/{*.pkg,*.vw,*.wo,*.sl,*.dd,*.src,*.dg,*.bp,*.rv,*.fd,*.inc}".into()),
+                                kind: None,
+                            }],
+                        })
+                        .unwrap(),
+                    ),
+                },
+            ])
             .await;
 
         if let Ok(configs) = self
@@ -216,7 +231,7 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        log::info!("Start tracking {}", params.text_document.uri);
+        log::trace!("Start tracking {}", params.text_document.uri);
         let file_path = params.text_document.uri.to_file_path().unwrap_or_default();
         self.inner.open_files.insert(
             params.text_document.uri,
@@ -230,11 +245,11 @@ impl LanguageServer for DataFlexLanguageServer {
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         self.inner.open_files.remove(&params.text_document.uri);
-        log::info!("Stop tracking {}", params.text_document.uri);
+        log::trace!("Stop tracking {}", params.text_document.uri);
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        log::info!(
+        log::trace!(
             "Got a textDocument/didChange notification for {}",
             params.text_document.uri.as_str()
         );
@@ -449,7 +464,7 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 
     async fn did_change_configuration(&self, _params: DidChangeConfigurationParams) {
-        log::info!("config changed");
+        log::trace!("config changed");
         if let Ok(configs) = self
             .inner
             .client
@@ -464,6 +479,29 @@ impl LanguageServer for DataFlexLanguageServer {
                 .and_then(|v| serde_json::from_value::<Settings>(v).ok())
         {
             Settings::set(settings);
+        }
+    }
+
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        log::trace!("did_change_watched_files: {:?}", params);
+        let mut changes = params.changes;
+        let modified_files: Vec<PathBuf> = changes
+            .extract_if(.., |event| {
+                matches!(event.typ, FileChangeType::CHANGED | FileChangeType::CREATED)
+            })
+            .filter_map(|event| event.uri.to_file_path().ok())
+            .collect();
+        let removed_files: Vec<PathBuf> = changes
+            .extract_if(.., |event| matches!(event.typ, FileChangeType::DELETED))
+            .filter_map(|event| event.uri.to_file_path().ok())
+            .collect();
+        if let Some(indexer) = self.inner.indexer.get() {
+            if !removed_files.is_empty() {
+                indexer.remove_indexed_files(removed_files);
+            }
+            if !modified_files.is_empty() {
+                indexer.index_modified_files(modified_files);
+            }
         }
     }
 }
