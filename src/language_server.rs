@@ -30,7 +30,7 @@ struct OpenFile {
 struct IndexerCoordinator {
     inner: Weak<DataFlexLanguageServerInner>,
     runtime: tokio::runtime::Handle,
-    progress_reporter: Arc<IndexerProgressReporter>,
+    progress_reporter: IndexerProgressReporter,
     tasks: Mutex<tokio::task::JoinSet<()>>,
 }
 
@@ -167,9 +167,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .start_indexing(IndexerCoordinator {
                 inner: Arc::downgrade(&self.inner),
                 runtime: tokio::runtime::Handle::current(),
-                progress_reporter: Arc::new(
-                    IndexerProgressReporter::new(Arc::downgrade(&self.inner)).await,
-                ),
+                progress_reporter: IndexerProgressReporter::new(Arc::downgrade(&self.inner)).await,
                 tasks: Mutex::new(tokio::task::JoinSet::new()),
             });
 
@@ -631,7 +629,7 @@ impl IndexerProgressReporter {
                                 .map(|indexer| indexer.indexed_file_count())
                                 .unwrap_or_default(),
                         );
-                        Self::start_reporting(&inner).await;
+                        Self::start_report(&inner).await;
                     } else {
                         break;
                     }
@@ -673,7 +671,7 @@ impl IndexerProgressReporter {
         }
     }
 
-    async fn start_reporting(inner: &DataFlexLanguageServerInner) {
+    async fn start_report(inner: &DataFlexLanguageServerInner) {
         _ = inner
             .client
             .send_request::<request::WorkDoneProgressCreate>(WorkDoneProgressCreateParams {
