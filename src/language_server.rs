@@ -603,12 +603,11 @@ impl IndexerProgressReporter {
         mut channel: tokio::sync::watch::Receiver<index::IndexerState>,
     ) {
         let mut reporting: Option<usize> = None;
-
+        let timeout_duration = std::time::Duration::from_millis(250);
         loop {
             if reporting.is_some() {
                 if matches!(
-                    tokio::time::timeout(std::time::Duration::from_millis(250), channel.changed())
-                        .await,
+                    tokio::time::timeout(timeout_duration, channel.changed()).await,
                     Ok(Err(_))
                 ) {
                     break;
@@ -620,7 +619,9 @@ impl IndexerProgressReporter {
             }
             let state = *channel.borrow_and_update();
             match state {
-                index::IndexerState::InitialIndexing if reporting.is_none() => {
+                index::IndexerState::InitialIndexing | index::IndexerState::Indexing
+                    if reporting.is_none() =>
+                {
                     if let Some(inner) = inner.upgrade() {
                         reporting = Some(
                             inner
@@ -634,7 +635,9 @@ impl IndexerProgressReporter {
                         break;
                     }
                 }
-                index::IndexerState::InitialIndexing if reporting.is_some() => {
+                index::IndexerState::InitialIndexing | index::IndexerState::Indexing
+                    if reporting.is_some() =>
+                {
                     if let Some(inner) = inner.upgrade()
                         && let Some(file_count) = inner.indexer.get().map(|indexer| {
                             indexer.indexed_file_count() - reporting.as_ref().unwrap()
@@ -646,6 +649,10 @@ impl IndexerProgressReporter {
                     }
                 }
                 index::IndexerState::Inactive if reporting.is_some() => {
+                    tokio::time::sleep(timeout_duration).await;
+                    if channel.has_changed().unwrap_or_default() {
+                        continue;
+                    }
                     if let Some(inner) = inner.upgrade() {
                         Self::end_report(&inner).await;
                     }

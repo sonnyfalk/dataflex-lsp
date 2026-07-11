@@ -24,6 +24,7 @@ pub enum IndexerState {
     Initializing,
     InitialIndexing,
     Inactive,
+    Indexing,
     Stopped,
 }
 
@@ -135,7 +136,7 @@ impl Indexer {
             log::info!("Finished indexing: {} files", index.get().files.len());
             log::trace!("{:#?}", index.get());
             observer.state_transition(IndexerState::InitialIndexing, IndexerState::Inactive);
-            Self::watch_and_index_changed_files(&index, receiver);
+            Self::watch_and_index_changed_files(&index, receiver, &observer);
             observer.state_transition(IndexerState::Inactive, IndexerState::Stopped);
             log::info!("Indexer exiting");
         });
@@ -700,7 +701,11 @@ impl Indexer {
         index_file
     }
 
-    fn watch_and_index_changed_files(index: &IndexRef, channel: mpsc::Receiver<IndexerMessage>) {
+    fn watch_and_index_changed_files(
+        index: &IndexRef,
+        channel: mpsc::Receiver<IndexerMessage>,
+        observer: &impl IndexerObserver,
+    ) {
         log::info!("Watching workspace files");
         for msg in channel {
             match msg {
@@ -711,6 +716,7 @@ impl Indexer {
                 }
                 IndexerMessage::IndexModifiedFiles(paths) => {
                     log::trace!("Request to index files {paths:?}");
+                    observer.state_transition(IndexerState::Inactive, IndexerState::Indexing);
                     rayon::in_place_scope(|scope| {
                         for path in paths {
                             if path.is_dir() {
@@ -720,12 +726,15 @@ impl Indexer {
                             }
                         }
                     });
+                    observer.state_transition(IndexerState::Indexing, IndexerState::Inactive);
                 }
                 IndexerMessage::RemoveIndexedFiles(paths) => {
                     log::trace!("Request to remove indexed files {paths:?}");
+                    observer.state_transition(IndexerState::Inactive, IndexerState::Indexing);
                     for file_ref in paths.iter().map(IndexFileRef::from) {
                         index.get_mut().remove_file(file_ref);
                     }
+                    observer.state_transition(IndexerState::Indexing, IndexerState::Inactive);
                 }
                 IndexerMessage::StopIndexing => {
                     break;
