@@ -188,7 +188,7 @@ impl LanguageServer for DataFlexLanguageServer {
                     register_options: Some(
                         serde_json::to_value(DidChangeWatchedFilesRegistrationOptions {
                             watchers: vec![FileSystemWatcher {
-                                glob_pattern: GlobPattern::String("**/{*.pkg,*.vw,*.wo,*.sl,*.dd,*.src,*.dg,*.bp,*.rv,*.fd,*.inc}".into()),
+                                glob_pattern: GlobPattern::String("**/*".into()),
                                 kind: None,
                             }],
                         })
@@ -489,6 +489,7 @@ impl LanguageServer for DataFlexLanguageServer {
                 matches!(event.typ, FileChangeType::CHANGED | FileChangeType::CREATED)
             })
             .filter_map(|event| event.uri.to_file_path().ok())
+            .filter(|path| path.is_dir() || index::Indexer::should_index_file(path))
             .collect();
         let removed_files: Vec<PathBuf> = changes
             .extract_if(.., |event| matches!(event.typ, FileChangeType::DELETED))

@@ -731,8 +731,21 @@ impl Indexer {
                 IndexerMessage::RemoveIndexedFiles(paths) => {
                     log::trace!("Request to remove indexed files {paths:?}");
                     observer.state_transition(IndexerState::Inactive, IndexerState::Indexing);
-                    for file_ref in paths.iter().map(IndexFileRef::from) {
-                        index.get_mut().remove_file(file_ref);
+                    for path in paths {
+                        if path.is_dir() {
+                            let files: Vec<IndexFileRef> = index
+                                .get()
+                                .files
+                                .iter()
+                                .filter(|(_, file)| file.path.starts_with(&path))
+                                .map(|(file_ref, _)| file_ref.clone())
+                                .collect();
+                            for file in files {
+                                index.get_mut().remove_file(file);
+                            }
+                        } else {
+                            index.get_mut().remove_file(IndexFileRef::from(&path));
+                        }
                     }
                     observer.state_transition(IndexerState::Indexing, IndexerState::Inactive);
                 }
@@ -743,7 +756,7 @@ impl Indexer {
         }
     }
 
-    fn should_index_file(path: &PathBuf) -> bool {
+    pub fn should_index_file(path: &PathBuf) -> bool {
         matches!(
             path.extension().and_then(OsStr::to_str),
             Some("pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc")
