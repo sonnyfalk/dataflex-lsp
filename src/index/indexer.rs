@@ -104,12 +104,14 @@ impl Indexer {
         });
 
         if let Ok(content) = content {
-            let file_path = index
-                .workspace
-                .get_root_folder()
-                .join("IdeSrc")
-                .join("dataflex-lsp.index");
-            _ = std::fs::write(file_path, content);
+            let dir = index.workspace.get_root_folder().join("IdeSrc");
+            let file_path = dir.join("dataflex-lsp.index");
+            if std::fs::write(&file_path, &content).is_err() {
+                _ = std::fs::create_dir(dir);
+                if let Err(e) = std::fs::write(&file_path, content) {
+                    log::warn!("failed to save index: {e}");
+                }
+            }
         }
     }
 
