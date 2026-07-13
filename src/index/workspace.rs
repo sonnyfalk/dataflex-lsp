@@ -8,6 +8,7 @@ pub struct WorkspaceInfo {
     root_folder: PathBuf,
     dataflex_version: Option<DataFlexVersion>,
     projects: Vec<ProjectInfo>,
+    local_packages: Vec<PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -41,6 +42,7 @@ pub struct ProjectInfo {
 struct RawWorkspaceFile {
     df: serde_json::Number,
     projects: Option<Vec<String>>,
+    dependencies: Option<Vec<serde_json::Value>>,
 }
 
 impl WorkspaceInfo {
@@ -48,7 +50,8 @@ impl WorkspaceInfo {
         Self {
             root_folder: PathBuf::new(),
             dataflex_version: None,
-            projects: vec![],
+            projects: Vec::new(),
+            local_packages: Vec::new(),
         }
     }
 
@@ -72,12 +75,40 @@ impl WorkspaceInfo {
                     main_file: root_folder.join("AppSrc").join(f),
                 })
                 .collect();
+            let local_packages: Vec<PathBuf> = raw_workspace_file
+                .dependencies
+                .iter()
+                .flat_map(|d| d.iter())
+                .filter_map(|dependency| {
+                    if let serde_json::Value::String(s) = dependency {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                })
+                .filter(|s| s.starts_with("..") || s.starts_with("/"))
+                .map(PathBuf::from)
+                .filter_map(|p| {
+                    if p.is_relative() {
+                        std::path::absolute(root_folder.join(&p)).ok()
+                    } else {
+                        Some(p)
+                    }
+                })
+                .collect();
             Self {
                 root_folder,
                 dataflex_version,
                 projects,
+                local_packages,
             }
-        } else if let Ok(ini_file) = ini::Ini::load_from_str(&content) {
+        } else if let Ok(ini_file) = ini::Ini::load_from_str_opt(
+            &content,
+            ini::ParseOption {
+                enabled_escape: false,
+                ..Default::default()
+            },
+        ) {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
             let dataflex_version = ini_file
                 .section(Some("Properties"))
@@ -85,26 +116,40 @@ impl WorkspaceInfo {
                 .map(DataFlexVersion::from);
             let projects: Vec<ProjectInfo> = ini_file
                 .section(Some("Projects"))
-                .map(|projects| {
-                    projects
-                        .iter()
-                        .map(|(_, v)| ProjectInfo {
-                            main_file: root_folder.join("AppSrc").join(v),
-                        })
-                        .collect()
+                .iter()
+                .flat_map(|projects| projects.iter())
+                .map(|(_, v)| ProjectInfo {
+                    main_file: root_folder.join("AppSrc").join(v),
                 })
-                .unwrap_or_default();
+                .collect();
+            let local_packages: Vec<PathBuf> = ini_file
+                .section(Some("Libraries"))
+                .iter()
+                .flat_map(|libraries| libraries.iter())
+                .map(|(_, l)| PathBuf::from(l))
+                .filter_map(|p| {
+                    if p.is_relative() && p.starts_with("..") {
+                        std::path::absolute(root_folder.join(&p)).ok()
+                    } else if p.is_absolute() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
             Self {
                 root_folder,
                 dataflex_version,
                 projects,
+                local_packages,
             }
         } else {
             log::warn!("Unable to load workspace information from {:?}", path);
             Self {
                 root_folder: path.clone(),
                 dataflex_version: None,
-                projects: vec![],
+                projects: Vec::new(),
+                local_packages: Vec::new(),
             }
         }
     }
@@ -115,6 +160,22 @@ impl WorkspaceInfo {
 
     pub fn get_dataflex_version(&self) -> Option<&DataFlexVersion> {
         self.dataflex_version.as_ref()
+    }
+
+    pub fn local_workspace_dependencies(&self) -> Vec<WorkspaceInfo> {
+        let mut workspaces = Vec::new();
+        let mut dependencies = self.local_packages.clone();
+        let mut visited = std::collections::HashSet::new();
+
+        while let Some(dependency) = dependencies.pop() {
+            if visited.insert(dependency.clone()) {
+                let workspace = WorkspaceInfo::load_from_path(&dependency);
+                dependencies.extend(workspace.local_packages.iter().cloned());
+                workspaces.push(workspace);
+            }
+        }
+
+        workspaces
     }
 
     fn find_first_sws(path: &PathBuf) -> Option<PathBuf> {

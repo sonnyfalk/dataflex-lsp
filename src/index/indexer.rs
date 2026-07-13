@@ -204,8 +204,18 @@ impl Indexer {
 
     fn index_workspace(index: &IndexRef) {
         let root_folder = index.get().workspace.get_root_folder().clone();
+        let local_dependencies: Vec<PathBuf> = index
+            .get()
+            .workspace
+            .local_workspace_dependencies()
+            .into_iter()
+            .map(|ws| ws.get_root_folder().clone())
+            .collect();
         rayon::in_place_scope(|scope| {
             Self::index_directory(&root_folder, index, scope);
+            for path in local_dependencies {
+                Self::index_directory(&path, index, scope);
+            }
         });
     }
 
