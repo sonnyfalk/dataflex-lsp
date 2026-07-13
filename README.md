@@ -5,7 +5,7 @@ See [features.md](doc/features.md) for current status of implementation.
 
 ## Installing
 The easiest way to install and use DataFlex-LSP from Visual Studio Code is to install the pre-built binary VSCode extension.
-The latest pre-built binary release is [v0.8.3](https://github.com/sonnyfalk/dataflex-lsp/releases/tag/v0.8.3), scroll to the bottom of that page and download `vscode-dataflex-win32-x64-0.8.3.vsix` for Windows, or `vscode-dataflex-darwin-arm64-0.8.3.vsix` for macOS.
+The latest pre-built binary release is [v0.8.4](https://github.com/sonnyfalk/dataflex-lsp/releases/latest), download `vscode-dataflex-win32-x64-0.8.4.vsix` for Windows, or `vscode-dataflex-darwin-arm64-0.8.4.vsix` for macOS.
 In the VSCode Extensions tab, select `Install from VSIX`, and then install the downloaded .vsix file. Now you can open any DataFlex workspace folder, and get full syntax highlighting, code completion, goto definition, etc.
 
 ## Building

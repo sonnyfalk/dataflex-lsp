@@ -41,4 +41,5 @@ All workspace symbols available for navigation between files across the workspac
 #### Current Limitations
 
 - Fuzzy matching for workspace symbols not implemented yet, only strict case-sensitive prefix matching.
-- Non-package manager style libraries not indexed yet. Only indexing workspace folder, including package manager-style libraries in DfPkg.
+- Functions defined via `External_Function` and `Register_Function` not yet listed in code completion or goto definition.
+- Packages not yet automatically fetched/updated when opening the workspace, workaround by compiling the project or running `df-cli`.
