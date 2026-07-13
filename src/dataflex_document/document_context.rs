@@ -302,6 +302,11 @@ impl DocumentContext {
                 scanner.cursor.goto_next_leaf_node();
                 Self::context_with_scanner(scanner, doc)
             }
+            ("keyword", "deferred_view") => {
+                _ = context_scanner_match!(scanner, identifier, "for",);
+                scanner.cursor.goto_next_leaf_node();
+                Self::context_with_scanner(scanner, doc)
+            }
             // Default fallback to recognize expression context as appropriate for all other commands.
             _ => context_scanner_match!(scanner, expr*),
         };
@@ -532,6 +537,22 @@ mod test {
             index::IndexRef::make_test_index_ref(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 18 });
+        assert_eq!(context, Some(DocumentContext::ClassReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Deferred_View Activate_oMyView for ;\nObject oMyView is a cView\nEnd_Object\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 23 });
+        assert_eq!(context, Some(DocumentContext::ClassReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Deferred_View Activate_oMyView for ;\nObject oMyView is a \n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 20 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
 
         let doc = DataFlexDocument::new(
