@@ -115,6 +115,7 @@
     (number_literal) @value_reference
     (string_literal) @value_reference
     (paren_expression) @value_reference
+    (icode_argument) @arg_reference
   ]?
   (#set! index.element alias_definition)) @element_node
 
