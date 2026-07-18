@@ -97,7 +97,7 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn is_identifier(&self) -> bool {
-        self.node().kind() == "identifier"
+        self.node().kind() == "identifier" || self.node().kind() == "simple_identifier"
     }
 
     pub fn is_file_path(&self) -> bool {

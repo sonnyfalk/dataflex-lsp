@@ -751,6 +751,22 @@ mod test {
             context,
             Some(DocumentContext::MethodReference(MethodKind::Msg))
         );
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Send Private.Foo\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
+        assert_eq!(
+            context,
+            Some(DocumentContext::MethodReference(MethodKind::Msg))
+        );
     }
 
     #[test]

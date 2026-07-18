@@ -40,7 +40,7 @@ pub trait IndexerObserver {
     fn state_transition(&self, old_state: IndexerState, new_state: IndexerState);
 }
 
-const CURRENT_SERIALIZED_VERSION: usize = 1;
+const CURRENT_SERIALIZED_VERSION: usize = 2;
 
 #[derive(Deserialize)]
 struct DeserializedIndex {
@@ -1139,6 +1139,24 @@ mod tests {
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Object(ClassSymbol { location: SourceLocation { line: 0, column: 7 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 3, column: 10 } }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, range: SourceRange { start: SourceLocation { line: 1, column: 4 }, end: SourceLocation { line: 2, column: 17 } }, symbol_path: SymbolPath(\"oMyObj.SayHello\"), kind: Msg, parameters: [], return_type: None, metadata: [] })], metadata: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_object_method_with_embedded_dot() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Object oMyObj is a cBaseClass\n    Procedure Private.SayHello\n    End_Procedure\nEnd_Object\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Object(ClassSymbol { location: SourceLocation { line: 0, column: 7 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 3, column: 10 } }, symbol_path: SymbolPath(\"oMyObj\"), superclass: SymbolName(\"cBaseClass\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 1, column: 14 }, range: SourceRange { start: SourceLocation { line: 1, column: 4 }, end: SourceLocation { line: 2, column: 17 } }, symbol_path: SymbolPath(\"oMyObj.Private.SayHello\"), kind: Msg, parameters: [], return_type: None, metadata: [] })], metadata: [] })]"
         );
     }
 

@@ -326,7 +326,7 @@ impl<'a> ReferenceResolver<'a> {
             &tree_sitter_dataflex::LANGUAGE.into(),
             r#"
             (postfix_expression
-              name: (identifier) @variable-name
+              name: (simple_identifier) @variable-name
               (member_access)+ @member-access)
             "#,
         )

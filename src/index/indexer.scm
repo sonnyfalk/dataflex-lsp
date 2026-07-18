@@ -111,7 +111,7 @@
 (define_declaration
   name: (identifier) @name
   value: [
-    (identifier) @name_reference
+    (simple_identifier) @name_reference
     (number_literal) @value_reference
     (string_literal) @value_reference
     (paren_expression) @value_reference
@@ -122,7 +122,7 @@
 (replace_declaration
   name: (expression) @name
   value: [
-    (identifier) @name_reference
+    (simple_identifier) @name_reference
     (number_literal) @value_reference
     (string_literal) @value_reference
     (paren_expression) @value_reference

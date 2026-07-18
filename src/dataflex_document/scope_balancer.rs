@@ -172,7 +172,7 @@ impl ScopeBalancer {
         let query = tree_sitter::Query::new(
             &tree_sitter_dataflex::LANGUAGE.into(),
             &format!(
-                "(other_command_statement (identifier) @cmd (#match? @cmd \"(?i)^{close_scope}$\"))",
+                "(other_command_statement (simple_identifier) @cmd (#match? @cmd \"(?i)^{close_scope}$\"))",
             ),
         )
         .expect("Error loading query");
