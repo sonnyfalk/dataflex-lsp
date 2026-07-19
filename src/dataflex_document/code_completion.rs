@@ -46,7 +46,9 @@ impl CodeCompletion {
 
         let completions = match context {
             DocumentContext::ClassReference => Some(Self::class_completions(doc)),
-            DocumentContext::MethodReference(kind) => Some(Self::method_completions(doc, kind)),
+            DocumentContext::MethodReference(kind) => {
+                Some(Self::method_completions(doc, position, kind))
+            }
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
@@ -88,41 +90,70 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn method_completions(doc: &DataFlexDocument, kind: index::MethodKind) -> Vec<CompletionItem> {
-        match kind {
-            MethodKind::Msg => doc
-                .index
-                .get()
-                .all_known_methods(kind)
-                .drain(..)
-                .map(|method_name| CompletionItem {
-                    label: method_name.to_string(),
-                    kind: CompletionItemKind::Method,
-                    ..Default::default()
-                })
-                .collect(),
-            MethodKind::Get | MethodKind::Set => doc
-                .index
-                .get()
-                .all_known_methods(kind)
-                .drain(..)
-                .map(|method_name| CompletionItem {
-                    label: method_name.to_string(),
-                    kind: CompletionItemKind::Method,
-                    ..Default::default()
-                })
-                .chain(
+    fn method_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        kind: index::MethodKind,
+    ) -> Vec<CompletionItem> {
+        let completions: Vec<CompletionItem> =
+            match kind {
+                MethodKind::Msg => doc
+                    .index
+                    .get()
+                    .all_known_methods(kind)
+                    .drain(..)
+                    .map(|method_name| CompletionItem {
+                        label: method_name.to_string(),
+                        kind: CompletionItemKind::Method,
+                        ..Default::default()
+                    })
+                    .collect(),
+                MethodKind::Get | MethodKind::Set => {
                     doc.index
                         .get()
-                        .all_known_properties()
+                        .all_known_methods(kind)
                         .drain(..)
-                        .map(|property_name| CompletionItem {
-                            label: property_name.to_string(),
-                            kind: CompletionItemKind::Property,
+                        .map(|method_name| CompletionItem {
+                            label: method_name.to_string(),
+                            kind: CompletionItemKind::Method,
                             ..Default::default()
-                        }),
-                )
-                .collect(),
+                        })
+                        .chain(doc.index.get().all_known_properties().drain(..).map(
+                            |property_name| CompletionItem {
+                                label: property_name.to_string(),
+                                kind: CompletionItemKind::Property,
+                                ..Default::default()
+                            },
+                        ))
+                        .collect()
+                }
+            };
+
+        if let Some(mut cursor) = doc.cursor()
+            && cursor.goto_leaf_node_at_or_before_point(position)
+            && let Some(filter_text) = cursor
+                .is_identifier()
+                .then(|| doc.line_map.text_for_node(&cursor.node()))
+                .filter(|text| text.contains('.'))
+            && let Some(filter_text) = filter_text.rfind('.').map(|indx| &filter_text[..=indx])
+        {
+            // Code completion with embedded dot, e.g. Send Private.MyMethod.
+            // Filter out prefix before the last dot, since code completion context is after the dot.
+            completions
+                .into_iter()
+                .filter_map(|mut cc| {
+                    if cc.label.len() >= filter_text.len()
+                        && cc.label[..filter_text.len()].eq_ignore_ascii_case(filter_text)
+                    {
+                        cc.label = cc.label[filter_text.len()..].into();
+                        Some(cc)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            completions
         }
     }
 
