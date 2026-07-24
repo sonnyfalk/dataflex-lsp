@@ -1,3 +1,5 @@
+use super::*;
+
 use std::path::PathBuf;
 
 use serde::Deserialize;
@@ -9,27 +11,6 @@ pub struct WorkspaceInfo {
     dataflex_version: Option<DataFlexVersion>,
     projects: Vec<ProjectInfo>,
     local_packages: Vec<PathBuf>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DataFlexVersion(String);
-
-impl From<String> for DataFlexVersion {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl From<&str> for DataFlexVersion {
-    fn from(value: &str) -> Self {
-        Self::from(String::from(value))
-    }
-}
-
-impl Default for DataFlexVersion {
-    fn default() -> Self {
-        Self::from(String::new())
-    }
 }
 
 #[allow(dead_code)]

@@ -147,10 +147,7 @@ impl LanguageServer for DataFlexLanguageServer {
             .map(|path| index::WorkspaceInfo::load_from_path(path))
             .unwrap_or(index::WorkspaceInfo::new());
 
-        _ = self.inner.indexer.set(index::Indexer::new(
-            workspace_info,
-            index::IndexerConfig::new(),
-        ));
+        _ = self.inner.indexer.set(index::Indexer::new(workspace_info));
         if self
             .inner
             .indexer

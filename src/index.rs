@@ -7,6 +7,7 @@ use rayon::prelude::*;
 use streaming_iterator::StreamingIterator;
 use strum::EnumString;
 
+mod dataflex_config;
 mod index_file;
 mod index_symbol;
 mod indexer;
@@ -16,8 +17,9 @@ mod workspace;
 
 pub use index_symbol::*;
 
-pub use indexer::{Indexer, IndexerConfig, IndexerObserver, IndexerState};
-pub use workspace::{DataFlexVersion, WorkspaceInfo};
+pub use dataflex_config::{DataFlexConfig, DataFlexVersion};
+pub use indexer::{Indexer, IndexerObserver, IndexerState};
+pub use workspace::WorkspaceInfo;
 
 pub use index_file::{DataFlexTable, IndexFile, IndexFileRef, QualifiedDataFlexTableRef};
 
