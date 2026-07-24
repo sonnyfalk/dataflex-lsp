@@ -118,6 +118,18 @@ impl Indexer {
         let system_paths =
             DataFlexConfig::system_config().system_path(self.dataflex_version.as_ref());
         rayon::spawn(move || {
+            log::info!("Fetching package dependencies");
+            let extended_workspace = index
+                .get()
+                .workspace
+                .fetch_package_dependencies_and_extended_info();
+            if let Some(extended_workspace) = extended_workspace {
+                log::trace!(
+                    "Updated workspace with extended info: {:?}",
+                    extended_workspace
+                );
+                index.get_mut().workspace = extended_workspace;
+            }
             observer.state_transition(IndexerState::Initializing, IndexerState::InitialIndexing);
             if let Some(system_paths) = system_paths {
                 log::info!("Indexing system paths");

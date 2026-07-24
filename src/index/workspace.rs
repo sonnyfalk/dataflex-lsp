@@ -5,8 +5,9 @@ use std::path::PathBuf;
 use serde::Deserialize;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WorkspaceInfo {
+    sws_path: PathBuf,
     root_folder: PathBuf,
     dataflex_version: Option<DataFlexVersion>,
     projects: Vec<ProjectInfo>,
@@ -14,9 +15,11 @@ pub struct WorkspaceInfo {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProjectInfo {
     main_file: PathBuf,
+    toolchain: Option<String>,
+    make_path: Option<Vec<PathBuf>>,
 }
 
 #[derive(Deserialize)]
@@ -26,9 +29,22 @@ struct RawWorkspaceFile {
     dependencies: Option<Vec<serde_json::Value>>,
 }
 
+#[derive(Deserialize)]
+struct RawWorkspaceConfig {
+    projects: Vec<RawWorkspaceConfigProject>,
+}
+
+#[derive(Deserialize)]
+struct RawWorkspaceConfigProject {
+    name: String,
+    toolchain: String,
+    makepath: Vec<PathBuf>,
+}
+
 impl WorkspaceInfo {
     pub fn new() -> Self {
         Self {
+            sws_path: PathBuf::new(),
             root_folder: PathBuf::new(),
             dataflex_version: None,
             projects: Vec::new(),
@@ -54,6 +70,8 @@ impl WorkspaceInfo {
                 .iter()
                 .map(|f| ProjectInfo {
                     main_file: root_folder.join("AppSrc").join(f),
+                    toolchain: None,
+                    make_path: None,
                 })
                 .collect();
             let local_packages: Vec<PathBuf> = raw_workspace_file
@@ -78,6 +96,7 @@ impl WorkspaceInfo {
                 })
                 .collect();
             Self {
+                sws_path: path.clone(),
                 root_folder,
                 dataflex_version,
                 projects,
@@ -101,6 +120,8 @@ impl WorkspaceInfo {
                 .flat_map(|projects| projects.iter())
                 .map(|(_, v)| ProjectInfo {
                     main_file: root_folder.join("AppSrc").join(v),
+                    toolchain: None,
+                    make_path: None,
                 })
                 .collect();
             let local_packages: Vec<PathBuf> = ini_file
@@ -119,6 +140,7 @@ impl WorkspaceInfo {
                 })
                 .collect();
             Self {
+                sws_path: path.clone(),
                 root_folder,
                 dataflex_version,
                 projects,
@@ -127,6 +149,7 @@ impl WorkspaceInfo {
         } else {
             log::warn!("Unable to load workspace information from {:?}", path);
             Self {
+                sws_path: path.clone(),
                 root_folder: path.clone(),
                 dataflex_version: None,
                 projects: Vec::new(),
@@ -157,6 +180,43 @@ impl WorkspaceInfo {
         }
 
         workspaces
+    }
+
+    pub fn fetch_package_dependencies_and_extended_info(&self) -> Option<WorkspaceInfo> {
+        let df_cli = DataFlexConfig::system_config().df_cli_path()?;
+        log::info!("Using df_cli from: {:?}", df_cli);
+
+        let output = std::process::Command::new(&df_cli)
+            .arg("config")
+            .arg("--json")
+            .arg(&self.sws_path)
+            .output();
+        log::trace!("df_cli output: {:?}", output);
+        let output = output.ok()?;
+
+        if output.status.success() {
+            let config = serde_json::from_slice::<RawWorkspaceConfig>(&output.stdout).ok()?;
+            let mut workspace = self.clone();
+            // Merge in additional project info with computed makepath etc., and return the extended WorkspaceInfo.
+            for project in config.projects {
+                if let Some(existing_project) = workspace
+                    .projects
+                    .iter_mut()
+                    .find(|p| p.main_file.ends_with(&project.name))
+                {
+                    existing_project.toolchain.replace(project.toolchain);
+                    existing_project.make_path.replace(project.makepath);
+                }
+            }
+            Some(workspace)
+        } else {
+            // Try running df-cli without --json output since older versions don't support it, just to fetch packages.
+            _ = std::process::Command::new(df_cli)
+                .arg("config")
+                .arg(&self.sws_path)
+                .output();
+            None
+        }
     }
 
     fn find_first_sws(path: &PathBuf) -> Option<PathBuf> {

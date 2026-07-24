@@ -34,8 +34,6 @@ The index is populated by `Indexer`, which takes the workspace paths and recusiv
 - Support `Open`, `Add/Subtract/Subtotal`, `Find`, `For_All`, `Function_Return/Procedure_Return`, `WebPublishFunction/WebPublishProcedure`, `WebSetResponsive, WebRegisterPath` in parser, code completion etc.
 - Handle `#ifdef` in parser
 - Support embedded SQL nested syntax highlighting
-- Run df-cli to fetch packages when opening workspace
-- Handle non-package manager libraries, indexing additional paths
 - Avoid re-indexing all files after opening workspace and loading index
 - Support project/file-dependency aware index lookups
 - Support separate toolchains for each project

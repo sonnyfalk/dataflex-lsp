@@ -2,8 +2,14 @@ use super::*;
 
 #[derive(Debug)]
 pub struct DataFlexConfig {
-    versioned_system_paths: HashMap<DataFlexVersion, Vec<PathBuf>>,
+    versioned_configs: HashMap<DataFlexVersion, ConfigEntry>,
     default_version: DataFlexVersion,
+}
+
+#[derive(Debug)]
+struct ConfigEntry {
+    root_path: PathBuf,
+    system_make_path: Vec<PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -19,32 +25,47 @@ impl DataFlexConfig {
 
     pub fn system_path(&self, dataflex_version: Option<&DataFlexVersion>) -> Option<&Vec<PathBuf>> {
         let dataflex_version = dataflex_version.unwrap_or(&self.default_version);
-        self.versioned_system_paths
+        self.versioned_configs
             .get(dataflex_version)
-            .or(self.versioned_system_paths.get(&self.default_version))
+            .or(self.versioned_configs.get(&self.default_version))
+            .map(|config| &config.system_make_path)
+    }
+
+    pub fn df_cli_path(&self) -> Option<PathBuf> {
+        if let Ok(df_cli) = which::which_global("df-cli") {
+            return Some(df_cli);
+        }
+
+        let mut installs: Vec<_> = self.versioned_configs.iter().collect();
+        installs.sort_by_key(|(ver, _)| &ver.0);
+        let paths = std::env::join_paths(
+            installs
+                .into_iter()
+                .rev()
+                .map(|(_, config)| config.root_path.join("Bin64")),
+        )
+        .ok();
+
+        which::which_in_global("df-cli", paths).ok()?.next()
     }
 
     fn new() -> Self {
-        if let Some(versioned_system_paths) = Self::versioned_system_paths() {
-            let default_version = versioned_system_paths
-                .keys()
-                .next()
-                .cloned()
-                .unwrap_or_default();
+        if let Some(versioned_configs) = Self::versioned_configs() {
+            let default_version = versioned_configs.keys().next().cloned().unwrap_or_default();
             Self {
-                versioned_system_paths,
+                versioned_configs,
                 default_version,
             }
         } else {
             Self {
-                versioned_system_paths: HashMap::new(),
+                versioned_configs: HashMap::new(),
                 default_version: Default::default(),
             }
         }
     }
 
     #[cfg(target_os = "windows")]
-    fn versioned_system_paths() -> Option<HashMap<DataFlexVersion, Vec<PathBuf>>> {
+    fn versioned_configs() -> Option<HashMap<DataFlexVersion, ConfigEntry>> {
         let reg_key = winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
             .open_subkey("SOFTWARE\\Data Access Worldwide\\DataFlex")
             .ok()?;
@@ -52,18 +73,27 @@ impl DataFlexConfig {
         Some(reg_key.enum_keys().flat_map(Result::ok).fold(
             HashMap::new(),
             |mut result, version: String| {
+                let root_path: Option<String> = reg_key
+                    .open_subkey(format!("{version}\\Defaults"))
+                    .and_then(|k| k.get_value("VDFRootDir"))
+                    .ok();
                 let make_path: Option<String> = reg_key
                     .open_subkey(format!("{version}\\DfComp"))
                     .and_then(|k| k.get_value("MakePath"))
                     .ok();
-                if let Some(make_path) = make_path {
+                if let Some(root_path) = root_path
+                    && let Some(make_path) = make_path
+                {
                     result.insert(
                         DataFlexVersion::from(version),
-                        make_path
-                            .split(";")
-                            .map(str::trim)
-                            .map(PathBuf::from)
-                            .collect(),
+                        ConfigEntry {
+                            root_path: root_path.into(),
+                            system_make_path: make_path
+                                .split(";")
+                                .map(str::trim)
+                                .map(PathBuf::from)
+                                .collect(),
+                        },
                     );
                 }
                 result
@@ -72,7 +102,7 @@ impl DataFlexConfig {
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn versioned_system_paths() -> Option<HashMap<DataFlexVersion, Vec<PathBuf>>> {
+    fn versioned_configs() -> Option<HashMap<DataFlexVersion, Vec<PathBuf>>> {
         None
     }
 }
