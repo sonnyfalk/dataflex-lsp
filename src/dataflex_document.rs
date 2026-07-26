@@ -240,17 +240,21 @@ impl DataFlexDocument {
         completions.map(|mut completions| {
             completions
                 .drain(..)
-                .map(|item| lsp_types::CompletionItem {
-                    label: item.label,
-                    kind: Some(lsp_types::CompletionItemKind::from(item.kind)),
-                    label_details: item.details.map(|details| {
-                        lsp_types::CompletionItemLabelDetails {
-                            detail: Some(details),
-                            description: None,
-                        }
-                    }),
-                    insert_text: item.insert_text,
-                    ..Default::default()
+                .map(|item| {
+                    let rank = item.rank();
+                    lsp_types::CompletionItem {
+                        label: item.label,
+                        kind: Some(lsp_types::CompletionItemKind::from(item.kind)),
+                        label_details: item.details.map(|details| {
+                            lsp_types::CompletionItemLabelDetails {
+                                detail: Some(details),
+                                description: None,
+                            }
+                        }),
+                        insert_text: item.insert_text,
+                        sort_text: Some(rank.to_string()),
+                        ..Default::default()
+                    }
                 })
                 .collect()
         })

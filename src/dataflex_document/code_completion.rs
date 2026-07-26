@@ -33,6 +33,27 @@ pub enum CompletionItemKind {
     Struct,
 }
 
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+pub enum CompletionItemRank {
+    Top = 0,
+    NearTop = 1,
+    UpperMid = 4,
+    Mid = 5,
+    NearBottom = 8,
+    Bottom = 9,
+}
+
+#[derive(Debug, Default)]
+#[allow(dead_code)]
+enum CompletionItemRankAdjustment {
+    #[default]
+    None,
+    Up,
+    Down,
+}
+
 impl CodeCompletion {
     pub fn code_completion(
         doc: &DataFlexDocument,
@@ -487,6 +508,69 @@ impl CodeCompletion {
                 kind: CompletionItemKind::Command,
                 ..Default::default()
             })
+    }
+}
+
+impl CompletionItem {
+    pub fn rank(&self) -> CompletionItemRank {
+        let rank = match self.kind {
+            CompletionItemKind::LocalVariable => CompletionItemRank::NearTop,
+            CompletionItemKind::TableName => CompletionItemRank::UpperMid,
+            CompletionItemKind::Object => CompletionItemRank::UpperMid,
+            CompletionItemKind::Method => CompletionItemRank::UpperMid,
+            CompletionItemKind::Property => CompletionItemRank::UpperMid,
+            CompletionItemKind::EnumMember => CompletionItemRank::Mid,
+            CompletionItemKind::Text => CompletionItemRank::Mid,
+            CompletionItemKind::Class => CompletionItemRank::Mid,
+            CompletionItemKind::Function => CompletionItemRank::Mid,
+            CompletionItemKind::StructMember => CompletionItemRank::Mid,
+            CompletionItemKind::TableColumn => CompletionItemRank::Mid,
+            CompletionItemKind::Command => CompletionItemRank::Mid,
+            CompletionItemKind::File => CompletionItemRank::Mid,
+            CompletionItemKind::Struct => CompletionItemRank::Mid,
+            CompletionItemKind::GlobalVariable => CompletionItemRank::NearBottom,
+        };
+        if self
+            .label
+            .chars()
+            .next()
+            .is_some_and(|c| !c.is_ascii_alphabetic())
+        {
+            rank.adjusted(CompletionItemRankAdjustment::Down)
+        } else {
+            rank
+        }
+    }
+}
+
+impl CompletionItemRank {
+    fn adjusted(self, adjustment: CompletionItemRankAdjustment) -> Self {
+        match adjustment {
+            CompletionItemRankAdjustment::None => self,
+            CompletionItemRankAdjustment::Up => match self {
+                CompletionItemRank::Top => self,
+                CompletionItemRank::NearTop => CompletionItemRank::Top,
+                CompletionItemRank::UpperMid => CompletionItemRank::NearTop,
+                CompletionItemRank::Mid => CompletionItemRank::UpperMid,
+                CompletionItemRank::NearBottom => CompletionItemRank::Mid,
+                CompletionItemRank::Bottom => CompletionItemRank::NearBottom,
+            },
+            CompletionItemRankAdjustment::Down => match self {
+                CompletionItemRank::Top => CompletionItemRank::NearTop,
+                CompletionItemRank::NearTop => CompletionItemRank::UpperMid,
+                CompletionItemRank::UpperMid => CompletionItemRank::Mid,
+                CompletionItemRank::Mid => CompletionItemRank::NearBottom,
+                CompletionItemRank::NearBottom => CompletionItemRank::Bottom,
+                CompletionItemRank::Bottom => self,
+            },
+        }
+    }
+}
+
+impl std::fmt::Display for CompletionItemRank {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let rank = *self as u8;
+        write!(f, "{rank}")
     }
 }
 
