@@ -60,6 +60,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["procedure_definition", "function_definition"])
     }
 
+    pub fn goto_enclosing_if_statement(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["if_statement"])
+    }
+
     pub fn goto_enclosing_paren_expression(&mut self) -> bool {
         self.goto_enclosing_node_kind(&["paren_expression"])
     }
@@ -94,6 +98,10 @@ impl<'a> DataFlexTreeCursor<'a> {
 
     pub fn is_object_or_class_definition(&self) -> bool {
         self.is_object_definition() || self.is_class_definition() || self.is_composite_definition()
+    }
+
+    pub fn is_function_definition(&self) -> bool {
+        self.node().kind() == "function_definition"
     }
 
     pub fn is_identifier(&self) -> bool {

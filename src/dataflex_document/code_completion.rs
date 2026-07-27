@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt::Write;
 
 use super::*;
@@ -76,7 +77,7 @@ impl CodeCompletion {
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
-            DocumentContext::CommandReference => Some(Self::command_completions(doc)),
+            DocumentContext::CommandReference => Some(Self::command_completions(doc, position)),
             DocumentContext::FileDependency => Some(Self::file_completions(doc)),
             DocumentContext::MethodDeclaration(kind) => {
                 Some(Self::override_completions(doc, position, kind))
@@ -434,8 +435,8 @@ impl CodeCompletion {
         }
     }
 
-    fn command_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
-        Self::system_commands(doc)
+    fn command_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
+        Self::system_commands(doc, position)
             .chain(
                 doc.index
                     .get()
@@ -506,23 +507,29 @@ impl CodeCompletion {
             })
     }
 
-    fn system_commands(doc: &DataFlexDocument) -> impl Iterator<Item = CompletionItem> {
+    fn system_commands(
+        doc: &DataFlexDocument,
+        position: Point,
+    ) -> impl Iterator<Item = CompletionItem> {
+        let likely_commands = likely_commands(doc, position);
+
         doc.index
             .get()
             .all_commands()
             .into_iter()
-            .map(|command| CompletionItem {
+            .map(move |command| CompletionItem {
                 label: command.to_string(),
                 kind: CompletionItemKind::Command,
+                relative_rank: likely_commands
+                    .contains(&command)
+                    .then_some(CompletionItemRankAdjustment::Up)
+                    .unwrap_or_default(),
                 ..Default::default()
             })
     }
 }
 
-fn likely_enum_symbols(
-    doc: &DataFlexDocument,
-    position: Point,
-) -> std::collections::HashSet<SymbolName> {
+fn likely_enum_symbols(doc: &DataFlexDocument, position: Point) -> HashSet<SymbolName> {
     if let Some(mut cursor) = doc.cursor()
         && cursor.goto_leaf_node_preceding_point(position)
         && cursor.is_keyword(|kw| matches!(kw, "to"))
@@ -544,8 +551,53 @@ fn likely_enum_symbols(
             .map(SymbolName::from)
             .collect()
     } else {
-        std::collections::HashSet::new()
+        HashSet::new()
     }
+}
+
+fn likely_commands(doc: &DataFlexDocument, position: Point) -> HashSet<SymbolName> {
+    let mut result: HashSet<SymbolName> = ["Move", "Get", "Set", "Send", "WebGet", "WebSet"]
+        .into_iter()
+        .map(SymbolName::from)
+        .collect();
+
+    if let Some(mut cursor) = doc.cursor() {
+        if cursor.goto_descendant_for_point(position)
+            && cursor.goto_enclosing_if_statement()
+            && cursor
+                .node()
+                .child_by_field_name("condition")
+                .is_some_and(|condition_node| {
+                    condition_node.end_position() < position
+                        && condition_node
+                            .next_sibling()
+                            .is_none_or(|n| n.end_position() >= position)
+                })
+        {
+            // This is in an if-statement at the action command position, e.g. `if expr |`.
+            result.insert("Begin".into());
+        } else if cursor.goto_leaf_node_preceding_point(position)
+            && cursor.is_keyword(|kw| matches!(kw, "else"))
+        {
+            // This is an else-statement at the action command position, e.g. `else |`.
+            result.insert("Begin".into());
+            result.insert("If".into());
+        } else {
+            result.insert("If".into());
+            result.insert("For".into());
+            result.insert("While".into());
+        }
+
+        if cursor.goto_enclosing_method_definition() {
+            if cursor.is_function_definition() {
+                result.insert("Function_Return".into());
+            } else {
+                result.insert("Procedure_Return".into());
+            }
+        }
+    }
+
+    result
 }
 
 impl CompletionItem {
