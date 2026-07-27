@@ -6,7 +6,7 @@ pub struct SymbolDeclaration {
 }
 
 impl SymbolDeclaration {
-    pub fn new(qualified_symbol: &QualifiedIndexSymbol<'_>, index: &Index) -> Self {
+    pub fn new(qualified_symbol: QualifiedIndexSymbol<'_>, index: &Index) -> Self {
         let description: String = index
             .associated_meta_tags("Description".into(), qualified_symbol)
             .map(|tag| tag.value.trim_matches('"'))

@@ -288,7 +288,7 @@ impl DataFlexDocument {
         } else {
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols
-                .map(|s| symbol_declaration::SymbolDeclaration::new(&s, &self.index.get()))
+                .map(|s| symbol_declaration::SymbolDeclaration::new(s, &self.index.get()))
                 .map(|symbol_declaration| {
                     lsp_types::MarkedString::from_markdown(symbol_declaration.to_string())
                 })

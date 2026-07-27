@@ -409,6 +409,12 @@ impl From<Vec<SymbolName>> for SymbolPath {
     }
 }
 
+impl MetadataTag {
+    pub fn value_list(&self) -> impl Iterator<Item = &str> {
+        self.value.trim_matches('"').split(',').map(|v| v.trim())
+    }
+}
+
 impl<'a> QualifiedIndexSymbol<'a> {
     pub fn parent_symbol(&self) -> Option<QualifiedIndexSymbol<'a>> {
         self.symbol

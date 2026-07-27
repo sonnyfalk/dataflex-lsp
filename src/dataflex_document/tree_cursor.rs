@@ -135,6 +135,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         }
     }
 
+    pub fn is_set_statement(&self) -> bool {
+        self.node().kind() == "set_statement" || self.node().kind() == "web_set_statement"
+    }
+
     pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
         if self.node().kind() == "keyword" {
             let mut keyword = self.doc.line_map.text_for_node(&self.node());

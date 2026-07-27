@@ -750,11 +750,11 @@ impl Index {
     pub fn associated_meta_tags<'a>(
         &'a self,
         tag_name: SymbolName,
-        qualified_symbol: &QualifiedIndexSymbol<'a>,
+        qualified_symbol: QualifiedIndexSymbol<'a>,
     ) -> impl Iterator<Item = &'a MetadataTag> {
         let symbol_with_tag = match qualified_symbol.symbol {
             IndexSymbol::Class(_) | IndexSymbol::Object(_) => self
-                .class_hierarchy(*qualified_symbol)
+                .class_hierarchy(qualified_symbol)
                 .find(|c| c.symbol.metadata_tags().any(|tag| tag.name == tag_name))
                 .map(|c| c.symbol),
             IndexSymbol::Method(_) | IndexSymbol::Property(_) => {
@@ -1099,7 +1099,7 @@ End_Class
             .find_class(&"cMyBaseClass".into())
             .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
-        let mut tags = index.associated_meta_tags("Description".into(), &class);
+        let mut tags = index.associated_meta_tags("Description".into(), class);
         assert_eq!(
             format!("{:?}", tags.next()),
             "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description\\\"\" })"
@@ -1110,7 +1110,7 @@ End_Class
             .find_class(&"cMySubClass".into())
             .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
-        let mut tags = index.associated_meta_tags("Description".into(), &class);
+        let mut tags = index.associated_meta_tags("Description".into(), class);
         assert_eq!(
             format!("{:?}", tags.next()),
             "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description\\\"\" })"
@@ -1144,7 +1144,7 @@ End_Class
             .filter_map(|symbol_ref| index.resolve_symbol(symbol_ref));
 
         let method = methods.next().unwrap();
-        let mut tags = index.associated_meta_tags("Description".into(), &method);
+        let mut tags = index.associated_meta_tags("Description".into(), method);
         assert_eq!(
             format!("{:?}", tags.next()),
             "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description for method\\\"\" })"
@@ -1152,7 +1152,7 @@ End_Class
         assert_eq!(format!("{:?}", tags.next()), "None");
 
         let method = methods.next().unwrap();
-        let mut tags = index.associated_meta_tags("Description".into(), &method);
+        let mut tags = index.associated_meta_tags("Description".into(), method);
         assert_eq!(
             format!("{:?}", tags.next()),
             "Some(MetadataTag { name: SymbolName(\"Description\"), value: \"\\\"A test description for method\\\"\" })"

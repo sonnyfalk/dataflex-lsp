@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use super::*;
-use index::{IndexSymbolType, MethodKind, MethodSymbol, StructSymbol};
+use index::{IndexSymbolType, MethodKind, MethodSymbol, StructSymbol, SymbolName};
 
 pub struct CodeCompletion {}
 
@@ -11,6 +11,7 @@ pub struct CompletionItem {
     pub kind: CompletionItemKind,
     pub details: Option<String>,
     pub insert_text: Option<String>,
+    relative_rank: CompletionItemRankAdjustment,
 }
 
 #[derive(Debug, Default)]
@@ -45,13 +46,15 @@ pub enum CompletionItemRank {
     Bottom = 9,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 #[allow(dead_code)]
 enum CompletionItemRankAdjustment {
     #[default]
     None,
     Up,
     Down,
+    Top,
+    Bottom,
 }
 
 impl CodeCompletion {
@@ -215,6 +218,7 @@ impl CodeCompletion {
                         kind: CompletionItemKind::Method,
                         details: Some(details.clone()),
                         insert_text: Some(format!("{}{}\n    ", m.symbol.name(), details)),
+                        ..Default::default()
                     }
                 })
                 .collect()
@@ -224,6 +228,8 @@ impl CodeCompletion {
     }
 
     fn expr_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
+        let likely_enum_symbols = likely_enum_symbols(doc, position);
+
         Self::local_variable_completions(doc, position)
             .chain(
                 doc.index
@@ -255,6 +261,10 @@ impl CodeCompletion {
                     .map(|alias_name| CompletionItem {
                         label: alias_name.to_string(),
                         kind: CompletionItemKind::EnumMember,
+                        relative_rank: likely_enum_symbols
+                            .contains(&alias_name)
+                            .then_some(CompletionItemRankAdjustment::Top)
+                            .unwrap_or_default(),
                         ..Default::default()
                     }),
             )
@@ -376,9 +386,7 @@ impl CodeCompletion {
             && cursor.goto_previous_sibling()
             && cursor.is_identifier()
         {
-            Some(index::SymbolName::from(
-                doc.line_map.text_for_node(&cursor.node()),
-            ))
+            Some(SymbolName::from(doc.line_map.text_for_node(&cursor.node())))
         } else {
             None
         };
@@ -511,9 +519,38 @@ impl CodeCompletion {
     }
 }
 
+fn likely_enum_symbols(
+    doc: &DataFlexDocument,
+    position: Point,
+) -> std::collections::HashSet<SymbolName> {
+    if let Some(mut cursor) = doc.cursor()
+        && cursor.goto_leaf_node_preceding_point(position)
+        && cursor.is_keyword(|kw| matches!(kw, "to"))
+        && cursor.goto_enclosing_method_call()
+        && cursor.is_set_statement()
+        && let Some(method_name_node) = cursor.node().child_by_field_name("name")
+    {
+        // This is a set statement, see if there are any associated EnumList meta tags.
+        let reference_resolver = ReferenceResolver::new(doc);
+        let symbols = reference_resolver.resolve_reference(
+            DocumentContext::MethodReference(MethodKind::Set),
+            method_name_node.start_position(),
+        );
+
+        let index = doc.index.get();
+        symbols
+            .flat_map(|method| index.associated_meta_tags("EnumList".into(), method))
+            .flat_map(|tag| tag.value_list())
+            .map(SymbolName::from)
+            .collect()
+    } else {
+        std::collections::HashSet::new()
+    }
+}
+
 impl CompletionItem {
     pub fn rank(&self) -> CompletionItemRank {
-        let rank = match self.kind {
+        let mut rank = match self.kind {
             CompletionItemKind::LocalVariable => CompletionItemRank::NearTop,
             CompletionItemKind::TableName => CompletionItemRank::UpperMid,
             CompletionItemKind::Object => CompletionItemRank::UpperMid,
@@ -536,10 +573,10 @@ impl CompletionItem {
             .next()
             .is_some_and(|c| !c.is_ascii_alphabetic())
         {
-            rank.adjusted(CompletionItemRankAdjustment::Down)
-        } else {
-            rank
+            rank = rank.adjusted(CompletionItemRankAdjustment::Down);
         }
+
+        rank.adjusted(self.relative_rank)
     }
 }
 
@@ -563,6 +600,8 @@ impl CompletionItemRank {
                 CompletionItemRank::NearBottom => CompletionItemRank::Bottom,
                 CompletionItemRank::Bottom => self,
             },
+            CompletionItemRankAdjustment::Top => CompletionItemRank::Top,
+            CompletionItemRankAdjustment::Bottom => CompletionItemRank::Bottom,
         }
     }
 }
