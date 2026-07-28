@@ -229,7 +229,7 @@ impl WorkspaceInfo {
     fn find_first_sws(path: &PathBuf) -> Option<PathBuf> {
         path.read_dir().ok()?.find_map(|f| {
             let file_path = f.ok()?.path();
-            if file_path.extension()?.to_str() == Some("sws") {
+            if file_path.extension()?.to_str()?.eq_ignore_ascii_case("sws") {
                 Some(file_path)
             } else {
                 None
