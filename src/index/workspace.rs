@@ -25,7 +25,7 @@ pub struct ProjectInfo {
 #[derive(Deserialize)]
 struct RawWorkspaceFile {
     df: serde_json::Number,
-    projects: Option<Vec<String>>,
+    projects: Option<Vec<serde_json::Value>>,
     dependencies: Option<Vec<serde_json::Value>>,
 }
 
@@ -82,6 +82,13 @@ impl WorkspaceInfo {
                 .projects
                 .unwrap_or_default()
                 .iter()
+                .filter_map(|project| match project {
+                    serde_json::Value::String(file) => Some(file.as_str()),
+                    serde_json::Value::Object(fields) => {
+                        fields.get("name").and_then(|name| name.as_str())
+                    }
+                    _ => None,
+                })
                 .map(|f| ProjectInfo {
                     main_file: root_folder.join("AppSrc").join(f),
                     toolchain: None,
@@ -235,5 +242,29 @@ impl WorkspaceInfo {
                 None
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_json_workspace_with_project_objects() {
+        let sws_content = r#"
+{
+    "df": 26.0,
+    "projects": [
+        "Main.src",
+        { "name": "Test.src", "testProject": true }
+    ],
+    "dependencies": [
+        "../SomeLibrary/SomeLibrary.sws"
+    ]
+}"#;
+        let ws = WorkspaceInfo::load_from_str(sws_content, "Test.sws".into()).unwrap();
+        assert_eq!(ws.dataflex_version, Some(DataFlexVersion::from("26.0")));
+        assert_eq!(ws.projects.len(), 2);
+        assert_eq!(ws.local_packages.len(), 1);
     }
 }
