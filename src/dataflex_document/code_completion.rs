@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use super::*;
@@ -12,7 +12,6 @@ pub struct CompletionItem {
     pub kind: CompletionItemKind,
     pub details: Option<String>,
     pub insert_text: Option<String>,
-    relative_rank: CompletionItemRankAdjustment,
 }
 
 #[derive(Debug, Default)]
@@ -33,6 +32,13 @@ pub enum CompletionItemKind {
     Command,
     File,
     Struct,
+}
+
+pub struct CompletionItemRanker<'a> {
+    doc: &'a DataFlexDocument,
+    position: Point,
+    likely_enum_symbols: std::sync::OnceLock<HashMap<String, CompletionItemRankAdjustment>>,
+    likely_commands: std::sync::OnceLock<HashMap<String, CompletionItemRankAdjustment>>,
 }
 
 #[repr(u8)]
@@ -77,7 +83,7 @@ impl CodeCompletion {
             DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
             DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
             DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
-            DocumentContext::CommandReference => Some(Self::command_completions(doc, position)),
+            DocumentContext::CommandReference => Some(Self::command_completions(doc)),
             DocumentContext::FileDependency => Some(Self::file_completions(doc)),
             DocumentContext::MethodDeclaration(kind) => {
                 Some(Self::override_completions(doc, position, kind))
@@ -229,8 +235,6 @@ impl CodeCompletion {
     }
 
     fn expr_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
-        let likely_enum_symbols = likely_enum_symbols(doc, position);
-
         Self::local_variable_completions(doc, position)
             .chain(
                 doc.index
@@ -262,10 +266,6 @@ impl CodeCompletion {
                     .map(|alias_name| CompletionItem {
                         label: alias_name.to_string(),
                         kind: CompletionItemKind::EnumMember,
-                        relative_rank: likely_enum_symbols
-                            .contains(&alias_name)
-                            .then_some(CompletionItemRankAdjustment::Top)
-                            .unwrap_or_default(),
                         ..Default::default()
                     }),
             )
@@ -435,8 +435,8 @@ impl CodeCompletion {
         }
     }
 
-    fn command_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
-        Self::system_commands(doc, position)
+    fn command_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
+        Self::system_commands(doc)
             .chain(
                 doc.index
                     .get()
@@ -507,12 +507,7 @@ impl CodeCompletion {
             })
     }
 
-    fn system_commands(
-        doc: &DataFlexDocument,
-        position: Point,
-    ) -> impl Iterator<Item = CompletionItem> {
-        let likely_commands = likely_commands(doc, position);
-
+    fn system_commands(doc: &DataFlexDocument) -> impl Iterator<Item = CompletionItem> {
         doc.index
             .get()
             .all_commands()
@@ -520,106 +515,44 @@ impl CodeCompletion {
             .map(move |command| CompletionItem {
                 label: command.to_string(),
                 kind: CompletionItemKind::Command,
-                relative_rank: likely_commands
-                    .contains(&command)
-                    .then_some(CompletionItemRankAdjustment::Up)
-                    .unwrap_or_default(),
                 ..Default::default()
             })
     }
 }
 
-fn likely_enum_symbols(doc: &DataFlexDocument, position: Point) -> HashSet<SymbolName> {
-    if let Some(mut cursor) = doc.cursor()
-        && cursor.goto_leaf_node_preceding_point(position)
-        && cursor.is_keyword(|kw| matches!(kw, "to"))
-        && cursor.goto_enclosing_method_call()
-        && cursor.is_set_statement()
-        && let Some(method_name_node) = cursor.node().child_by_field_name("name")
-    {
-        // This is a set statement, see if there are any associated EnumList meta tags.
-        let reference_resolver = ReferenceResolver::new(doc);
-        let symbols = reference_resolver.resolve_reference(
-            DocumentContext::MethodReference(MethodKind::Set),
-            method_name_node.start_position(),
-        );
-
-        let index = doc.index.get();
-        symbols
-            .flat_map(|method| index.associated_meta_tags("EnumList".into(), method))
-            .flat_map(|tag| tag.value_list())
-            .map(SymbolName::from)
-            .collect()
-    } else {
-        HashSet::new()
-    }
-}
-
-fn likely_commands(doc: &DataFlexDocument, position: Point) -> HashSet<SymbolName> {
-    let mut result: HashSet<SymbolName> = ["Move", "Get", "Set", "Send", "WebGet", "WebSet"]
-        .into_iter()
-        .map(SymbolName::from)
-        .collect();
-
-    if let Some(mut cursor) = doc.cursor() {
-        if cursor.goto_descendant_for_point(position)
-            && cursor.goto_enclosing_if_statement()
-            && cursor
-                .node()
-                .child_by_field_name("condition")
-                .is_some_and(|condition_node| {
-                    condition_node.end_position() < position
-                        && condition_node
-                            .next_sibling()
-                            .is_none_or(|n| n.end_position() >= position)
-                })
-        {
-            // This is in an if-statement at the action command position, e.g. `if expr |`.
-            result.insert("Begin".into());
-        } else if cursor.goto_leaf_node_preceding_point(position)
-            && cursor.is_keyword(|kw| matches!(kw, "else"))
-        {
-            // This is an else-statement at the action command position, e.g. `else |`.
-            result.insert("Begin".into());
-            result.insert("If".into());
-        } else {
-            result.insert("If".into());
-            result.insert("For".into());
-            result.insert("While".into());
-        }
-
-        if cursor.goto_enclosing_method_definition() {
-            if cursor.is_function_definition() {
-                result.insert("Function_Return".into());
-            } else {
-                result.insert("Procedure_Return".into());
-            }
+impl<'a> CompletionItemRanker<'a> {
+    pub fn new(doc: &'a DataFlexDocument, position: Point) -> Self {
+        Self {
+            doc,
+            position,
+            likely_enum_symbols: std::sync::OnceLock::new(),
+            likely_commands: std::sync::OnceLock::new(),
         }
     }
 
-    result
-}
-
-impl CompletionItem {
-    pub fn rank(&self) -> CompletionItemRank {
-        let mut rank = match self.kind {
+    pub fn rank(&self, completion_item: &CompletionItem) -> CompletionItemRank {
+        let mut rank = match completion_item.kind {
             CompletionItemKind::LocalVariable => CompletionItemRank::NearTop,
             CompletionItemKind::TableName => CompletionItemRank::UpperMid,
             CompletionItemKind::Object => CompletionItemRank::UpperMid,
             CompletionItemKind::Method => CompletionItemRank::UpperMid,
             CompletionItemKind::Property => CompletionItemRank::UpperMid,
-            CompletionItemKind::EnumMember => CompletionItemRank::Mid,
+            CompletionItemKind::EnumMember => CompletionItemRank::Mid
+                .adjusted(self.enum_symbol_adjustment(&completion_item.label)),
             CompletionItemKind::Text => CompletionItemRank::Mid,
             CompletionItemKind::Class => CompletionItemRank::Mid,
             CompletionItemKind::Function => CompletionItemRank::Mid,
             CompletionItemKind::StructMember => CompletionItemRank::Mid,
             CompletionItemKind::TableColumn => CompletionItemRank::Mid,
-            CompletionItemKind::Command => CompletionItemRank::Mid,
+            CompletionItemKind::Command => {
+                CompletionItemRank::Mid.adjusted(self.command_adjustment(&completion_item.label))
+            }
             CompletionItemKind::File => CompletionItemRank::Mid,
             CompletionItemKind::Struct => CompletionItemRank::Mid,
             CompletionItemKind::GlobalVariable => CompletionItemRank::NearBottom,
         };
-        if self
+
+        if completion_item
             .label
             .chars()
             .next()
@@ -628,7 +561,101 @@ impl CompletionItem {
             rank = rank.adjusted(CompletionItemRankAdjustment::Down);
         }
 
-        rank.adjusted(self.relative_rank)
+        rank
+    }
+
+    fn enum_symbol_adjustment(&self, name: &str) -> CompletionItemRankAdjustment {
+        let likely_enum_symbols = self
+            .likely_enum_symbols
+            .get_or_init(|| self.likely_enum_symbols());
+        if let Some(adjustment) = likely_enum_symbols.get(name) {
+            *adjustment
+        } else {
+            CompletionItemRankAdjustment::None
+        }
+    }
+
+    fn command_adjustment(&self, name: &str) -> CompletionItemRankAdjustment {
+        let likely_commands = self.likely_commands.get_or_init(|| self.likely_commands());
+        if let Some(adjustment) = likely_commands.get(name) {
+            *adjustment
+        } else {
+            CompletionItemRankAdjustment::None
+        }
+    }
+
+    fn likely_enum_symbols(&self) -> HashMap<String, CompletionItemRankAdjustment> {
+        if let Some(mut cursor) = self.doc.cursor()
+            && cursor.goto_leaf_node_preceding_point(self.position)
+            && cursor.is_keyword(|kw| matches!(kw, "to"))
+            && cursor.goto_enclosing_method_call()
+            && cursor.is_set_statement()
+            && let Some(method_name_node) = cursor.node().child_by_field_name("name")
+        {
+            // This is a set statement, see if there are any associated EnumList meta tags.
+            let reference_resolver = ReferenceResolver::new(self.doc);
+            let symbols = reference_resolver.resolve_reference(
+                DocumentContext::MethodReference(MethodKind::Set),
+                method_name_node.start_position(),
+            );
+
+            let index = self.doc.index.get();
+            symbols
+                .flat_map(|method| index.associated_meta_tags("EnumList".into(), method))
+                .flat_map(|tag| tag.value_list())
+                .map(|enum_symbol| (String::from(enum_symbol), CompletionItemRankAdjustment::Top))
+                .collect()
+        } else {
+            HashMap::new()
+        }
+    }
+
+    fn likely_commands(&self) -> HashMap<String, CompletionItemRankAdjustment> {
+        let mut result: HashSet<String> = ["Move", "Get", "Set", "Send", "WebGet", "WebSet"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        if let Some(mut cursor) = self.doc.cursor() {
+            if cursor.goto_descendant_for_point(self.position)
+                && cursor.goto_enclosing_if_statement()
+                && cursor
+                    .node()
+                    .child_by_field_name("condition")
+                    .is_some_and(|condition_node| {
+                        condition_node.end_position() < self.position
+                            && condition_node
+                                .next_sibling()
+                                .is_none_or(|n| n.end_position() >= self.position)
+                    })
+            {
+                // This is in an if-statement at the action command position, e.g. `if expr |`.
+                result.insert("Begin".into());
+            } else if cursor.goto_leaf_node_preceding_point(self.position)
+                && cursor.is_keyword(|kw| matches!(kw, "else"))
+            {
+                // This is an else-statement at the action command position, e.g. `else |`.
+                result.insert("Begin".into());
+                result.insert("If".into());
+            } else {
+                result.insert("If".into());
+                result.insert("For".into());
+                result.insert("While".into());
+            }
+
+            if cursor.goto_enclosing_method_definition() {
+                if cursor.is_function_definition() {
+                    result.insert("Function_Return".into());
+                } else {
+                    result.insert("Procedure_Return".into());
+                }
+            }
+        }
+
+        result
+            .into_iter()
+            .map(|name| (name, CompletionItemRankAdjustment::Up))
+            .collect()
     }
 }
 

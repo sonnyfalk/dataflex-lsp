@@ -237,11 +237,12 @@ impl DataFlexDocument {
 
         let completions =
             code_completion::CodeCompletion::code_completion(self, position, auto_complete);
+        let ranker = code_completion::CompletionItemRanker::new(self, position);
         completions.map(|mut completions| {
             completions
                 .drain(..)
                 .map(|item| {
-                    let rank = item.rank();
+                    let rank = ranker.rank(&item);
                     lsp_types::CompletionItem {
                         label: item.label,
                         kind: Some(lsp_types::CompletionItemKind::from(item.kind)),
