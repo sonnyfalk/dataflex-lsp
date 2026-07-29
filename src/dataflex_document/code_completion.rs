@@ -19,7 +19,9 @@ pub enum CompletionItemKind {
     #[default]
     Text,
     Class,
-    Object,
+    LocalObject,
+    TopLevelObject,
+    OtherObject,
     Method,
     Property,
     LocalVariable,
@@ -247,17 +249,7 @@ impl CodeCompletion {
                         ..Default::default()
                     }),
             )
-            .chain(
-                doc.index
-                    .get()
-                    .all_known_objects()
-                    .drain(..)
-                    .map(|object_name| CompletionItem {
-                        label: object_name.to_string(),
-                        kind: CompletionItemKind::Object,
-                        ..Default::default()
-                    }),
-            )
+            .chain(Self::object_completions(doc, &doc.index.get()))
             .chain(
                 doc.index
                     .get()
@@ -297,17 +289,7 @@ impl CodeCompletion {
                         ..Default::default()
                     }),
             )
-            .chain(
-                doc.index
-                    .get()
-                    .all_known_objects()
-                    .drain(..)
-                    .map(|object_name| CompletionItem {
-                        label: object_name.to_string(),
-                        kind: CompletionItemKind::Object,
-                        ..Default::default()
-                    }),
-            )
+            .chain(Self::object_completions(doc, &doc.index.get()))
             .chain(
                 doc.index
                     .get()
@@ -495,6 +477,42 @@ impl CodeCompletion {
             })
     }
 
+    fn object_completions(
+        doc: &DataFlexDocument,
+        index: &index::Index,
+    ) -> impl Iterator<Item = CompletionItem> {
+        let local_file_ref = index::IndexFileRef::from(&doc.file_path);
+        index.all_object_symbols().map(move |symbols| {
+            let local_object = symbols
+                .iter()
+                .find(|symbol_ref| symbol_ref.file_ref == local_file_ref);
+            let top_level_object = local_object
+                .is_none()
+                .then(|| {
+                    symbols
+                        .iter()
+                        .find(|symbol_ref| symbol_ref.symbol_path.is_top_level())
+                })
+                .flatten();
+            let kind = if local_object.is_some() {
+                CompletionItemKind::LocalObject
+            } else if top_level_object.is_some() {
+                CompletionItemKind::TopLevelObject
+            } else {
+                CompletionItemKind::OtherObject
+            };
+            let label = symbols
+                .first()
+                .map(|symbol_ref| symbol_ref.symbol_path.name().to_string())
+                .unwrap_or_default();
+            CompletionItem {
+                label,
+                kind,
+                ..Default::default()
+            }
+        })
+    }
+
     fn system_functions(doc: &DataFlexDocument) -> impl Iterator<Item = CompletionItem> {
         doc.index
             .get()
@@ -533,8 +551,9 @@ impl<'a> CompletionItemRanker<'a> {
     pub fn rank(&self, completion_item: &CompletionItem) -> CompletionItemRank {
         let mut rank = match completion_item.kind {
             CompletionItemKind::LocalVariable => CompletionItemRank::NearTop,
+            CompletionItemKind::LocalObject => CompletionItemRank::NearTop,
             CompletionItemKind::TableName => CompletionItemRank::UpperMid,
-            CompletionItemKind::Object => CompletionItemRank::UpperMid,
+            CompletionItemKind::TopLevelObject => CompletionItemRank::UpperMid,
             CompletionItemKind::Method => CompletionItemRank::UpperMid,
             CompletionItemKind::Property => CompletionItemRank::UpperMid,
             CompletionItemKind::EnumMember => CompletionItemRank::Mid
@@ -549,6 +568,7 @@ impl<'a> CompletionItemRanker<'a> {
             }
             CompletionItemKind::File => CompletionItemRank::Mid,
             CompletionItemKind::Struct => CompletionItemRank::Mid,
+            CompletionItemKind::OtherObject => CompletionItemRank::NearBottom,
             CompletionItemKind::GlobalVariable => CompletionItemRank::NearBottom,
         };
 

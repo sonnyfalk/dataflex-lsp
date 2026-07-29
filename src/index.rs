@@ -134,12 +134,11 @@ impl Index {
         self.lookup_tables.object_lookup_table().get(name).is_some()
     }
 
-    pub fn all_known_objects(&self) -> Vec<SymbolName> {
+    pub fn all_object_symbols(&self) -> impl Iterator<Item = &Vec<IndexSymbolRef>> {
         self.lookup_tables
             .object_lookup_table()
-            .keys()
-            .cloned()
-            .collect()
+            .iter_all()
+            .map(|(_, symbols)| symbols)
     }
 
     pub fn find_objects(&self, name: &SymbolName) -> core::slice::Iter<'_, IndexSymbolRef> {
