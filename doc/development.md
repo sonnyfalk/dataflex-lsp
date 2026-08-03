@@ -32,12 +32,11 @@ The index is populated by `Indexer`, which takes the workspace paths and recusiv
 - Fuzzy matching for workspace symbols
 - Support `External_Function`, `Register_Function` and related, in parser and indexing
 - Support `Open`, `Add/Subtract/Subtotal`, `Find`, `For_All`, `Function_Return/Procedure_Return`, `WebPublishFunction/WebPublishProcedure`, `WebSetResponsive, WebRegisterPath` in parser, code completion etc.
-- Handle `#ifdef` in parser
+- Handle `#ifdef` with indexing
 - Support embedded SQL nested syntax highlighting
 - Avoid re-indexing all files after opening workspace and loading index
 - Support project/file-dependency aware index lookups
 - Support separate toolchains for each project
-- Code completion sorting/ranking, local variables before global etc.
 - Enhance code completion for `WebGet/WebSet` to filter on `WebProperty` methods/properties
 - Collect doc comments/comments in addition to "description" for mouse hover details
 - Add parameter information to system expr evaluator functions
