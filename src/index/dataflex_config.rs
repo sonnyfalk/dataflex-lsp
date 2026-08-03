@@ -102,7 +102,7 @@ impl DataFlexConfig {
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn versioned_configs() -> Option<HashMap<DataFlexVersion, Vec<PathBuf>>> {
+    fn versioned_configs() -> Option<HashMap<DataFlexVersion, ConfigEntry>> {
         None
     }
 }
