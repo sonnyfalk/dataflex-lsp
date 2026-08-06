@@ -104,8 +104,8 @@ impl SyntaxMap {
         );
         let capture_names = query.capture_names();
 
-        let mut lines = Vec::with_capacity(doc.line_map.line_count());
-        lines.resize_with(doc.line_map.line_count(), || Line { tokens: Vec::new() });
+        let mut lines = Vec::with_capacity(doc.line_count());
+        lines.resize_with(doc.line_count(), || Line { tokens: Vec::new() });
 
         let index = doc.index.get();
 

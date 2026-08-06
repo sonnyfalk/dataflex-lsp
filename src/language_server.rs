@@ -16,6 +16,7 @@ pub struct DataFlexLanguageServer {
 
 struct DataFlexLanguageServerInner {
     client: Client,
+    client_supports_apply_edit_preserve_selection: OnceLock<bool>,
     open_files: DashMap<Url, OpenFile>,
     workspace_root: OnceLock<PathBuf>,
     indexer: OnceLock<index::Indexer>,
@@ -44,6 +45,7 @@ impl DataFlexLanguageServer {
         Self {
             inner: Arc::new(DataFlexLanguageServerInner {
                 client,
+                client_supports_apply_edit_preserve_selection: OnceLock::new(),
                 open_files: DashMap::new(),
                 workspace_root: OnceLock::new(),
                 indexer: OnceLock::new(),
@@ -70,6 +72,21 @@ impl LanguageServer for DataFlexLanguageServer {
             params.client_info.as_ref().unwrap().name,
             workspace_root
         );
+
+        _ = self
+            .inner
+            .client_supports_apply_edit_preserve_selection
+            .set(
+                params
+                    .capabilities
+                    .experimental
+                    .and_then(|exp| {
+                        exp.as_object()
+                            .and_then(|obj| obj.get("dataFlexApplyEditPreserveSelection"))
+                            .and_then(|value| value.as_bool())
+                    })
+                    .unwrap_or(false),
+            );
 
         _ = self
             .inner
@@ -248,32 +265,69 @@ impl LanguageServer for DataFlexLanguageServer {
             params.text_document.uri.as_str()
         );
 
-        let followup_edit =
+        let (followup_edit, preserve_selection) =
             if let Some(mut open_file) = self.inner.open_files.get_mut(&params.text_document.uri) {
                 let followup_edits = open_file.doc.edit_content(&params.content_changes);
                 open_file.modified = true;
                 self.inner.edited_files_notification.notify_one();
 
-                followup_edits.map(|edits| TextDocumentEdit {
-                    text_document: OptionalVersionedTextDocumentIdentifier::new(
-                        params.text_document.uri,
-                        params.text_document.version,
-                    ),
-                    edits: edits.into_iter().map(OneOf::Left).collect(),
-                })
+                let mut preserve_selection = false;
+                (
+                    followup_edits.map(|mut edits| {
+                        if edits.first().is_some_and(|e| {
+                            e.range.start.line >= open_file.doc.line_count() as u32
+                        }) {
+                            let end = open_file.doc.end_of_document();
+                            edits.insert(
+                                0,
+                                TextEdit {
+                                    range: Range {
+                                        start: Position::new(end.row as u32, end.column as u32),
+                                        end: Position::new(end.row as u32, end.column as u32),
+                                    },
+                                    new_text: String::from("\n"),
+                                },
+                            );
+                            preserve_selection = true;
+                        }
+                        TextDocumentEdit {
+                            text_document: OptionalVersionedTextDocumentIdentifier::new(
+                                params.text_document.uri,
+                                params.text_document.version,
+                            ),
+                            edits: edits.into_iter().map(OneOf::Left).collect(),
+                        }
+                    }),
+                    preserve_selection,
+                )
             } else {
-                None
+                (None, false)
             };
 
         if let Some(followup_edit) = followup_edit {
-            _ = self
-                .inner
-                .client
-                .apply_edit(WorkspaceEdit {
-                    document_changes: Some(DocumentChanges::Edits(vec![followup_edit])),
-                    ..Default::default()
-                })
-                .await;
+            if preserve_selection
+                && self
+                    .inner
+                    .client_supports_apply_edit_preserve_selection
+                    .get()
+                    .copied()
+                    .unwrap_or(false)
+            {
+                _ = self
+                    .inner
+                    .client
+                    .send_request::<custom_lsp_requests::ApplyEditPreserveSelection>(followup_edit)
+                    .await;
+            } else {
+                _ = self
+                    .inner
+                    .client
+                    .apply_edit(WorkspaceEdit {
+                        document_changes: Some(DocumentChanges::Edits(vec![followup_edit])),
+                        ..Default::default()
+                    })
+                    .await;
+            }
         }
     }
 
@@ -735,5 +789,18 @@ impl NotifyDebounce for tokio::sync::Notify {
             .await
             .is_ok()
         {}
+    }
+}
+
+mod custom_lsp_requests {
+    use tower_lsp::lsp_types::TextDocumentEdit;
+    use tower_lsp::lsp_types::request::Request;
+
+    pub enum ApplyEditPreserveSelection {}
+
+    impl Request for ApplyEditPreserveSelection {
+        type Params = TextDocumentEdit;
+        type Result = bool;
+        const METHOD: &'static str = "dataFlex/applyEditPreserveSelection";
     }
 }

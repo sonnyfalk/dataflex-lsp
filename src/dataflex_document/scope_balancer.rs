@@ -177,9 +177,8 @@ impl ScopeBalancer {
         )
         .expect("Error loading query");
         let mut query_cursor = tree_sitter::QueryCursor::new();
-        query_cursor.set_point_range(
-            Point::new(position.row + 1, 0)..Point::new(doc.line_map.line_count(), 0),
-        );
+        query_cursor
+            .set_point_range(Point::new(position.row + 1, 0)..Point::new(doc.line_count(), 0));
 
         query_cursor
             .matches(&query, node, doc.line_map.text_provider())

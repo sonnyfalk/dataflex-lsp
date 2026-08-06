@@ -65,6 +65,14 @@ impl DataFlexDocument {
         self.line_map.text()
     }
 
+    pub fn line_count(&self) -> usize {
+        self.line_map.line_count()
+    }
+
+    pub fn end_of_document(&self) -> Point {
+        self.line_map.end_point()
+    }
+
     fn update(&mut self) {
         self.tree = self.parser.parse_with_options(
             &mut |_, point| {

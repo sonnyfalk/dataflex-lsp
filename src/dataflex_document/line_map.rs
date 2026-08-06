@@ -137,6 +137,13 @@ impl LineMap {
         self.lines.len()
     }
 
+    pub fn end_point(&self) -> Point {
+        self.lines
+            .last()
+            .map(|line| Point::new(self.line_count() - 1, line.text.len()))
+            .unwrap_or(Point::default())
+    }
+
     pub fn offset_at_point(&self, point: Point) -> usize {
         self.lines[..point.row]
             .iter()
