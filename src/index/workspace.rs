@@ -60,7 +60,21 @@ impl WorkspaceInfo {
         }
 
         let content = std::fs::read_to_string(path).unwrap_or_default();
+        if let Some(workspace_info) = Self::load_from_str(&content, path.clone()) {
+            workspace_info
+        } else {
+            log::warn!("Unable to load workspace information from {:?}", path);
+            Self {
+                sws_path: path.clone(),
+                root_folder: path.clone(),
+                dataflex_version: None,
+                projects: Vec::new(),
+                local_packages: Vec::new(),
+            }
+        }
+    }
 
+    pub fn load_from_str(content: &str, path: PathBuf) -> Option<Self> {
         if let Ok(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content) {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
             let dataflex_version = Some(DataFlexVersion::from(raw_workspace_file.df.to_string()));
@@ -95,13 +109,13 @@ impl WorkspaceInfo {
                     }
                 })
                 .collect();
-            Self {
-                sws_path: path.clone(),
+            Some(Self {
+                sws_path: path,
                 root_folder,
                 dataflex_version,
                 projects,
                 local_packages,
-            }
+            })
         } else if let Ok(ini_file) = ini::Ini::load_from_str_opt(
             &content,
             ini::ParseOption {
@@ -139,22 +153,15 @@ impl WorkspaceInfo {
                     }
                 })
                 .collect();
-            Self {
-                sws_path: path.clone(),
+            Some(Self {
+                sws_path: path,
                 root_folder,
                 dataflex_version,
                 projects,
                 local_packages,
-            }
+            })
         } else {
-            log::warn!("Unable to load workspace information from {:?}", path);
-            Self {
-                sws_path: path.clone(),
-                root_folder: path.clone(),
-                dataflex_version: None,
-                projects: Vec::new(),
-                local_packages: Vec::new(),
-            }
+            None
         }
     }
 
