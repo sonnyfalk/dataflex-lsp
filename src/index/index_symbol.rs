@@ -283,7 +283,9 @@ impl From<tree_sitter::Range> for SourceRange {
 
 impl SymbolName {
     pub fn starts_with(&self, pat: &str) -> bool {
-        self.0.starts_with(pat)
+        self.0
+            .get(..pat.len())
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(pat))
     }
 }
 

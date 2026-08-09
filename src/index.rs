@@ -964,6 +964,22 @@ mod tests {
     }
 
     #[test]
+    fn test_matching_symbols_case_insensitive_prefix() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        let index = index_ref.get();
+        assert_eq!(index.matching_symbols("cmyc").count(), 1);
+        assert_eq!(index.matching_symbols("CMYCLASS").count(), 1);
+        assert_eq!(index.matching_symbols("cMyClass").count(), 1);
+        assert_eq!(index.matching_symbols("cMyClassX").count(), 0);
+    }
+
+    #[test]
     fn test_find_methods() {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
