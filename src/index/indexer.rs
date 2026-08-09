@@ -771,10 +771,15 @@ impl Indexer {
     }
 
     pub fn should_index_file(path: &PathBuf) -> bool {
-        matches!(
-            path.extension().and_then(OsStr::to_str),
-            Some("pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc")
-        )
+        path.extension()
+            .and_then(OsStr::to_str)
+            .map(str::to_ascii_lowercase)
+            .is_some_and(|extension| {
+                matches!(
+                    extension.as_str(),
+                    "pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc"
+                )
+            })
     }
 
     fn indexer_query() -> &'static str {
@@ -891,6 +896,16 @@ impl Indexer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_should_index_file_ignores_extension_case() {
+        assert!(Indexer::should_index_file(&PathBuf::from("test.pkg")));
+        assert!(Indexer::should_index_file(&PathBuf::from("TEST.PKG")));
+        assert!(Indexer::should_index_file(&PathBuf::from("Test.Vw")));
+        assert!(Indexer::should_index_file(&PathBuf::from("TEST.DD")));
+        assert!(!Indexer::should_index_file(&PathBuf::from("test.txt")));
+        assert!(!Indexer::should_index_file(&PathBuf::from("test")));
+    }
 
     #[test]
     fn test_index_file_dependency() {
