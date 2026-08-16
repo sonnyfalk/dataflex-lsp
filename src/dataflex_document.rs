@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use tower_lsp::lsp_types;
 use tree_sitter::{InputEdit, Point, Tree};
 
-use crate::{dataflex_parser::DataFlexTreeParser, index};
+use crate::dataflex_parser::DataFlexTreeParser;
+use crate::index;
+use crate::utf16_utils::StrExt;
 use document_context::DocumentContext;
 use reference_resolver::ReferenceResolver;
 use streaming_iterator::StreamingIterator;

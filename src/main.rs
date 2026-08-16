@@ -4,6 +4,7 @@ mod index;
 mod language_server;
 mod logging;
 mod settings;
+mod utf16_utils;
 
 #[tokio::main]
 async fn main() {

@@ -23,15 +23,15 @@ struct SyntaxToken {
 }
 
 impl SyntaxToken {
-    fn new(start: Point, end: Point, kind: u32, prev: Point) -> Self {
+    fn new(start: Point, end: Point, kind: u32, prev: Point, line: &str) -> Self {
         Self {
             delta_start: if start.row == prev.row {
-                (start.column - prev.column) as u32
+                line[prev.column..start.column].utf16_count() as u32
             } else {
-                start.column as u32
+                line[..start.column].utf16_count() as u32
             },
-            length: (end.column - start.column) as u32,
-            kind: kind,
+            length: line[start.column..end.column].utf16_count() as u32,
+            kind,
         }
     }
 }
@@ -118,13 +118,17 @@ impl SyntaxMap {
                         let start = capture.node.start_position();
                         let end = capture.node.end_position();
                         if start.row == end.row {
+                            let line = doc
+                                .line_map
+                                .line_text_with_ending(start.row)
+                                .unwrap_or_default();
                             let token = match capture_names[capture.index as usize] {
-                                "keyword" => Some(SyntaxToken::new(start, end, 0, prev_pos)),
+                                "keyword" => Some(SyntaxToken::new(start, end, 0, prev_pos, line)),
                                 "entity.other.inherited-class" => {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_class(&name) {
-                                        Some(SyntaxToken::new(start, end, 1, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 1, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -133,7 +137,7 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_method(&name, MethodKind::Msg) {
-                                        Some(SyntaxToken::new(start, end, 2, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 2, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -142,9 +146,9 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_property(&name) {
-                                        Some(SyntaxToken::new(start, end, 3, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 3, prev_pos, line))
                                     } else if index.is_known_method(&name, MethodKind::Get) {
-                                        Some(SyntaxToken::new(start, end, 2, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 2, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -155,7 +159,7 @@ impl SyntaxMap {
                                     if index.is_known_property(&name)
                                         || index.is_known_method(&name, MethodKind::Set)
                                     {
-                                        Some(SyntaxToken::new(start, end, 3, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 3, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -164,7 +168,7 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_object(&name) {
-                                        Some(SyntaxToken::new(start, end, 4, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 4, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -173,7 +177,7 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_class(&name) {
-                                        Some(SyntaxToken::new(start, end, 1, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 1, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -182,7 +186,7 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_struct(&name) {
-                                        Some(SyntaxToken::new(start, end, 6, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 6, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -191,7 +195,7 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_struct(&name) {
-                                        Some(SyntaxToken::new(start, end, 6, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 6, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -200,11 +204,11 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_property(&name) {
-                                        Some(SyntaxToken::new(start, end, 3, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 3, prev_pos, line))
                                     } else if index.is_known_method(&name, MethodKind::Get) {
-                                        Some(SyntaxToken::new(start, end, 2, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 2, prev_pos, line))
                                     } else if index.is_system_function(&name) {
-                                        Some(SyntaxToken::new(start, end, 5, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 5, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -213,11 +217,11 @@ impl SyntaxMap {
                                     let name =
                                         SymbolName::from(doc.line_map.text_in_range(start, end));
                                     if index.is_known_object(&name) {
-                                        Some(SyntaxToken::new(start, end, 4, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 4, prev_pos, line))
                                     } else if index.is_known_alias_symbol(&name) {
-                                        Some(SyntaxToken::new(start, end, 7, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 7, prev_pos, line))
                                     } else if index.is_known_dataflex_table(&name) {
-                                        Some(SyntaxToken::new(start, end, 8, prev_pos))
+                                        Some(SyntaxToken::new(start, end, 8, prev_pos, line))
                                     } else {
                                         None
                                     }
@@ -244,7 +248,9 @@ impl SyntaxMap {
                                                             .into(),
                                                     )
                                                     .then(|| {
-                                                        SyntaxToken::new(start, end, 3, prev_pos)
+                                                        SyntaxToken::new(
+                                                            start, end, 3, prev_pos, line,
+                                                        )
                                                     })
                                             })
                                     } else {
@@ -311,6 +317,35 @@ mod tests {
                         length: 10,
                         kind: 0
                     }]
+                },
+                Line { tokens: vec![] }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_lines_utf16() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Move \"åäö\" to sValue\n",
+            index::IndexRef::make_test_index_ref(),
+        );
+        assert_eq!(
+            doc.syntax_map.unwrap().lines,
+            [
+                Line {
+                    tokens: vec![
+                        SyntaxToken {
+                            delta_start: 0,
+                            length: 4,
+                            kind: 0
+                        },
+                        SyntaxToken {
+                            delta_start: 11,
+                            length: 2,
+                            kind: 0
+                        }
+                    ]
                 },
                 Line { tokens: vec![] }
             ]
