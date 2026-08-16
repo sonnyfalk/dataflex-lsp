@@ -277,13 +277,15 @@ impl LanguageServer for DataFlexLanguageServer {
                         if edits.first().is_some_and(|e| {
                             e.range.start.line >= open_file.doc.line_count() as u32
                         }) {
-                            let end = open_file.doc.end_of_document();
+                            let end = open_file
+                                .doc
+                                .lsp_position_from_point(open_file.doc.end_of_document());
                             edits.insert(
                                 0,
                                 TextEdit {
                                     range: Range {
-                                        start: Position::new(end.row as u32, end.column as u32),
-                                        end: Position::new(end.row as u32, end.column as u32),
+                                        start: end,
+                                        end: end,
                                     },
                                     new_text: String::from("\n"),
                                 },

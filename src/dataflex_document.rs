@@ -75,6 +75,30 @@ impl DataFlexDocument {
         self.line_map.end_point()
     }
 
+    pub fn point_from_lsp_position(&self, position: lsp_types::Position) -> Point {
+        let line = self
+            .line_map
+            .line_text_with_ending(position.line as usize)
+            .unwrap_or_default();
+
+        Point::new(
+            position.line as usize,
+            line.utf8_index_from_utf16_index(position.character as usize),
+        )
+    }
+
+    pub fn lsp_position_from_point(&self, position: Point) -> lsp_types::Position {
+        let line = self
+            .line_map
+            .line_text_with_ending(position.row)
+            .unwrap_or_default();
+
+        lsp_types::Position::new(
+            position.row as u32,
+            line.utf16_index_from_utf8_index(position.column) as u32,
+        )
+    }
+
     fn update(&mut self) {
         self.tree = self.parser.parse_with_options(
             &mut |_, point| {
@@ -110,15 +134,8 @@ impl DataFlexDocument {
                 self.tree = None;
                 continue;
             };
-            // TODO: Convert UTF-16 to UTF-8 range.
-            let start = Point {
-                row: range.start.line as usize,
-                column: range.start.character as usize,
-            };
-            let end = Point {
-                row: range.end.line as usize,
-                column: range.end.character as usize,
-            };
+            let start = self.point_from_lsp_position(range.start);
+            let end = self.point_from_lsp_position(range.end);
             let start_byte = self.line_map.offset_at_point(start);
             let old_end_byte = self.line_map.offset_at_point(end);
             let new_end_byte = start_byte + change.text.len();
@@ -144,18 +161,12 @@ impl DataFlexDocument {
             && scope_balancer::ScopeBalancer::is_auto_close_scope_trigger(&change.text)
             && let Some(position) = change
                 .range
-                .map(|range| Point::new(range.end.line as usize, range.end.character as usize))
+                .map(|range| self.point_from_lsp_position(range.start))
         {
             scope_balancer::ScopeBalancer::auto_close_scope(self, position, &change.text).map(
                 |edit| {
-                    let start = lsp_types::Position::new(
-                        edit.range.start.row as u32,
-                        edit.range.start.column as u32,
-                    );
-                    let end = lsp_types::Position::new(
-                        edit.range.end.row as u32,
-                        edit.range.end.column as u32,
-                    );
+                    let start = self.lsp_position_from_point(edit.range.start);
+                    let end = self.lsp_position_from_point(edit.range.end);
                     vec![lsp_types::TextEdit {
                         range: lsp_types::Range::new(start, end),
                         new_text: edit.text,
@@ -177,10 +188,7 @@ impl DataFlexDocument {
         position: lsp_types::Position,
     ) -> Option<Vec<lsp_types::Location>> {
         log::trace!("find_definition {:?}", position);
-        let position = Point {
-            row: position.line as usize,
-            column: position.character as usize,
-        };
+        let position = self.point_from_lsp_position(position);
         let Some(context) = DocumentContext::context(self, position) else {
             log::trace!("no context");
             return None;
@@ -240,10 +248,7 @@ impl DataFlexDocument {
         position: lsp_types::Position,
         auto_complete: bool,
     ) -> Option<Vec<lsp_types::CompletionItem>> {
-        let position = Point {
-            row: position.line as usize,
-            column: position.character as usize,
-        };
+        let position = self.point_from_lsp_position(position);
 
         let completions =
             code_completion::CodeCompletion::code_completion(self, position, auto_complete);
@@ -275,10 +280,7 @@ impl DataFlexDocument {
         &self,
         position: lsp_types::Position,
     ) -> Option<lsp_types::MarkedString> {
-        let position = Point {
-            row: position.line as usize,
-            column: position.character as usize,
-        };
+        let position = self.point_from_lsp_position(position);
         let context = DocumentContext::context(self, position)?;
 
         let reference_resolver = ReferenceResolver::new(self);
@@ -311,10 +313,7 @@ impl DataFlexDocument {
         &self,
         position: lsp_types::Position,
     ) -> Option<Vec<lsp_types::SignatureInformation>> {
-        let position = Point {
-            row: position.line as usize,
-            column: position.character as usize,
-        };
+        let position = self.point_from_lsp_position(position);
         let parameter_info = parameter_info::ParameterInfo::parameter_info(self, position)?;
         Some(
             parameter_info
@@ -328,10 +327,7 @@ impl DataFlexDocument {
         &self,
         position: lsp_types::Position,
     ) -> Option<Vec<lsp_types::DocumentHighlight>> {
-        let position = Point {
-            row: position.line as usize,
-            column: position.character as usize,
-        };
+        let position = self.point_from_lsp_position(position);
 
         if let Some(range_pair) =
             scope_balancer::ScopeBalancer::open_and_close_scope_range_pair(self, position)
@@ -344,8 +340,8 @@ impl DataFlexDocument {
                 [range_pair.0, range_pair.1]
                     .map(|r| lsp_types::DocumentHighlight {
                         range: lsp_types::Range::new(
-                            lsp_types::Position::new(r.start.row as u32, r.start.column as u32),
-                            lsp_types::Position::new(r.end.row as u32, r.end.column as u32),
+                            self.lsp_position_from_point(r.start),
+                            self.lsp_position_from_point(r.end),
                         ),
                         kind: Some(lsp_types::DocumentHighlightKind::TEXT),
                     })
@@ -377,11 +373,8 @@ impl DataFlexDocument {
             .into_iter()
             .map(|code_lens| lsp_types::CodeLens {
                 range: lsp_types::Range::new(
-                    lsp_types::Position::new(
-                        code_lens.location.row as u32,
-                        code_lens.location.column as u32,
-                    ),
-                    lsp_types::Position::new(code_lens.location.row as u32 + 1, 0),
+                    self.lsp_position_from_point(code_lens.location),
+                    self.lsp_position_from_point(Point::new(code_lens.location.row + 1, 0)),
                 ),
                 command: Some(lsp_types::Command {
                     title: code_lens.description,
@@ -429,6 +422,8 @@ impl From<&index::QualifiedIndexSymbol<'_>> for lsp_types::Location {
 
 impl From<index::SourceRange> for lsp_types::Range {
     fn from(range: index::SourceRange) -> Self {
+        // FIXME: This should really perform UTF-8 to UTF-16 conversion,
+        // but the referenced document is not necessarily open so we don't have the information.
         lsp_types::Range::new(
             lsp_types::Position {
                 line: range.start.line as u32,
@@ -464,6 +459,8 @@ impl From<parameter_info::ParameterInfo> for lsp_types::SignatureInformation {
 
 impl From<&index::IndexSymbol> for lsp_types::DocumentSymbol {
     fn from(symbol: &index::IndexSymbol) -> Self {
+        // FIXME: This should really perform UTF-8 to UTF-16 conversion,
+        // but the referenced document is not necessarily open so we don't have the information.
         let position = lsp_types::Position {
             line: symbol.location().line as u32,
             character: symbol.location().column as u32,
