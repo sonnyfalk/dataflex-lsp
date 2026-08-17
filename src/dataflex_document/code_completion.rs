@@ -38,6 +38,7 @@ pub enum CompletionItemKind {
 
 pub struct CompletionItemRanker<'a> {
     doc: &'a DataFlexDocument,
+    index: &'a index::Index,
     position: Point,
     likely_enum_symbols: std::sync::OnceLock<HashMap<String, CompletionItemRankAdjustment>>,
     likely_commands: std::sync::OnceLock<HashMap<String, CompletionItemRankAdjustment>>,
@@ -71,6 +72,7 @@ impl CodeCompletion {
         doc: &DataFlexDocument,
         position: Point,
         auto_complete: bool,
+        index: &index::Index,
     ) -> Option<Vec<CompletionItem>> {
         let context = DocumentContext::context(doc, position)?;
         if auto_complete && !Self::should_auto_complete_with_context(&context) {
@@ -78,19 +80,23 @@ impl CodeCompletion {
         }
 
         let completions = match context {
-            DocumentContext::ClassReference => Some(Self::class_completions(doc)),
+            DocumentContext::ClassReference => Some(Self::class_completions(index)),
             DocumentContext::MethodReference(kind) => {
-                Some(Self::method_completions(doc, position, kind))
+                Some(Self::method_completions(doc, position, kind, index))
             }
-            DocumentContext::Expression => Some(Self::expr_completions(doc, position)),
-            DocumentContext::ParenExpression => Some(Self::paren_expr_completions(doc, position)),
-            DocumentContext::DotMemberExpression => Some(Self::dot_completions(doc, position)),
-            DocumentContext::CommandReference => Some(Self::command_completions(doc)),
-            DocumentContext::FileDependency => Some(Self::file_completions(doc)),
+            DocumentContext::Expression => Some(Self::expr_completions(doc, position, index)),
+            DocumentContext::ParenExpression => {
+                Some(Self::paren_expr_completions(doc, position, index))
+            }
+            DocumentContext::DotMemberExpression => {
+                Some(Self::dot_completions(doc, position, index))
+            }
+            DocumentContext::CommandReference => Some(Self::command_completions(index)),
+            DocumentContext::FileDependency => Some(Self::file_completions(index)),
             DocumentContext::MethodDeclaration(kind) => {
-                Some(Self::override_completions(doc, position, kind))
+                Some(Self::override_completions(doc, position, kind, index))
             }
-            DocumentContext::TypeReference => Some(Self::type_completions(doc)),
+            DocumentContext::TypeReference => Some(Self::type_completions(index)),
         };
 
         completions
@@ -110,9 +116,8 @@ impl CodeCompletion {
         }
     }
 
-    fn class_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
-        doc.index
-            .get()
+    fn class_completions(index: &index::Index) -> Vec<CompletionItem> {
+        index
             .all_known_classes()
             .drain(..)
             .map(|class_name| CompletionItem {
@@ -127,12 +132,11 @@ impl CodeCompletion {
         doc: &DataFlexDocument,
         position: Point,
         kind: index::MethodKind,
+        index: &index::Index,
     ) -> Vec<CompletionItem> {
         let completions: Vec<CompletionItem> =
             match kind {
-                MethodKind::Msg => doc
-                    .index
-                    .get()
+                MethodKind::Msg => index
                     .all_known_methods(kind)
                     .drain(..)
                     .map(|method_name| CompletionItem {
@@ -141,25 +145,22 @@ impl CodeCompletion {
                         ..Default::default()
                     })
                     .collect(),
-                MethodKind::Get | MethodKind::Set => {
-                    doc.index
-                        .get()
-                        .all_known_methods(kind)
-                        .drain(..)
-                        .map(|method_name| CompletionItem {
-                            label: method_name.to_string(),
-                            kind: CompletionItemKind::Method,
+                MethodKind::Get | MethodKind::Set => index
+                    .all_known_methods(kind)
+                    .drain(..)
+                    .map(|method_name| CompletionItem {
+                        label: method_name.to_string(),
+                        kind: CompletionItemKind::Method,
+                        ..Default::default()
+                    })
+                    .chain(index.all_known_properties().drain(..).map(|property_name| {
+                        CompletionItem {
+                            label: property_name.to_string(),
+                            kind: CompletionItemKind::Property,
                             ..Default::default()
-                        })
-                        .chain(doc.index.get().all_known_properties().drain(..).map(
-                            |property_name| CompletionItem {
-                                label: property_name.to_string(),
-                                kind: CompletionItemKind::Property,
-                                ..Default::default()
-                            },
-                        ))
-                        .collect()
-                }
+                        }
+                    }))
+                    .collect(),
             };
 
         if let Some(mut cursor) = doc.cursor()
@@ -194,8 +195,8 @@ impl CodeCompletion {
         doc: &DataFlexDocument,
         position: Point,
         kind: index::MethodKind,
+        index: &index::Index,
     ) -> Vec<CompletionItem> {
-        let index = doc.index.get();
         if let Some(mut cursor) = doc.cursor()
             && cursor.goto_descendant_for_point(position)
             && cursor.goto_enclosing_object_or_class()
@@ -236,11 +237,14 @@ impl CodeCompletion {
         }
     }
 
-    fn expr_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
-        Self::local_variable_completions(doc, position)
+    fn expr_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        index: &index::Index,
+    ) -> Vec<CompletionItem> {
+        Self::local_variable_completions(doc, position, index)
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_global_variables()
                     .drain(..)
                     .map(|variable_name| CompletionItem {
@@ -249,10 +253,9 @@ impl CodeCompletion {
                         ..Default::default()
                     }),
             )
-            .chain(Self::object_completions(doc, &doc.index.get()))
+            .chain(Self::object_completions(doc, index))
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_alias_symbols()
                     .drain(..)
                     .map(|alias_name| CompletionItem {
@@ -262,8 +265,7 @@ impl CodeCompletion {
                     }),
             )
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_dataflex_tables()
                     .drain(..)
                     .map(|table_name| CompletionItem {
@@ -275,12 +277,15 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn paren_expr_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
-        Self::local_variable_completions(doc, position)
-            .chain(Self::system_functions(doc))
+    fn paren_expr_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        index: &index::Index,
+    ) -> Vec<CompletionItem> {
+        Self::local_variable_completions(doc, position, index)
+            .chain(Self::system_functions(index))
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_global_variables()
                     .drain(..)
                     .map(|variable_name| CompletionItem {
@@ -289,10 +294,9 @@ impl CodeCompletion {
                         ..Default::default()
                     }),
             )
-            .chain(Self::object_completions(doc, &doc.index.get()))
+            .chain(Self::object_completions(doc, index))
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_alias_symbols()
                     .drain(..)
                     .map(|alias_name| CompletionItem {
@@ -302,8 +306,7 @@ impl CodeCompletion {
                     }),
             )
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_methods(MethodKind::Get)
                     .drain(..)
                     .map(|method_name| CompletionItem {
@@ -313,8 +316,7 @@ impl CodeCompletion {
                     }),
             )
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_properties()
                     .drain(..)
                     .map(|property_name| CompletionItem {
@@ -324,8 +326,7 @@ impl CodeCompletion {
                     }),
             )
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_classes()
                     .drain(..)
                     .map(|class_name| CompletionItem {
@@ -335,8 +336,7 @@ impl CodeCompletion {
                     }),
             )
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_dataflex_tables()
                     .drain(..)
                     .map(|table_name| CompletionItem {
@@ -348,7 +348,11 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn dot_completions(doc: &DataFlexDocument, position: Point) -> Vec<CompletionItem> {
+    fn dot_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        index: &index::Index,
+    ) -> Vec<CompletionItem> {
         let Some(mut cursor) = doc.cursor().and_then(|mut cursor| {
             cursor
                 .goto_leaf_node_at_or_before_point(position)
@@ -362,8 +366,7 @@ impl CodeCompletion {
         }
 
         let position = cursor.node().end_position();
-        let index = doc.index.get();
-        let reference_resolver = ReferenceResolver::new(doc);
+        let reference_resolver = ReferenceResolver::new(doc, index);
 
         let root_name = if cursor.goto_enclosing_member_access()
             && cursor.goto_previous_sibling()
@@ -417,14 +420,13 @@ impl CodeCompletion {
         }
     }
 
-    fn command_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
-        Self::system_commands(doc)
+    fn command_completions(index: &index::Index) -> Vec<CompletionItem> {
+        Self::system_commands(index)
             .chain(
-                doc.index
-                    .get()
+                index
                     .all_known_structs()
                     .into_iter()
-                    .chain(doc.index.get().all_system_types())
+                    .chain(index.all_system_types())
                     .map(|name| CompletionItem {
                         label: name.to_string(),
                         kind: CompletionItemKind::Struct,
@@ -434,9 +436,8 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn file_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
-        doc.index
-            .get()
+    fn file_completions(index: &index::Index) -> Vec<CompletionItem> {
+        index
             .all_known_files()
             .into_iter()
             .filter_map(|file_ref| {
@@ -449,12 +450,11 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn type_completions(doc: &DataFlexDocument) -> Vec<CompletionItem> {
-        doc.index
-            .get()
+    fn type_completions(index: &index::Index) -> Vec<CompletionItem> {
+        index
             .all_known_structs()
             .into_iter()
-            .chain(doc.index.get().all_system_types())
+            .chain(index.all_system_types())
             .map(|name| CompletionItem {
                 label: name.to_string(),
                 kind: CompletionItemKind::Struct,
@@ -463,11 +463,12 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn local_variable_completions(
-        doc: &DataFlexDocument,
+    fn local_variable_completions<'a>(
+        doc: &'a DataFlexDocument,
         position: Point,
+        index: &'a index::Index,
     ) -> impl Iterator<Item = CompletionItem> {
-        let reference_resolver = ReferenceResolver::new(doc);
+        let reference_resolver = ReferenceResolver::new(doc, index);
         reference_resolver
             .local_variables(position)
             .map(|variable| CompletionItem {
@@ -513,9 +514,8 @@ impl CodeCompletion {
         })
     }
 
-    fn system_functions(doc: &DataFlexDocument) -> impl Iterator<Item = CompletionItem> {
-        doc.index
-            .get()
+    fn system_functions(index: &index::Index) -> impl Iterator<Item = CompletionItem> {
+        index
             .all_system_functions()
             .into_iter()
             .map(|f| CompletionItem {
@@ -525,9 +525,8 @@ impl CodeCompletion {
             })
     }
 
-    fn system_commands(doc: &DataFlexDocument) -> impl Iterator<Item = CompletionItem> {
-        doc.index
-            .get()
+    fn system_commands(index: &index::Index) -> impl Iterator<Item = CompletionItem> {
+        index
             .all_commands()
             .into_iter()
             .map(move |command| CompletionItem {
@@ -539,9 +538,10 @@ impl CodeCompletion {
 }
 
 impl<'a> CompletionItemRanker<'a> {
-    pub fn new(doc: &'a DataFlexDocument, position: Point) -> Self {
+    pub fn new(doc: &'a DataFlexDocument, position: Point, index: &'a index::Index) -> Self {
         Self {
             doc,
+            index,
             position,
             likely_enum_symbols: std::sync::OnceLock::new(),
             likely_commands: std::sync::OnceLock::new(),
@@ -613,15 +613,14 @@ impl<'a> CompletionItemRanker<'a> {
             && let Some(method_name_node) = cursor.node().child_by_field_name("name")
         {
             // This is a set statement, see if there are any associated EnumList meta tags.
-            let reference_resolver = ReferenceResolver::new(self.doc);
+            let reference_resolver = ReferenceResolver::new(self.doc, self.index);
             let symbols = reference_resolver.resolve_reference(
                 DocumentContext::MethodReference(MethodKind::Set),
                 method_name_node.start_position(),
             );
 
-            let index = self.doc.index.get();
             symbols
-                .flat_map(|method| index.associated_meta_tags("EnumList".into(), method))
+                .flat_map(|method| self.index.associated_meta_tags("EnumList".into(), method))
                 .flat_map(|tag| tag.value_list())
                 .map(|enum_symbol| (String::from(enum_symbol), CompletionItemRankAdjustment::Top))
                 .collect()
@@ -730,8 +729,10 @@ End_Procedure
                 "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 28), false).unwrap();
+        let index = index.get();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
+        let completions =
+            CodeCompletion::code_completion(&doc, Point::new(7, 28), false, &index).unwrap();
         assert_eq!(completions.len(), 1);
 
         let test_content = r#"
@@ -746,8 +747,10 @@ End_Procedure
                 "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29), false).unwrap();
+        let index = index.get();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
+        let completions =
+            CodeCompletion::code_completion(&doc, Point::new(7, 29), false, &index).unwrap();
         assert_eq!(completions.len(), 1);
 
         let test_content = r#"
@@ -762,8 +765,10 @@ End_Procedure
                 "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 29), false).unwrap();
+        let index = index.get();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
+        let completions =
+            CodeCompletion::code_completion(&doc, Point::new(7, 29), false, &index).unwrap();
         assert_eq!(completions.len(), 1);
 
         let test_content = r#"
@@ -778,8 +783,10 @@ End_Procedure
                 "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(7, 34), false).unwrap();
+        let index = index.get();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
+        let completions =
+            CodeCompletion::code_completion(&doc, Point::new(7, 34), false, &index).unwrap();
         assert_eq!(completions.len(), 0);
 
         let test_content = r#"
@@ -798,8 +805,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let completions = CodeCompletion::code_completion(&doc, Point::new(11, 42), false).unwrap();
+        let index = index.get();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
+        let completions =
+            CodeCompletion::code_completion(&doc, Point::new(11, 42), false, &index).unwrap();
         assert_eq!(completions.len(), 1);
     }
 }

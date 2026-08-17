@@ -8,13 +8,17 @@ pub struct ParameterInfo {
 }
 
 impl ParameterInfo {
-    pub fn parameter_info(doc: &DataFlexDocument, position: Point) -> Option<Vec<ParameterInfo>> {
+    pub fn parameter_info(
+        doc: &DataFlexDocument,
+        position: Point,
+        index: &index::Index,
+    ) -> Option<Vec<ParameterInfo>> {
         let mut cursor = doc.cursor()?;
         if !cursor.goto_leaf_node_at_or_before_point(position) {
             return None;
         }
         if cursor.goto_enclosing_call_expression() || cursor.goto_enclosing_method_call() {
-            Self::parameter_info_for_method_call(doc, position, cursor)
+            Self::parameter_info_for_method_call(doc, position, cursor, index)
         } else {
             None
         }
@@ -24,6 +28,7 @@ impl ParameterInfo {
         doc: &DataFlexDocument,
         position: Point,
         cursor: DataFlexTreeCursor,
+        index: &index::Index,
     ) -> Option<Vec<ParameterInfo>> {
         let name_position = cursor
             .node()
@@ -31,7 +36,7 @@ impl ParameterInfo {
             .map(|n| n.start_position())?;
         let context = DocumentContext::context(doc, name_position)?;
         let in_expression = matches!(context, DocumentContext::ParenExpression);
-        let resolver = ReferenceResolver::new(doc);
+        let resolver = ReferenceResolver::new(doc, index);
         let mut dedup_set = std::collections::HashSet::new();
         let parameter_info: Vec<ParameterInfo> = resolver
             .resolve_reference(context, name_position)
@@ -123,19 +128,19 @@ Send MyMethod of oTest "test" 1234
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
 
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 23));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 23), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 0 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 30));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 30), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 1 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 35));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 35), &index.get());
         assert_eq!(format!("{:?}", parameter_info), "Some([])");
     }
 
@@ -151,19 +156,19 @@ Send MyMethod of oTest File_Field OrderHeader.Order_Number "test"
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
 
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 34));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 34), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 0 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 59));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 59), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 2 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 66));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 66), &index.get());
         assert_eq!(format!("{:?}", parameter_info), "Some([])");
     }
 
@@ -180,29 +185,29 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
 
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 11));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 11), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 15));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 15), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 22));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 22), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 30));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 30), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 1 }])"
         );
-        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 35));
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 35), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 2 }])"

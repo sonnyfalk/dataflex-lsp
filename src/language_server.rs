@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 
@@ -243,19 +244,12 @@ impl LanguageServer for DataFlexLanguageServer {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         log::trace!("Start tracking {}", params.text_document.uri);
-        let file_path = params.text_document.uri.to_file_path().unwrap_or_default();
-        self.inner.open_files.insert(
-            params.text_document.uri,
-            OpenFile::new(DataFlexDocument::new(
-                file_path,
-                &params.text_document.text,
-                self.inner.indexer.get().unwrap().get_index().clone(),
-            )),
-        );
+        self.inner
+            .open_file(params.text_document.uri, &params.text_document.text);
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.inner.open_files.remove(&params.text_document.uri);
+        self.inner.close_file(&params.text_document.uri);
         log::trace!("Stop tracking {}", params.text_document.uri);
     }
 
@@ -265,46 +259,49 @@ impl LanguageServer for DataFlexLanguageServer {
             params.text_document.uri.as_str()
         );
 
-        let (followup_edit, preserve_selection) =
-            if let Some(mut open_file) = self.inner.open_files.get_mut(&params.text_document.uri) {
-                let followup_edits = open_file.doc.edit_content(&params.content_changes);
-                open_file.modified = true;
-                self.inner.edited_files_notification.notify_one();
+        let (followup_edit, preserve_selection) = if let Some((index, mut open_file)) = self
+            .inner
+            .get_index_and_open_file_mut(&params.text_document.uri)
+        {
+            let followup_edits = open_file.doc.edit_content(&params.content_changes, &index);
+            open_file.modified = true;
+            self.inner.edited_files_notification.notify_one();
 
-                let mut preserve_selection = false;
-                (
-                    followup_edits.map(|mut edits| {
-                        if edits.first().is_some_and(|e| {
-                            e.range.start.line >= open_file.doc.line_count() as u32
-                        }) {
-                            let end = open_file
-                                .doc
-                                .lsp_position_from_point(open_file.doc.end_of_document());
-                            edits.insert(
-                                0,
-                                TextEdit {
-                                    range: Range {
-                                        start: end,
-                                        end: end,
-                                    },
-                                    new_text: String::from("\n"),
+            let mut preserve_selection = false;
+            (
+                followup_edits.map(|mut edits| {
+                    if edits
+                        .first()
+                        .is_some_and(|e| e.range.start.line >= open_file.doc.line_count() as u32)
+                    {
+                        let end = open_file
+                            .doc
+                            .lsp_position_from_point(open_file.doc.end_of_document());
+                        edits.insert(
+                            0,
+                            TextEdit {
+                                range: Range {
+                                    start: end,
+                                    end: end,
                                 },
-                            );
-                            preserve_selection = true;
-                        }
-                        TextDocumentEdit {
-                            text_document: OptionalVersionedTextDocumentIdentifier::new(
-                                params.text_document.uri,
-                                params.text_document.version,
-                            ),
-                            edits: edits.into_iter().map(OneOf::Left).collect(),
-                        }
-                    }),
-                    preserve_selection,
-                )
-            } else {
-                (None, false)
-            };
+                                new_text: String::from("\n"),
+                            },
+                        );
+                        preserve_selection = true;
+                    }
+                    TextDocumentEdit {
+                        text_document: OptionalVersionedTextDocumentIdentifier::new(
+                            params.text_document.uri.clone(),
+                            params.text_document.version,
+                        ),
+                        edits: edits.into_iter().map(OneOf::Left).collect(),
+                    }
+                }),
+                preserve_selection,
+            )
+        } else {
+            (None, false)
+        };
 
         if let Some(followup_edit) = followup_edit {
             if preserve_selection
@@ -344,12 +341,9 @@ impl LanguageServer for DataFlexLanguageServer {
 
         let tokens = self
             .inner
-            .open_files
-            .get(&params.text_document.uri)
-            .unwrap()
-            .doc
-            .semantic_tokens_full()
-            .unwrap();
+            .get_index_and_open_file(&params.text_document.uri)
+            .map(|(_, open_file)| open_file.doc.semantic_tokens_full().unwrap())
+            .unwrap_or_default();
 
         Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
             data: tokens,
@@ -363,11 +357,12 @@ impl LanguageServer for DataFlexLanguageServer {
     ) -> Result<Option<GotoDefinitionResponse>> {
         let locations = self
             .inner
-            .open_files
-            .get(&params.text_document_position_params.text_document.uri)
-            .unwrap()
-            .doc
-            .find_definition(params.text_document_position_params.position);
+            .get_index_and_open_file(&params.text_document_position_params.text_document.uri)
+            .and_then(|(index, open_file)| {
+                open_file
+                    .doc
+                    .find_definition(params.text_document_position_params.position, &index)
+            });
         if let Some(locations) = locations {
             Ok(Some(GotoDefinitionResponse::Array(locations)))
         } else {
@@ -378,16 +373,16 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let completions = self
             .inner
-            .open_files
-            .get(&params.text_document_position.text_document.uri)
-            .unwrap()
-            .doc
-            .code_completion(
-                params.text_document_position.position,
-                params
-                    .context
-                    .is_some_and(|c| c.trigger_kind == CompletionTriggerKind::TRIGGER_CHARACTER),
-            );
+            .get_index_and_open_file(&params.text_document_position.text_document.uri)
+            .and_then(|(index, open_file)| {
+                open_file.doc.code_completion(
+                    params.text_document_position.position,
+                    params.context.is_some_and(|c| {
+                        c.trigger_kind == CompletionTriggerKind::TRIGGER_CHARACTER
+                    }),
+                    &index,
+                )
+            });
         if let Some(completions) = completions {
             Ok(Some(CompletionResponse::List(CompletionList {
                 is_incomplete: false,
@@ -401,11 +396,12 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let declaration = self
             .inner
-            .open_files
-            .get(&params.text_document_position_params.text_document.uri)
-            .unwrap()
-            .doc
-            .symbol_declaration(params.text_document_position_params.position);
+            .get_index_and_open_file_mut(&params.text_document_position_params.text_document.uri)
+            .and_then(|(index, open_file)| {
+                open_file
+                    .doc
+                    .symbol_declaration(params.text_document_position_params.position, &index)
+            });
         if let Some(declaration) = declaration {
             Ok(Some(Hover {
                 contents: HoverContents::Scalar(declaration),
@@ -419,11 +415,12 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
         let signature_information = self
             .inner
-            .open_files
-            .get(&params.text_document_position_params.text_document.uri)
-            .unwrap()
-            .doc
-            .signature_help(params.text_document_position_params.position);
+            .get_index_and_open_file(&params.text_document_position_params.text_document.uri)
+            .and_then(|(index, open_file)| {
+                open_file
+                    .doc
+                    .signature_help(params.text_document_position_params.position, &index)
+            });
         if let Some(signature_information) = signature_information {
             Ok(Some(SignatureHelp {
                 signatures: signature_information,
@@ -441,11 +438,12 @@ impl LanguageServer for DataFlexLanguageServer {
     ) -> Result<Option<Vec<DocumentHighlight>>> {
         let highlights = self
             .inner
-            .open_files
-            .get(&params.text_document_position_params.text_document.uri)
-            .unwrap()
-            .doc
-            .document_highlight(params.text_document_position_params.position);
+            .get_index_and_open_file(&params.text_document_position_params.text_document.uri)
+            .and_then(|(_, open_file)| {
+                open_file
+                    .doc
+                    .document_highlight(params.text_document_position_params.position)
+            });
 
         Ok(highlights)
     }
@@ -456,11 +454,9 @@ impl LanguageServer for DataFlexLanguageServer {
     ) -> Result<Option<DocumentSymbolResponse>> {
         let symbols = self
             .inner
-            .open_files
-            .get(&params.text_document.uri)
-            .unwrap()
-            .doc
-            .document_symbols();
+            .get_index_and_open_file(&params.text_document.uri)
+            .map(|(_, open_file)| open_file.doc.document_symbols())
+            .unwrap_or_default();
 
         Ok(Some(symbols.into()))
     }
@@ -468,12 +464,9 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
         let code_lens_items = self
             .inner
-            .open_files
-            .get(&params.text_document.uri)
-            .unwrap()
-            .doc
-            .code_lens_items();
-        Ok(Some(code_lens_items))
+            .get_index_and_open_file(&params.text_document.uri)
+            .map(|(index, open_file)| open_file.doc.code_lens_items(&index));
+        Ok(code_lens_items)
     }
 
     async fn symbol(
@@ -557,6 +550,62 @@ impl LanguageServer for DataFlexLanguageServer {
     }
 }
 
+impl DataFlexLanguageServerInner {
+    fn open_file(&self, url: Url, text: &str) {
+        let Some(index) = self.indexer.get().map(|indexer| indexer.get_index().get()) else {
+            return;
+        };
+        let file_path = url.to_file_path().unwrap_or_default();
+        self.open_files.insert(
+            url,
+            OpenFile::new(DataFlexDocument::new(file_path, text, &index)),
+        );
+    }
+
+    fn close_file(&self, url: &Url) {
+        self.open_files.remove(&url);
+    }
+
+    fn get_index_and_open_file(
+        &self,
+        url: &Url,
+    ) -> Option<(
+        impl Deref<Target = index::Index>,
+        impl Deref<Target = OpenFile>,
+    )> {
+        self.indexer
+            .get()
+            .map(|indexer| indexer.get_index().get())
+            .and_then(|index| self.open_files.get(url).map(|open_file| (index, open_file)))
+    }
+
+    fn get_index_and_open_file_mut(
+        &self,
+        url: &Url,
+    ) -> Option<(
+        impl Deref<Target = index::Index>,
+        impl DerefMut<Target = OpenFile>,
+    )> {
+        self.indexer
+            .get()
+            .map(|indexer| indexer.get_index().get())
+            .and_then(|index| {
+                self.open_files
+                    .get_mut(url)
+                    .map(|open_file| (index, open_file))
+            })
+    }
+
+    fn for_all_open_files_mut<F: FnMut(&index::Index, &mut OpenFile)>(&self, mut f: F) {
+        let Some(index) = self.indexer.get().map(|indexer| indexer.get_index().get()) else {
+            return;
+        };
+        for mut open_file in self.open_files.iter_mut() {
+            f(&index, &mut open_file);
+        }
+    }
+}
+
 impl OpenFile {
     fn new(doc: DataFlexDocument) -> Self {
         Self {
@@ -578,20 +627,20 @@ impl IndexerCoordinator {
                 .notified_debounce(std::time::Duration::from_secs(2))
                 .await;
 
-            inner
-                .open_files
-                .iter_mut()
-                .filter(|open_file| open_file.modified)
-                .for_each(|mut open_file| {
-                    if let Some(tree) = open_file.doc.tree().cloned()
-                        && let Some(file_path) = open_file.key().to_file_path().ok()
-                        && let Some(indexer) = inner.indexer.get()
-                    {
-                        let content = open_file.doc.text_content();
-                        indexer.index_modified_file_buffer(file_path, tree, content);
-                        open_file.modified = false;
-                    }
-                });
+            inner.for_all_open_files_mut(|_, open_file| {
+                if open_file.modified
+                    && let Some(tree) = open_file.doc.tree().cloned()
+                    && let Some(indexer) = inner.indexer.get()
+                {
+                    let content = open_file.doc.text_content();
+                    indexer.index_modified_file_buffer(
+                        open_file.doc.file_path().clone(),
+                        tree,
+                        content,
+                    );
+                    open_file.modified = false;
+                }
+            });
         }
     }
 }
@@ -612,9 +661,9 @@ impl index::IndexerObserver for IndexerCoordinator {
 
         match (old_state, new_state) {
             (index::IndexerState::InitialIndexing, index::IndexerState::Inactive) => {
-                for mut file in inner.open_files.iter_mut() {
-                    file.doc.update_syntax_map();
-                }
+                inner.for_all_open_files_mut(|index, open_file| {
+                    open_file.doc.update_syntax_map(index)
+                });
 
                 self.tasks.lock().unwrap().spawn_on(
                     async move {

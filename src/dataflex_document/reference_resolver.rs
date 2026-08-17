@@ -1,21 +1,17 @@
 use super::*;
 use index::{
     ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
-    QualifiedDataFlexTableRef, QualifiedIndexSymbol, ReadableIndexRef, StructSymbol, SymbolName,
-    VariableSymbol,
+    QualifiedDataFlexTableRef, QualifiedIndexSymbol, StructSymbol, SymbolName, VariableSymbol,
 };
 
 pub struct ReferenceResolver<'a> {
     doc: &'a DataFlexDocument,
-    index: ReadableIndexRef<'a>,
+    index: &'a index::Index,
 }
 
 impl<'a> ReferenceResolver<'a> {
-    pub fn new(doc: &'a DataFlexDocument) -> Self {
-        Self {
-            doc,
-            index: doc.index.get(),
-        }
+    pub fn new(doc: &'a DataFlexDocument, index: &'a index::Index) -> Self {
+        Self { doc, index: index }
     }
 
     pub fn resolve_reference(
@@ -443,8 +439,9 @@ Send foo of oMyObject
             "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
 
         let mut variables = reference_resolver.local_variables(Point::new(5, 21));
         assert_eq!(
@@ -509,8 +506,9 @@ End_Procedure
             "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
 
         let mut variables = reference_resolver.local_variables(Point::new(5, 21));
         assert_eq!(
@@ -538,10 +536,11 @@ Use test.pkg
 Object oMyObject is a cMyClass
 End_Object
             "#,
-            index.clone(),
+            &index.get(),
         );
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let index = index.get();
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_class_reference(Point::new(2, 25));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -577,9 +576,10 @@ Object oMyObject is a cMyClass
 End_Object
             "#;
         index::Indexer::index_test_content(doc_content, "other.pkg".into(), &index);
-        let doc = DataFlexDocument::new("other.pkg".into(), doc_content, index.clone());
+        let doc = DataFlexDocument::new("other.pkg".into(), doc_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol =
             reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
         assert_eq!(
@@ -606,9 +606,10 @@ End_Object
             "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol =
             reference_resolver.resolve_method_reference(Point::new(9, 15), MethodKind::Msg);
         assert_eq!(
@@ -630,9 +631,10 @@ Send foo of oMyObject
             "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_expr_reference(Point::new(6, 16));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -656,9 +658,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 21));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -688,9 +691,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 24));
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -714,9 +718,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 35));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -753,9 +758,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(7, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -782,9 +788,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(11, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -807,9 +814,10 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
 
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_paren_expr_reference(Point::new(7, 10));
         assert_eq!(
             format!("{:?}", symbol.next()),
@@ -829,9 +837,10 @@ End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
 
-        let reference_resolver = ReferenceResolver::new(&doc);
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_type_reference(Point::new(4, 20));
         assert_eq!(
             format!("{:?}", symbol.next()),

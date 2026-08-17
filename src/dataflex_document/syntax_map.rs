@@ -37,8 +37,8 @@ impl SyntaxToken {
 }
 
 impl SyntaxMap {
-    pub fn new(doc: &DataFlexDocument) -> Self {
-        let lines = Self::generate_lines(doc);
+    pub fn new(doc: &DataFlexDocument, index: &index::Index) -> Self {
+        let lines = Self::generate_lines(doc, index);
 
         Self { lines }
     }
@@ -89,7 +89,7 @@ impl SyntaxMap {
         sem_tokens
     }
 
-    fn generate_lines(doc: &DataFlexDocument) -> Vec<Line> {
+    fn generate_lines(doc: &DataFlexDocument, index: &index::Index) -> Vec<Line> {
         let query = Query::new(
             &tree_sitter_dataflex::LANGUAGE.into(),
             tree_sitter_dataflex::HIGHLIGHTS_QUERY,
@@ -106,8 +106,6 @@ impl SyntaxMap {
 
         let mut lines = Vec::with_capacity(doc.line_count());
         lines.resize_with(doc.line_count(), || Line { tokens: Vec::new() });
-
-        let index = doc.index.get();
 
         let (lines, _) = captures.fold(
             (lines, Point { row: 0, column: 0 }),
@@ -287,7 +285,7 @@ mod tests {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         assert_eq!(
             doc.syntax_map.unwrap().lines,
@@ -328,7 +326,7 @@ mod tests {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move \"åäö\" to sValue\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         assert_eq!(
             doc.syntax_map.unwrap().lines,
@@ -357,7 +355,7 @@ mod tests {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let tokens = doc.syntax_map.unwrap().get_all_tokens();
         assert_eq!(
@@ -400,7 +398,7 @@ mod tests {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let syntax_map = doc.syntax_map.as_ref().unwrap();
         assert_eq!(

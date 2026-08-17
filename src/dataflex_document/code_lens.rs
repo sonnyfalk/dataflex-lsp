@@ -10,7 +10,7 @@ pub struct CodeLens {
 }
 
 impl CodeLens {
-    pub fn code_lens(doc: &DataFlexDocument) -> Vec<CodeLens> {
+    pub fn code_lens(doc: &DataFlexDocument, index: &index::Index) -> Vec<CodeLens> {
         let Some(root_node) = doc.root_node() else {
             return Vec::new();
         };
@@ -88,7 +88,6 @@ impl CodeLens {
 
         let mut query_cursor = tree_sitter::QueryCursor::new();
         let matches = query_cursor.matches(&query, root_node, doc.line_map.text_provider());
-        let index = doc.index.get();
 
         matches.fold(Vec::new(), |mut result, query_match| {
             let class_hierarchy: Vec<&SymbolName> = query_match
@@ -176,9 +175,9 @@ End_Class
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
 
-        let result = CodeLens::code_lens(&doc);
+        let result = CodeLens::code_lens(&doc, &index.get());
         assert_eq!(
             format!("{:?}", result),
             "[CodeLens { location: Point { row: 7, column: 4 }, description: \"Overrides MyMethod in cMyBaseClass\" }]"
@@ -200,9 +199,9 @@ End_Object
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
 
-        let result = CodeLens::code_lens(&doc);
+        let result = CodeLens::code_lens(&doc, &index.get());
         assert_eq!(
             format!("{:?}", result),
             "[CodeLens { location: Point { row: 7, column: 4 }, description: \"Overrides MyMethod in cMyClass\" }]"
@@ -224,9 +223,9 @@ End_Composite
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
 
-        let result = CodeLens::code_lens(&doc);
+        let result = CodeLens::code_lens(&doc, &index.get());
         assert_eq!(
             format!("{:?}", result),
             "[CodeLens { location: Point { row: 7, column: 4 }, description: \"Overrides MyMethod in cMyClass\" }]"

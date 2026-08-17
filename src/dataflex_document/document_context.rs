@@ -502,7 +502,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -510,7 +510,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -518,7 +518,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -526,7 +526,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a \nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -534,7 +534,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTestButton is a cWebButton\nObject oTest is a \nEnd_Object",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -542,7 +542,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Deferred_View Activate_oMyView for ;\nObject oMyView is a cView\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 23 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -550,7 +550,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Deferred_View Activate_oMyView for ;\nObject oMyView is a \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 20 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -558,7 +558,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Class cTest is a cBase\nEnd_Class\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -566,7 +566,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Class cTest is a cBase\nImport_Class_Protocol \nEnd_Class\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 22 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -574,7 +574,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Class cTest is a cBase\nImport_Class_Protocol cMyMixin\nEnd_Class\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 23 });
         assert_eq!(context, Some(DocumentContext::ClassReference));
@@ -585,7 +585,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 5 });
         assert_eq!(
@@ -596,7 +596,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 6 });
         assert_eq!(
@@ -607,7 +607,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Get Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 6 });
         assert_eq!(
@@ -618,7 +618,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebGet Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
         assert_eq!(
@@ -629,7 +629,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 6 });
         assert_eq!(
@@ -640,7 +640,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebSet Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
         assert_eq!(
@@ -651,7 +651,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo 1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
         assert_eq!(context, None);
@@ -659,7 +659,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo 1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
         assert_eq!(context, Some(DocumentContext::CommandReference));
@@ -667,7 +667,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Forward Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(
@@ -678,7 +678,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Delegate Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 15 });
         assert_eq!(
@@ -689,7 +689,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Broadcast Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 16 });
         assert_eq!(
@@ -700,7 +700,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Broadcast Recursive Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 26 });
         assert_eq!(
@@ -711,7 +711,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Broadcast Recursive_Up Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 29 });
         assert_eq!(
@@ -722,7 +722,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Broadcast No_Stop Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 24 });
         assert_eq!(
@@ -733,7 +733,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Broadcast Recursive No_Stop Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 34 });
         assert_eq!(
@@ -744,7 +744,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Broadcast_Focus Send Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 22 });
         assert_eq!(
@@ -755,7 +755,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Private.Foo\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(
@@ -774,7 +774,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo to oMyObj\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -782,7 +782,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo of oMyObj\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -790,7 +790,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo of oMyObj arg1 arg2\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -798,7 +798,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Get Foo of oMyObj\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -806,7 +806,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of oMyObj\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -814,7 +814,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebGet Foo of oMyObj\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 17 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -822,7 +822,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebSet Foo of oMyObj\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 17 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -833,7 +833,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo to oMyObj arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 21 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -841,7 +841,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo to oMyObj arg1 arg2 arg3 \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 26 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -853,7 +853,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Send Foo arg1 arg2 arg3 \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 11 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -865,7 +865,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Get Foo of oMyObj arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -873,7 +873,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Get Foo arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -881,7 +881,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Get Foo of oMyObj arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -889,7 +889,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Get Foo of (oMyObj) arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 22 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -897,7 +897,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of oMyObj to arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -905,7 +905,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo to arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -913,7 +913,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo arg1 to arg2\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -921,7 +921,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebGet Foo of oMyObj arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -929,7 +929,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebGet Foo arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -937,7 +937,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebGet Foo of oMyObj arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -945,7 +945,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "WebGet Foo of (oMyObj) arg1\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 25 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -956,7 +956,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set \nSend OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
         assert_eq!(
@@ -967,7 +967,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -975,7 +975,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -983,7 +983,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo arg1 \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 13 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -991,7 +991,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 11 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -999,7 +999,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo arg1 to \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 16 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1007,7 +1007,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of oMyObj \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1015,7 +1015,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of oMyObj to \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 21 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1023,7 +1023,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of oMyObj arg1 \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1031,7 +1031,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Set Foo of oMyObj arg1 to \nSet OtherMessage\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 26 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1042,7 +1042,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iMyInt to iMyOtherInt\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1056,7 +1056,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iMyInt to \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 15 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1067,7 +1067,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move (iMyInt) to iMyOtherInt\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
         assert_eq!(context, Some(DocumentContext::ParenExpression));
@@ -1078,7 +1078,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move shippingAddress.iZipCode to iZipCode\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1092,7 +1092,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move shippingAddress.iZipCode\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 24 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
@@ -1100,7 +1100,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move shippingAddress.\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 21 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
@@ -1108,7 +1108,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to shippingAddress.iZipCode\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1116,7 +1116,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to shippingAddress.iZipCode\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 24 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1124,7 +1124,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to shippingAddress.iZipCode\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 37 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
@@ -1132,7 +1132,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to shippingAddress\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 26 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1140,7 +1140,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to shippingAddress.\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 33 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
@@ -1150,7 +1150,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to shippingAddress.i\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 34 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
@@ -1158,7 +1158,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move iZipCode to order.shippingAddress.\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 39 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
@@ -1169,23 +1169,19 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Move\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
         assert_eq!(context, Some(DocumentContext::CommandReference));
 
-        let doc = DataFlexDocument::new(
-            "test.pkg".into(),
-            "\n",
-            index::IndexRef::make_test_index_ref(),
-        );
+        let doc = DataFlexDocument::new("test.pkg".into(), "\n", &index::Index::make_test_index());
         let context = DocumentContext::context(&doc, Point { row: 0, column: 0 });
         assert_eq!(context, Some(DocumentContext::CommandReference));
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "If bOk \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 7 });
         assert_eq!(context, Some(DocumentContext::CommandReference));
@@ -1193,7 +1189,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "If bOk Move 1 to iVar\nElse \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 5 });
         assert_eq!(context, Some(DocumentContext::CommandReference));
@@ -1206,7 +1202,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Use \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 4 });
         assert_eq!(context, Some(DocumentContext::FileDependency));
@@ -1214,7 +1210,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Use SomeFile.pkg\nUse OtherFile.pkg\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 8 });
         assert_eq!(context, Some(DocumentContext::FileDependency));
@@ -1225,7 +1221,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure \nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
         assert_eq!(
@@ -1236,7 +1232,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure Set \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 14 });
         assert_eq!(
@@ -1247,7 +1243,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Function \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
         assert_eq!(
@@ -1261,7 +1257,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure SayHello \nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 19 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1269,7 +1265,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure SayHello I\nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 20 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1277,7 +1273,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure SayHello Integer \nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 27 });
         assert_eq!(context, None);
@@ -1285,7 +1281,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure SayHello Integer i\nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 28 });
         assert_eq!(context, None);
@@ -1293,7 +1289,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure SayHello Integer iArg1 \nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 33 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1301,7 +1297,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Procedure SayHello Integer iArg1 I\nEnd_Procedure\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 34 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1309,7 +1305,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Function SayHello \nEnd_Function\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 18 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1317,7 +1313,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Function SayHello Integer iArg1 \nEnd_Function\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 32 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1325,7 +1321,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Function SayHello Integer ByRef iArg1 \nEnd_Function\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 38 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1333,7 +1329,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Function SayHello Integer iArg1 Returns \nEnd_Function\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 40 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1341,7 +1337,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Function SayHello Global \nEnd_Function\n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 25 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1352,7 +1348,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Property \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 9 });
         assert_eq!(context, Some(DocumentContext::TypeReference));
@@ -1360,7 +1356,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Property String \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 16 });
         assert_eq!(context, None);
@@ -1368,7 +1364,7 @@ mod test {
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Property String psName \n",
-            index::IndexRef::make_test_index_ref(),
+            &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 23 });
         assert_eq!(context, Some(DocumentContext::Expression));
@@ -1379,7 +1375,7 @@ mod test {
         let test_content = "Move 1234 /* 123 test comment */ to iMyVar\n";
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
         let context = DocumentContext::context(&doc, Point { row: 0, column: 38 });
         assert_eq!(context, Some(DocumentContext::Expression));
     }
@@ -1389,7 +1385,7 @@ mod test {
         let test_content = "Send ;\n foo\n";
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
         let context = DocumentContext::context(&doc, Point { row: 1, column: 3 });
         assert_eq!(
             context,

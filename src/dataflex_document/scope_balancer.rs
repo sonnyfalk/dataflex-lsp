@@ -212,8 +212,8 @@ mod tests {
         let test_content = r#"
     Object 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 10), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -226,8 +226,8 @@ mod tests {
         let test_content = r#"
     Class 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 10), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -240,8 +240,8 @@ mod tests {
         let test_content = r#"
     Composite 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 14), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -254,8 +254,8 @@ mod tests {
         let test_content = r#"
     Procedure 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 14), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -268,8 +268,8 @@ mod tests {
         let test_content = r#"
     Function 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 13), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -282,8 +282,8 @@ mod tests {
         let test_content = r#"
     Struct 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 11), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -296,8 +296,8 @@ mod tests {
         let test_content = r#"
     Enum_List 
             "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 14), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -310,8 +310,8 @@ mod tests {
         let test_content = r#"
     For  
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 8), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -324,8 +324,8 @@ mod tests {
         let test_content = r#"
     while 
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 10), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -338,8 +338,8 @@ mod tests {
         let test_content = r#"
     repeat 
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 11), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -352,8 +352,8 @@ mod tests {
         let test_content = r#"
     Case Begin 
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 14), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -364,8 +364,8 @@ mod tests {
     Case Begin
         
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 14), "        \r\n");
         assert_eq!(
             format!("{:?}", edits),
@@ -378,8 +378,8 @@ mod tests {
         let test_content = r#"
     If foo Begin 
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 17), " ");
         assert_eq!(
             format!("{:?}", edits),
@@ -390,8 +390,8 @@ mod tests {
     If foo Begin
         
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 16), "        \r\n");
         assert_eq!(
             format!("{:?}", edits),
@@ -409,8 +409,8 @@ Object oMyObject is a cObject
     End_Procedure
 End_Object
     "#;
-        let index = index::IndexRef::make_test_index_ref();
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
 
         let range_pair = ScopeBalancer::open_and_close_scope_range_pair(&doc, Point::new(1, 0));
         assert_eq!(

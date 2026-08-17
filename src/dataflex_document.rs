@@ -26,27 +26,29 @@ pub struct DataFlexDocument {
     file_path: PathBuf,
     line_map: line_map::LineMap,
     parser: DataFlexTreeParser,
-    index: index::IndexRef,
     tree: Option<Tree>,
     syntax_map: Option<syntax_map::SyntaxMap>,
 }
 
 impl DataFlexDocument {
-    pub fn new(path: PathBuf, text: &str, index_ref: index::IndexRef) -> Self {
+    pub fn new(path: PathBuf, text: &str, index: &index::Index) -> Self {
         let mut doc = Self {
             file_path: path,
             line_map: line_map::LineMap::new(text),
             parser: DataFlexTreeParser::new(),
-            index: index_ref,
             tree: None,
             syntax_map: None,
         };
-        doc.update();
+        doc.update(index);
         doc
     }
 
     pub fn tree(&self) -> Option<&Tree> {
         self.tree.as_ref()
+    }
+
+    pub fn file_path(&self) -> &PathBuf {
+        &self.file_path
     }
 
     pub fn root_node(&self) -> Option<tree_sitter::Node<'_>> {
@@ -99,7 +101,7 @@ impl DataFlexDocument {
         )
     }
 
-    fn update(&mut self) {
+    fn update(&mut self, index: &index::Index) {
         self.tree = self.parser.parse_with_options(
             &mut |_, point| {
                 self.line_map
@@ -110,23 +112,24 @@ impl DataFlexDocument {
             self.tree.as_ref(),
             None,
         );
-        self.update_syntax_map();
+        self.update_syntax_map(index);
     }
 
-    pub fn update_syntax_map(&mut self) {
-        self.syntax_map = Some(syntax_map::SyntaxMap::new(self));
+    pub fn update_syntax_map(&mut self, index: &index::Index) {
+        self.syntax_map = Some(syntax_map::SyntaxMap::new(self, index));
     }
 
     #[cfg(test)]
-    pub fn replace_content(&mut self, text: &str) {
+    pub fn replace_content(&mut self, text: &str, index: &index::Index) {
         self.line_map = line_map::LineMap::new(text);
         self.tree = None;
-        self.update();
+        self.update(index);
     }
 
     pub fn edit_content(
         &mut self,
         changes: &Vec<lsp_types::TextDocumentContentChangeEvent>,
+        index: &index::Index,
     ) -> Option<Vec<lsp_types::TextEdit>> {
         for change in changes {
             let Some(range) = change.range else {
@@ -154,7 +157,7 @@ impl DataFlexDocument {
                 });
             }
         }
-        self.update();
+        self.update(index);
 
         if changes.len() == 1
             && let Some(change) = changes.first()
@@ -186,6 +189,7 @@ impl DataFlexDocument {
     pub fn find_definition(
         &self,
         position: lsp_types::Position,
+        index: &index::Index,
     ) -> Option<Vec<lsp_types::Location>> {
         log::trace!("find_definition {:?}", position);
         let position = self.point_from_lsp_position(position);
@@ -195,7 +199,7 @@ impl DataFlexDocument {
         };
         log::trace!("context {:?}", context);
 
-        let reference_resolver = ReferenceResolver::new(self);
+        let reference_resolver = ReferenceResolver::new(self, index);
         let locations = if context.can_reference_variables()
             && let Some(variable) = reference_resolver.resolve_local_variable(position)
         {
@@ -218,8 +222,7 @@ impl DataFlexDocument {
                 index::IndexFileRef::from(&PathBuf::from(self.line_map.text_for_node(&node)))
             })
         {
-            self.index
-                .get()
+            index
                 .find_file_path(&file_ref)
                 .map(|path| {
                     lsp_types::Location::new(
@@ -247,12 +250,13 @@ impl DataFlexDocument {
         &self,
         position: lsp_types::Position,
         auto_complete: bool,
+        index: &index::Index,
     ) -> Option<Vec<lsp_types::CompletionItem>> {
         let position = self.point_from_lsp_position(position);
 
         let completions =
-            code_completion::CodeCompletion::code_completion(self, position, auto_complete);
-        let ranker = code_completion::CompletionItemRanker::new(self, position);
+            code_completion::CodeCompletion::code_completion(self, position, auto_complete, index);
+        let ranker = code_completion::CompletionItemRanker::new(self, position, index);
         completions.map(|mut completions| {
             completions
                 .drain(..)
@@ -279,11 +283,12 @@ impl DataFlexDocument {
     pub fn symbol_declaration(
         &self,
         position: lsp_types::Position,
+        index: &index::Index,
     ) -> Option<lsp_types::MarkedString> {
         let position = self.point_from_lsp_position(position);
         let context = DocumentContext::context(self, position)?;
 
-        let reference_resolver = ReferenceResolver::new(self);
+        let reference_resolver = ReferenceResolver::new(self, index);
         if context.can_reference_variables()
             && let Some(variable) = reference_resolver.resolve_local_variable(position)
         {
@@ -301,7 +306,7 @@ impl DataFlexDocument {
         } else {
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols
-                .map(|s| symbol_declaration::SymbolDeclaration::new(s, &self.index.get()))
+                .map(|s| symbol_declaration::SymbolDeclaration::new(s, index))
                 .map(|symbol_declaration| {
                     lsp_types::MarkedString::from_markdown(symbol_declaration.to_string())
                 })
@@ -312,9 +317,10 @@ impl DataFlexDocument {
     pub fn signature_help(
         &self,
         position: lsp_types::Position,
+        index: &index::Index,
     ) -> Option<Vec<lsp_types::SignatureInformation>> {
         let position = self.point_from_lsp_position(position);
-        let parameter_info = parameter_info::ParameterInfo::parameter_info(self, position)?;
+        let parameter_info = parameter_info::ParameterInfo::parameter_info(self, position, index)?;
         Some(
             parameter_info
                 .into_iter()
@@ -368,8 +374,8 @@ impl DataFlexDocument {
             .collect()
     }
 
-    pub fn code_lens_items(&self) -> Vec<lsp_types::CodeLens> {
-        code_lens::CodeLens::code_lens(self)
+    pub fn code_lens_items(&self, index: &index::Index) -> Vec<lsp_types::CodeLens> {
+        code_lens::CodeLens::code_lens(self, index)
             .into_iter()
             .map(|code_lens| lsp_types::CodeLens {
                 range: lsp_types::Range::new(
@@ -523,17 +529,18 @@ mod tests {
 
     #[test]
     fn test_replace_content() {
+        let index = index::Index::make_test_index();
         let mut doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index,
         );
         assert_eq!(
             doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))"
         );
 
-        doc.replace_content("Procedure test\nEnd_Procedure\n");
+        doc.replace_content("Procedure test\nEnd_Procedure\n", &index);
         assert_eq!(
             doc.root_node().unwrap().to_sexp(),
             "(source_file (procedure_definition (procedure_header (keyword) name: (identifier)) (procedure_footer (keyword))))"
@@ -542,30 +549,34 @@ mod tests {
 
     #[test]
     fn test_edit_content() {
+        let index = index::Index::make_test_index();
         let mut doc = DataFlexDocument::new(
             "test.pkg".into(),
             "Object oTest is a cTest\nEnd_Object\n",
-            index::IndexRef::make_test_index_ref(),
+            &index,
         );
         assert_eq!(
             doc.root_node().unwrap().to_sexp(),
             "(source_file (object_definition (object_header (keyword) name: (identifier) (keyword) (keyword) superclass: (identifier)) (object_footer (keyword))))"
         );
 
-        doc.edit_content(&vec![lsp_types::TextDocumentContentChangeEvent {
-            range: Some(tower_lsp::lsp_types::Range {
-                start: tower_lsp::lsp_types::Position {
-                    line: 0,
-                    character: 23,
-                },
-                end: tower_lsp::lsp_types::Position {
-                    line: 0,
-                    character: 23,
-                },
-            }),
-            text: "\nProcedure test\nEnd_Procedure".to_string(),
-            range_length: None,
-        }]);
+        doc.edit_content(
+            &vec![lsp_types::TextDocumentContentChangeEvent {
+                range: Some(tower_lsp::lsp_types::Range {
+                    start: tower_lsp::lsp_types::Position {
+                        line: 0,
+                        character: 23,
+                    },
+                    end: tower_lsp::lsp_types::Position {
+                        line: 0,
+                        character: 23,
+                    },
+                }),
+                text: "\nProcedure test\nEnd_Procedure".to_string(),
+                range_length: None,
+            }],
+            &index,
+        );
 
         assert_eq!(
             doc.root_node().unwrap().to_sexp(),

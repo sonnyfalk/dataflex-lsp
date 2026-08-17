@@ -487,9 +487,9 @@ mod tests {
 
     #[test]
     fn test_goto_start_of_command_for_line() {
-        let index = index::IndexRef::make_test_index_ref();
+        let index = index::Index::make_test_index();
         let test_content = "// Test\nSend foo\n";
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let mut cursor = doc.cursor().unwrap();
         cursor.goto_start_of_command_for_line(1);
         assert_eq!(
@@ -498,7 +498,7 @@ mod tests {
         );
 
         let test_content = "Send ;\n foo\n";
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let mut cursor = doc.cursor().unwrap();
         cursor.goto_start_of_command_for_line(1);
         assert_eq!(
@@ -507,7 +507,7 @@ mod tests {
         );
 
         let test_content = "Send ;\nfoo\n";
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let mut cursor = doc.cursor().unwrap();
         cursor.goto_start_of_command_for_line(1);
         assert_eq!(
@@ -516,7 +516,7 @@ mod tests {
         );
 
         let test_content = "Send ; // Trailing comment\n foo\n";
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let mut cursor = doc.cursor().unwrap();
         cursor.goto_start_of_command_for_line(1);
         assert_eq!(
@@ -527,9 +527,9 @@ mod tests {
 
     #[test]
     fn test_goto_leaf_node_at_or_before_point() {
-        let index = index::IndexRef::make_test_index_ref();
+        let index = index::Index::make_test_index();
         let test_content = "// Test\nSend foo\n";
-        let doc = DataFlexDocument::new("test.pkg".into(), test_content, index.clone());
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
         let mut cursor = doc.cursor().unwrap();
         cursor.goto_leaf_node_at_or_before_point(Point::new(0, 7));
         assert_eq!(
