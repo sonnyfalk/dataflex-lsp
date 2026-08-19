@@ -53,10 +53,18 @@ impl WorkspaceInfo {
     }
 
     pub fn load_from_path(path: &PathBuf) -> Self {
-        if path.is_dir()
-            && let Some(file) = Self::find_first_sws(path)
-        {
-            return Self::load_from_path(&file);
+        if path.is_dir() {
+            if let Some(file) = Self::find_first_sws(path) {
+                return Self::load_from_path(&file);
+            }
+
+            return Self {
+                sws_path: path.clone(),
+                root_folder: path.clone(),
+                dataflex_version: None,
+                projects: Vec::new(),
+                local_packages: Vec::new(),
+            };
         }
 
         let content = std::fs::read_to_string(path).unwrap_or_default();
