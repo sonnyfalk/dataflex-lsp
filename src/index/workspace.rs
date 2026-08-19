@@ -57,14 +57,7 @@ impl WorkspaceInfo {
             if let Some(file) = Self::find_first_sws(path) {
                 return Self::load_from_path(&file);
             }
-
-            return Self {
-                sws_path: path.clone(),
-                root_folder: path.clone(),
-                dataflex_version: None,
-                projects: Vec::new(),
-                local_packages: Vec::new(),
-            };
+            return Self::load_from_folder(path);
         }
 
         let content = std::fs::read_to_string(path).unwrap_or_default();
@@ -82,7 +75,7 @@ impl WorkspaceInfo {
         }
     }
 
-    pub fn load_from_str(content: &str, path: PathBuf) -> Option<Self> {
+    fn load_from_str(content: &str, path: PathBuf) -> Option<Self> {
         if let Ok(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content) {
             let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
             let dataflex_version = Some(DataFlexVersion::from(raw_workspace_file.df.to_string()));
@@ -178,6 +171,25 @@ impl WorkspaceInfo {
         } else {
             None
         }
+    }
+
+    fn load_from_folder(path: &PathBuf) -> Self {
+        // Synthesize a folder workspace, with local packages pointing to any immediate subfolders containing .sws files.
+        let local_packages = path
+            .read_dir()
+            .into_iter()
+            .flat_map(|read_dir| read_dir.flatten())
+            .map(|entry| entry.path())
+            .filter_map(|p| p.is_dir().then(|| Self::find_first_sws(&p)).flatten())
+            .collect();
+
+        return Self {
+            sws_path: path.clone(),
+            root_folder: path.clone(),
+            dataflex_version: None,
+            projects: Vec::new(),
+            local_packages,
+        };
     }
 
     pub fn get_root_folder(&self) -> &PathBuf {

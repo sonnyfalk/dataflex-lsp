@@ -213,6 +213,7 @@ impl Indexer {
             .workspace
             .local_workspace_dependencies()
             .into_iter()
+            .filter(|ws| !ws.get_root_folder().starts_with(&root_folder))
             .map(|ws| ws.get_root_folder().clone())
             .collect();
         rayon::in_place_scope(|scope| {
