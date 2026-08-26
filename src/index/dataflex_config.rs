@@ -12,8 +12,11 @@ struct ConfigEntry {
     system_make_path: Vec<PathBuf>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DataFlexVersion(String);
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct DataFlexVersion {
+    pub major: usize,
+    pub minor: usize,
+}
 
 static SYSTEM_DATAFLEX_CONFIG: std::sync::LazyLock<DataFlexConfig> =
     std::sync::LazyLock::new(|| DataFlexConfig::new());
@@ -37,11 +40,10 @@ impl DataFlexConfig {
         }
 
         let mut installs: Vec<_> = self.versioned_configs.iter().collect();
-        installs.sort_by_key(|(ver, _)| &ver.0);
+        installs.sort_by(|a, b| a.0.cmp(b.0).reverse());
         let paths = std::env::join_paths(
             installs
                 .into_iter()
-                .rev()
                 .map(|(_, config)| config.root_path.join("Bin64")),
         )
         .ok();
@@ -51,7 +53,7 @@ impl DataFlexConfig {
 
     fn new() -> Self {
         if let Some(versioned_configs) = Self::versioned_configs() {
-            let default_version = versioned_configs.keys().next().cloned().unwrap_or_default();
+            let default_version = versioned_configs.keys().max().cloned().unwrap_or_default();
             Self {
                 versioned_configs,
                 default_version,
@@ -78,8 +80,8 @@ impl DataFlexConfig {
                     .and_then(|k| k.get_value("VDFRootDir"))
                     .ok();
                 let make_path: Option<String> = reg_key
-                    .open_subkey(format!("{version}\\DfComp"))
-                    .and_then(|k| k.get_value("MakePath"))
+                    .open_subkey(format!("{version}\\Workspaces"))
+                    .and_then(|k| k.get_value("SystemMakePath"))
                     .ok();
                 if let Some(root_path) = root_path
                     && let Some(make_path) = make_path
@@ -107,20 +109,37 @@ impl DataFlexConfig {
     }
 }
 
+impl DataFlexVersion {
+    pub fn new(major: usize, minor: usize) -> Self {
+        Self { major, minor }
+    }
+
+    pub fn dataflex_26() -> Self {
+        Self::new(26, 0)
+    }
+}
+
 impl From<String> for DataFlexVersion {
     fn from(value: String) -> Self {
-        Self(value)
+        Self::from(value.as_str())
     }
 }
 
 impl From<&str> for DataFlexVersion {
     fn from(value: &str) -> Self {
-        Self::from(String::from(value))
+        let mut version_numbers = value
+            .split('.')
+            .filter_map(|part| part.parse::<usize>().ok());
+
+        Self {
+            major: version_numbers.next().unwrap_or_default(),
+            minor: version_numbers.next().unwrap_or_default(),
+        }
     }
 }
 
 impl Default for DataFlexVersion {
     fn default() -> Self {
-        Self::from(String::new())
+        Self::dataflex_26()
     }
 }
