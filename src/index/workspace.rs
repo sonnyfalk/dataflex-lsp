@@ -1,3 +1,5 @@
+use crate::settings::{FetchPackageDependencies, Settings};
+
 use super::*;
 
 use std::path::PathBuf;
@@ -219,12 +221,26 @@ impl WorkspaceInfo {
     pub fn fetch_package_dependencies_and_extended_info(&self) -> Option<WorkspaceInfo> {
         let df_cli = DataFlexConfig::system_config().df_cli_path()?;
         log::info!("Using df_cli from: {:?}", df_cli);
-
-        let output = std::process::Command::new(&df_cli)
-            .arg("config")
-            .arg("--json")
-            .arg(&self.sws_path)
-            .output();
+        let suppress_fetch_dependencies = self.should_suppress_fetch_dependencies();
+        if !suppress_fetch_dependencies {
+            log::info!("Fetching package dependencies");
+        } else {
+            log::info!("Skip fetching package dependencies");
+        }
+        let output = if suppress_fetch_dependencies {
+            std::process::Command::new(&df_cli)
+                .arg("config")
+                .arg("--json")
+                .arg("--no-dependencies")
+                .arg(&self.sws_path)
+                .output()
+        } else {
+            std::process::Command::new(&df_cli)
+                .arg("config")
+                .arg("--json")
+                .arg(&self.sws_path)
+                .output()
+        };
         log::trace!("df_cli output: {:?}", output);
         let output = output.ok()?;
 
@@ -243,13 +259,27 @@ impl WorkspaceInfo {
                 }
             }
             Some(workspace)
-        } else {
+        } else if !suppress_fetch_dependencies {
             // Try running df-cli without --json output since older versions don't support it, just to fetch packages.
             _ = std::process::Command::new(df_cli)
                 .arg("config")
                 .arg(&self.sws_path)
                 .output();
             None
+        } else {
+            None
+        }
+    }
+
+    fn should_suppress_fetch_dependencies(&self) -> bool {
+        match Settings::get().fetch_package_dependencies {
+            FetchPackageDependencies::Auto => self
+                .dataflex_version
+                .as_ref()
+                .map(|v| *v < DataFlexVersion::dataflex_26())
+                .unwrap_or(false),
+            FetchPackageDependencies::Always => false,
+            FetchPackageDependencies::Never => true,
         }
     }
 

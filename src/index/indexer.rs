@@ -118,7 +118,6 @@ impl Indexer {
         let system_paths =
             DataFlexConfig::system_config().system_path(self.dataflex_version.as_ref());
         rayon::spawn(move || {
-            log::info!("Fetching package dependencies");
             let extended_workspace = index
                 .get()
                 .workspace

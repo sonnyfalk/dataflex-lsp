@@ -158,6 +158,22 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn initialized(&self, _: InitializedParams) {
         log::info!("initialized() called");
 
+        if let Ok(configs) = self
+            .inner
+            .client
+            .configuration(vec![ConfigurationItem {
+                section: Some(String::from("dataflex-lsp")),
+                ..Default::default()
+            }])
+            .await
+            && let Some(settings) = configs
+                .into_iter()
+                .next()
+                .and_then(|v| serde_json::from_value::<Settings>(v).ok())
+        {
+            Settings::set(settings);
+        }
+
         let workspace_info = self
             .inner
             .workspace_root
@@ -210,22 +226,6 @@ impl LanguageServer for DataFlexLanguageServer {
                 },
             ])
             .await;
-
-        if let Ok(configs) = self
-            .inner
-            .client
-            .configuration(vec![ConfigurationItem {
-                section: Some(String::from("dataflex-lsp")),
-                ..Default::default()
-            }])
-            .await
-            && let Some(settings) = configs
-                .into_iter()
-                .next()
-                .and_then(|v| serde_json::from_value::<Settings>(v).ok())
-        {
-            Settings::set(settings);
-        }
 
         self.inner
             .client

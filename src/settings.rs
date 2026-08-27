@@ -9,6 +9,15 @@ use crate::logging;
 pub struct Settings {
     #[serde(deserialize_with = "Settings::deserialize_log_level")]
     pub log_level: LevelFilter,
+    pub fetch_package_dependencies: FetchPackageDependencies,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub enum FetchPackageDependencies {
+    #[default]
+    Auto,
+    Always,
+    Never,
 }
 
 static SETTINGS: std::sync::RwLock<Settings> = std::sync::RwLock::new(Settings::new());
@@ -17,6 +26,7 @@ impl Settings {
     pub const fn new() -> Self {
         Self {
             log_level: LevelFilter::Info,
+            fetch_package_dependencies: FetchPackageDependencies::Auto,
         }
     }
 
