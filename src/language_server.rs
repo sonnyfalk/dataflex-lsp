@@ -544,10 +544,24 @@ impl LanguageServer for DataFlexLanguageServer {
                 indexer.remove_indexed_files(removed_files);
             }
             if !modified_files.is_empty() {
-                indexer.index_modified_files(modified_files);
+                indexer.index_modified_files(dedup_and_prune_nested_paths(modified_files));
             }
         }
     }
+}
+
+fn dedup_and_prune_nested_paths(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let paths: Vec<PathBuf> = paths
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    let dirs: Vec<PathBuf> = paths.iter().filter(|p| p.is_dir()).cloned().collect();
+
+    paths
+        .into_iter()
+        .filter(|p| !dirs.iter().any(|d| p != d && p.starts_with(d)))
+        .collect()
 }
 
 impl DataFlexLanguageServerInner {
