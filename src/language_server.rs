@@ -158,6 +158,15 @@ impl LanguageServer for DataFlexLanguageServer {
     async fn initialized(&self, _: InitializedParams) {
         log::info!("initialized() called");
 
+        let workspace_info = self
+            .inner
+            .workspace_root
+            .get()
+            .map(|path| index::WorkspaceInfo::load_from_path(path))
+            .unwrap_or(index::WorkspaceInfo::new());
+
+        _ = self.inner.indexer.set(index::Indexer::new(workspace_info));
+
         if let Ok(configs) = self
             .inner
             .client
@@ -174,14 +183,6 @@ impl LanguageServer for DataFlexLanguageServer {
             Settings::set(settings);
         }
 
-        let workspace_info = self
-            .inner
-            .workspace_root
-            .get()
-            .map(|path| index::WorkspaceInfo::load_from_path(path))
-            .unwrap_or(index::WorkspaceInfo::new());
-
-        _ = self.inner.indexer.set(index::Indexer::new(workspace_info));
         if self
             .inner
             .indexer
