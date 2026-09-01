@@ -93,8 +93,8 @@
         (identifier) @type
         (array_decl)* @array)
     ]
-    (identifier) @name)
-  (#set! index.element struct_member)) @element_node
+    (identifier) @name) @element_node
+  (#set! index.element struct_member))
 
 (global_variable_declaration
   [

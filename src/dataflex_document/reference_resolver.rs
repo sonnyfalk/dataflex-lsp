@@ -665,14 +665,14 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 21));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
     }
 
@@ -725,21 +725,21 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 35));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 25));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 6, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 0 }, end: SourceLocation { line: 8, column: 0 } }, symbol_path: SymbolPath(\"tMyOtherStruct.myStruct\"), data_type: DataFlexDataType(\"tMyStruct\"), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 6, column: 14 }, range: SourceRange { start: SourceLocation { line: 6, column: 4 }, end: SourceLocation { line: 7, column: 0 } }, symbol_path: SymbolPath(\"tMyOtherStruct.myStruct\"), data_type: DataFlexDataType(\"tMyStruct\"), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
 
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(12, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -765,7 +765,7 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(7, 18));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -795,7 +795,7 @@ End_Procedure
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(11, 32));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
