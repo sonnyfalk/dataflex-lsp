@@ -106,7 +106,10 @@ impl LineMap {
         );
 
         if inserted_lines > 0 {
-            current_line += inserted_lines - 1;
+            current_line += inserted_lines;
+            if !self.lines[current_line - 1].has_line_ending() {
+                current_line = current_line - 1;
+            }
         }
 
         if current_line < self.lines.len() && !self.lines[current_line].has_line_ending() {
@@ -394,6 +397,26 @@ mod tests {
             "    End_Procedure\n"
         );
 
+        assert_eq!(line_map.line_count(), 5);
+    }
+
+    #[test]
+    fn test_insert_multiline_at_start_of_line() {
+        let mut line_map = LineMap::new("Object oTest is a cTest\nEnd_Object\n");
+
+        assert_eq!(line_map.text(), "Object oTest is a cTest\nEnd_Object\n");
+        assert_eq!(line_map.line_count(), 3);
+
+        line_map.replace_range(
+            Point { row: 0, column: 0 },
+            Point { row: 0, column: 0 },
+            "// Test\n// Test more\n",
+        );
+
+        assert_eq!(
+            line_map.text(),
+            "// Test\n// Test more\nObject oTest is a cTest\nEnd_Object\n"
+        );
         assert_eq!(line_map.line_count(), 5);
     }
 
