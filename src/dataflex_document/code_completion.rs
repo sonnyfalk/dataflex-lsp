@@ -425,7 +425,7 @@ impl CodeCompletion {
             .chain(
                 index
                     .all_known_structs()
-                    .into_iter()
+                    .iter()
                     .chain(index.all_system_types())
                     .map(|name| CompletionItem {
                         label: name.to_string(),
@@ -453,7 +453,7 @@ impl CodeCompletion {
     fn type_completions(index: &index::Index) -> Vec<CompletionItem> {
         index
             .all_known_structs()
-            .into_iter()
+            .iter()
             .chain(index.all_system_types())
             .map(|name| CompletionItem {
                 label: name.to_string(),
@@ -515,25 +515,19 @@ impl CodeCompletion {
     }
 
     fn system_functions(index: &index::Index) -> impl Iterator<Item = CompletionItem> {
-        index
-            .all_system_functions()
-            .into_iter()
-            .map(|f| CompletionItem {
-                label: f.to_string(),
-                kind: CompletionItemKind::Function,
-                ..Default::default()
-            })
+        index.all_system_functions().map(|f| CompletionItem {
+            label: f.to_string(),
+            kind: CompletionItemKind::Function,
+            ..Default::default()
+        })
     }
 
     fn system_commands(index: &index::Index) -> impl Iterator<Item = CompletionItem> {
-        index
-            .all_commands()
-            .into_iter()
-            .map(move |command| CompletionItem {
-                label: command.to_string(),
-                kind: CompletionItemKind::Command,
-                ..Default::default()
-            })
+        index.all_commands().map(move |command| CompletionItem {
+            label: command.to_string(),
+            kind: CompletionItemKind::Command,
+            ..Default::default()
+        })
     }
 }
 

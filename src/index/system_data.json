@@ -1,0 +1,719 @@
+{
+    "types": [
+        "Boolean",
+        "Date",
+        "Integer",
+        "Number",
+        "Real",
+        "RowID",
+        "String",
+        "Address",
+        "BigInt",
+        "Char",
+        "Currency",
+        "DateTime",
+        "Decimal",
+        "DWord",
+        "Float",
+        "Handle",
+        "LongPtr",
+        "Pointer",
+        "Short",
+        "Time",
+        "Timespan",
+        "UBigInt",
+        "UChar",
+        "UInteger",
+        "ULongPtr",
+        "UShort",
+        "WString",
+        "Variant"
+    ],
+    "commands": [
+        "Begin",
+        "Begin_Row",
+        "Begin_Transaction",
+        "Case",
+        "Cd_Popup_Object",
+        "Class",
+        "Deferred_View",
+        "DFBeginHeader",
+        "DFCreate_Menu",
+        "Enum_List",
+        "For",
+        "For_All",
+        "Function",
+        "Object",
+        "Composite",
+        "Procedure",
+        "Repeat",
+        "Struct",
+        "While",
+        "#HEADER",
+        "End",
+        "Loop",
+        "Until",
+        "End_Transaction",
+        "Cd_End_Object",
+        "End_Class",
+        "DFEndHeader",
+        "End_Enum_List",
+        "End_For_All",
+        "End_Function",
+        "End_Object",
+        "End_Composite",
+        "End_Procedure",
+        "End_Struct",
+        "#ENDHEADER",
+        "Abort",
+        "Abort_Transaction",
+        "Activate_View",
+        "Add",
+        "Append",
+        "Append_Output",
+        "Attach",
+        "Break",
+        "Broadcast",
+        "Broadcast_Focus",
+        "Call_Driver",
+        "CallStackDump",
+        "Case",
+        "Clear",
+        "Close",
+        "Close_Input",
+        "Close_Output",
+        "CompilerWarnings",
+        "CompilerLevelWarning",
+        "Constrain",
+        "Constrained_Clear",
+        "Constrained_Find",
+        "Constraint_Set",
+        "Constraint_Validate",
+        "Copy_db",
+        "Copy_Records",
+        "CopyFile",
+        "Create_Field",
+        "Create_Index",
+        "Declare_Datafile",
+        "Decrement",
+        "Define",
+        "Delegate",
+        "Delete",
+        "Delete_db",
+        "Delete_Field",
+        "Delete_Index",
+        "DFFont",
+        "DFFontSize",
+        "DFHeaderFrame",
+        "DFHeaderLineCheck",
+        "DFHeaderMargin",
+        "DFHeaderPos",
+        "DFHeaderWrap",
+        "DFLineCheck",
+        "DFTopMargin",
+        "DFBottomMargin",
+        "DFLeftMargin",
+        "DFRightMargin",
+        "DFWrite",
+        "DFWriteBMP",
+        "DFWriteEllip",
+        "DFWriteLine",
+        "DFWriteLn",
+        "DFWriteLnPos",
+        "DFWritePos",
+        "DFWriteRect",
+        "DFWriteXYLine",
+        "Direct_Input",
+        "Direct_Output",
+        "Diskfree",
+        "Else",
+        "Entry_Item",
+        "EraseFile",
+        "Error",
+        "External_Function",
+        "Field_Map",
+        "File_Exist",
+        "Fill_Field",
+        "Find",
+        "Flush_Output",
+        "Forward",
+        "Function_Return",
+        "Get",
+        "Get_Argument_Size",
+        "Get_Attribute",
+        "Get_Channel_Position",
+        "Get_Channel_Size",
+        "Get_Current_Directory",
+        "Get_Current_Input_Channel",
+        "Get_Current_Output_Channel",
+        "Get_Current_User_Count",
+        "Get_Date_Attribute",
+        "Get_Directory",
+        "Get_Environment",
+        "Get_FieldNumber",
+        "Get_Field_Value",
+        "Get_FileNumber",
+        "Get_File_Mod_Time",
+        "Get_File_Path",
+        "Get_Icon_Count",
+        "Get_Licensed_Max_Users",
+        "Get_StrictEval",
+        "Get_Transaction_Retry",
+        "Get_Windows_Directory",
+        "GetDskInfo",
+        "Global_Variable",
+        "If",
+        "Import_Class_Protocol",
+        "Include_Text",
+        "Increment",
+        "Load_Def",
+        "Load_Driver",
+        "Lock",
+        "Login",
+        "Logout",
+        "Make_Directory",
+        "Make_File",
+        "Make_Temp_File",
+        "Move",
+        "NewRecord",
+        "On_Item",
+        "On_Key",
+        "Open",
+        "Output",
+        "Output_Aux_File",
+        "Playwave",
+        "Procedure_Return",
+        "Property",
+        "Read",
+        "Read_Block",
+        "Read_Hex",
+        "Readln",
+        "Register_Function",
+        "Register_Object",
+        "Register_Procedure",
+        "Registration",
+        "Relate",
+        "Remove_Directory",
+        "RenameFile",
+        "Reread",
+        "RunProgram",
+        "Save",
+        "SaveRecord",
+        "Send",
+        "Set",
+        "Set_Argument_Size",
+        "Set_Attribute",
+        "Set_Channel_Position",
+        "Set_Date_Attribute",
+        "Set_Directory",
+        "Set_Field_Value",
+        "Set_File_Mod_Time",
+        "Set_Relate",
+        "Set_StrictEval",
+        "Set_Transaction_Retry",
+        "Show",
+        "Showln",
+        "Sleep",
+        "Sort",
+        "Start_UI",
+        "Structure_Abort",
+        "Structure_Copy",
+        "Structure_End",
+        "Structure_Start",
+        "Subtract",
+        "Sysdate",
+        "Unicode",
+        "Unload_Driver",
+        "Unlock",
+        "Use",
+        "Valid_Drive",
+        "Version_Information",
+        "WebGet",
+        "WebPublishFunction",
+        "WebPublishProcedure",
+        "WebSet",
+        "WebSetResponsive",
+        "WebRegisterPath",
+        "Write",
+        "Write_Hex",
+        "Writeln",
+        "ZeroFile",
+        "ZeroString",
+        "#COMMAND",
+        "#ENDCOMMAND",
+        "#Replace",
+        "#Include",
+        "#CHKSUB",
+        "#IF",
+        "#IFSUB",
+        "#IFDEF",
+        "#IFNDEF",
+        "#ELSE",
+        "#ENDIF",
+        "#Warning"
+    ],
+    "functions": {
+        "Abs": {
+            "signature": "Abs({value})"
+        },
+        "Acos": {
+            "signature": "Acos({expression})"
+        },
+        "AddressOf": {
+            "signature": "AddressOf({var})"
+        },
+        "Alloc": {
+            "signature": "Alloc({iBytesAllocated})"
+        },
+        "Append": {
+            "signature": "Append({string1}, {string2})"
+        },
+        "AppendArray": {
+            "signature": "AppendArray({Array1Id}, {Array2Id})"
+        },
+        "Ascii": {
+            "signature": "Ascii({character})"
+        },
+        "Asin": {
+            "signature": "Asin({expression})"
+        },
+        "Atan": {
+            "signature": "Atan({expression})"
+        },
+        "BinarySearchInsertPos": {
+            "signature": "BinarySearchInsertPos()"
+        },
+        "BinarySearchArray": {
+            "signature": "BinarySearchArray({SearchVal}, {SortedArrayId} [, {ObjectId}, {MessageId}])"
+        },
+        "Cast": {
+            "signature": "Cast({Var}, {Type})"
+        },
+        "Center": {
+            "signature": "Center({string-value}, {length})"
+        },
+        "Character": {
+            "signature": "Character({value})"
+        },
+        "Convert": {
+            "signature": "Convert({Var}, {Type})"
+        },
+        "ConvertFromClient": {
+            "signature": "ConvertFromClient(eDataType, sValue)"
+        },
+        "ConvertToClient": {
+            "signature": "ConvertToClient(eDataType, sValue)"
+        },
+        "CopyArray": {
+            "signature": "CopyArray({ArrayId}, {indexFirst}, {indexLast})"
+        },
+        "CountArray": {
+            "signature": "CountArray({CompareVal}, {ArrayId}, [{ObjectId}, {MessageId}])"
+        },
+        "CStringSize": {
+            "signature": "CStringSize({CStringAddress})"
+        },
+        "CStringLength": {
+            "signature": "CStringLength({pointer})"
+        },
+        "Cos": {
+            "signature": "Cos({expression})"
+        },
+        "CurrentDateTime": {
+            "signature": "CurrentDateTime()"
+        },
+        "DateAddDay": {
+            "signature": "DateAddDay({dtVar}, {iDaysToAdd})"
+        },
+        "DateAddHour": {
+            "signature": "DateAddHour({dtVar}, {iHoursToAdd})"
+        },
+        "DateAddMillisecond": {
+            "signature": "DateAddMillisecond({dtVar}, {iMillisecondsToAdd})"
+        },
+        "DateAddMinute": {
+            "signature": "DateAddMinute({dtVar}, {iMinutesToAdd})"
+        },
+        "DateAddMonth": {
+            "signature": "DateAddMonth({dtVar}, {iMonthsToAdd})"
+        },
+        "DateAddSecond": {
+            "signature": "DateAddSecond({dtVar}, {iSecondsToAdd})"
+        },
+        "DateAddYear": {
+            "signature": "DateAddYear({dtVar}, {iYearsToAdd})"
+        },
+        "DateGetDay": {
+            "signature": "DateGetDay({dtVar})"
+        },
+        "DateGetDayOfWeek": {
+            "signature": "DateGetDayOfWeek({dtVar})"
+        },
+        "DateGetDayofWeek_WDS": {
+            "signature": "DateGetDayOfWeek_WDS({dtVar}, {iWeekDayStart})"
+        },
+        "DateGetDayofWeekISO": {
+            "signature": "DateGetDayOfWeekISO({dtVar})"
+        },
+        "DateGetDayOfYear": {
+            "signature": "DateGetDayOfYear({dtVar})"
+        },
+        "DateGetHour": {
+            "signature": "DateGetHour({dtVar})"
+        },
+        "DateGetMillisecond": {
+            "signature": "DateGetMillisecond({dtVar})"
+        },
+        "DateGetMinute": {
+            "signature": "DateGetMinute({dtVar})"
+        },
+        "DateGetMonth": {
+            "signature": "DateGetMonth({dtVar})"
+        },
+        "DateGetSecond": {
+            "signature": "DateGetSecond({dtVar})"
+        },
+        "DateGetWeekOfYear": {
+            "signature": "DateGetWeekOfYear({dtVar})"
+        },
+        "DateGetWeekOfYear_WDS": {
+            "signature": "DateGetWeekOfYear_WDS({dtVar}, {iWeekDayStart})"
+        },
+        "DateGetWeekOfYearISO": {
+            "signature": "DateGetWeekOfYearISO({dtVar})"
+        },
+        "DateGetYear": {
+            "signature": "DateGetYear({dtVar})"
+        },
+        "DateGetYearOfWeekISO": {
+            "signature": "DateGetYearOfWeekISO({dtVar})"
+        },
+        "DateSet": {
+            "signature": "DateSet({iYear}, {iMonth}, {iDay})"
+        },
+        "DateSetDay": {
+            "signature": "DateSetDay({dtVar}, {iDay})"
+        },
+        "DateSetHour": {
+            "signature": "DateSetHour({dtVar}, {iHour})"
+        },
+        "DateSetMillisecond": {
+            "signature": "DateSetMillisecond({dtVar}, {iMillisecond})"
+        },
+        "DateSetMinute": {
+            "signature": "DateSetMinute({dtVar}, {iMinute})"
+        },
+        "DateSetMonth": {
+            "signature": "DateSetMonth({dtVar}, {iMonth})"
+        },
+        "DateSetSecond": {
+            "signature": "DateSetYear({dtVar}, {iYear})"
+        },
+        "DateSetYear": {
+            "signature": "DateSetYear({dtVar}, {iYear})"
+        },
+        "DeRefC": {
+            "signature": "DeRefC({pMemory}, {iOffset})"
+        },
+        "DeRefDw": {
+            "signature": "DeRefW({pMemory}, {iOffset})"
+        },
+        "DeRefW": {
+            "signature": "DeRefW({pMemory}, {iOffset})"
+        },
+        "DeSerializeRowId": {
+            "signature": "DeserializeRowId({sRowId})"
+        },
+        "Eval": {
+            "signature": "Eval({string-expression})"
+        },
+        "Exp": {
+            "signature": "Exp({expression})"
+        },
+        "FillArray": {
+            "signature": "FillArray({assignVal}, {ArrayId} [, {indexFirst}, {indexLast}])"
+        },
+        "FindByRowId": {
+            "signature": "FindByRowId({hTable}, {RowId})"
+        },
+        "Free": {
+            "signature": "Free({pSomeAddress})"
+        },
+        "GetRowID": {
+            "signature": "GetRowId({hTable})"
+        },
+        "Hi": {
+            "signature": "Hi({expression})"
+        },
+        "If": {
+            "signature": "If({BooleanExpression}, {TrueExpression}, {FalseExpression})"
+        },
+        "Insert": {
+            "signature": "Insert({insert-string}, {host-string}, {position})"
+        },
+        "InsertInArray": {
+            "signature": "InsertInArray({ArrayId}, {index}, {value})"
+        },
+        "IsCOMObject": {
+            "signature": "IsComObject({vComObject})"
+        },
+        "IsDateValid": {
+            "signature": "IsDateValid({dtVar})"
+        },
+        "IsNullCOMObject": {
+            "signature": "IsNullComObject({vComObject})"
+        },
+        "IsNullDateTime": {
+            "signature": "IsNullDateTime({DateTime})"
+        },
+        "IsNullRowID": {
+            "signature": "IsNullRowId({RowId})"
+        },
+        "IsSameArray": {
+            "signature": "IsSameArray({Array1Id}, {Array2Id})"
+        },
+        "IsSameCOMObject": {
+            "signature": "IsSameComObject({vComObject1 }, {vComObject2})"
+        },
+        "IsSameRowID": {
+            "signature": "IsSameRowID({RowId}, {RowId})"
+        },
+        "IsSameStruct": {
+            "signature": "IsSameStruct({Struct1Id}, {Struct2Id})"
+        },
+        "IsTimeSpanValid": {
+            "signature": "IsTimeSpanValid({tsVar})"
+        },
+        "IsTimeValid": {
+            "signature": "IsTimeValid({tVar})"
+        },
+        "Left": {
+            "signature": "Left({string-value}, {length})"
+        },
+        "Length": {
+            "signature": "Length({string-value})"
+        },
+        "Log": {
+            "signature": "Log({expression})"
+        },
+        "Low": {
+            "signature": "Low({expression})"
+        },
+        "Lowercase": {
+            "signature": "Lowercase({string-value})"
+        },
+        "LTrim": {
+            "signature": "LTrim({string-value})"
+        },
+        "MaxArray": {
+            "signature": "MaxArray({ArrayId}"
+        },
+        "MemCompare": {
+            "signature": "MemCompare({pMemBlock1}, {pMemBlock2}, {iBytes})"
+        },
+        "MemCopy": {
+            "signature": "MemCopy({pDest}, {pSource}, {iBytesToCopy})"
+        },
+        "MemSet": {
+            "signature": "MemSet({pBlock}, {iValue}, {iBytesToSet})"
+        },
+        "Mid": {
+            "signature": "Mid({string-value}, {length}, {position})"
+        },
+        "MinArray": {
+            "signature": "MinArray({ArrayId})"
+        },
+        "Mod": {
+            "signature": "Mod({dividend}, {divisor})"
+        },
+        "ModAlt": {
+            "signature": "ModAlt({dividend}, {divisor})"
+        },
+        "NormalizeString": {
+            "signature": "NormalizeString({StringVal} [, {NormalizationForm}])"
+        },
+        "Not": {
+            "signature": "Not({variable})"
+        },
+        "NullCOMObject": {
+            "signature": "NullComObject()"
+        },
+        "NullDateTime": {
+            "signature": "NullDateTime()"
+        },
+        "NullRowID": {
+            "signature": "NullRowID()"
+        },
+        "Number": {
+            "signature": "Number({expression})"
+        },
+        "Overstrike": {
+            "signature": "Overstrike({new-string}, {host-string}, {position})"
+        },
+        "Pad": {
+            "signature": "Pad({string-value}, {length})"
+        },
+        "PointerToString": {
+            "signature": "PointerToString({Pointer-value})"
+        },
+        "PointerToWString": {
+            "signature": "PointerToWString({Pointer-value})"
+        },
+        "Pos": {
+            "signature": "Pos({sub-string}, {host-string} [, {StartingPosition}] [, {length}])"
+        },
+        "Random": {
+            "signature": "Random({limit})"
+        },
+        "ReAlloc": {
+            "signature": "Realloc({aPointer}, {iNewSize})"
+        },
+        "RefClass": {
+            "signature": "RefClass({ClassName})"
+        },
+        "RefFunc": {
+            "signature": "RefFunc({FunctionName})"
+        },
+        "RefProc": {
+            "signature": "RefProc({ProcedureName})"
+        },
+        "RefProcSet": {
+            "signature": "RefProcSet({ProcedureName})"
+        },
+        "RefTable": {
+            "signature": "RefTable({TableName})"
+        },
+        "Remove": {
+            "signature": "Remove({host-string}, {position}, {length})"
+        },
+        "RemoveBitValue": {
+            "signature": "RemoveFromArray({ArrayId}, {index})"
+        },
+        "RemoveFromArray": {
+            "signature": "RemoveFromArray({ArrayId}, {index})"
+        },
+        "Repeat": {
+            "signature": "Repeat({string-value}, {count})"
+        },
+        "Replace": {
+            "signature": "Replace({old-substring}, {host-string}, {new-substring})"
+        },
+        "Replaces": {
+            "signature": "Replaces({old-substring}, {host-string}, {new-substring})"
+        },
+        "ResizeArray": {
+            "signature": "ResizeArray({ArrayId}, {iArraySize} [, {assignVal} ])"
+        },
+        "ReverseArray": {
+            "signature": "ReverseArray({ArrayId})"
+        },
+        "Right": {
+            "signature": "Right({string-value}, {length})"
+        },
+        "RightPos": {
+            "signature": "RightPos({sub-string}, {host-string} [, {StartingPosition}] [, {length} ])"
+        },
+        "Round": {
+            "signature": "Round({expression})"
+        },
+        "RTrim": {
+            "signature": "RTrim({string-value})"
+        },
+        "SearchArray": {
+            "signature": "SearchArray( {SearchVal}, {ArrayId} [, {ObjectId}, {MessageId}, {StartIndex}])"
+        },
+        "SerializeRowId": {
+            "signature": "SerializeRowId({RowId})"
+        },
+        "ShuffleArray": {
+            "signature": "ShuffleArray({ArrayId})"
+        },
+        "Sin": {
+            "signature": "Sin({expression})"
+        },
+        "SizeOfArray": {
+            "signature": "SizeOfArray({ArrayId})"
+        },
+        "SizeOfType": {
+            "signature": "SizeOfType({type})"
+        },
+        "SizeOfString": {
+            "signature": "SizeOfString({string-value})"
+        },
+        "SizeOfWString": {
+            "signature": "SizeOfWString({WString-value})"
+        },
+        "SortArray": {
+            "signature": "SortArray({ArrayId}, Desktop, (RefFunc(DFSTRICMP)))"
+        },
+        "SpanDays": {
+            "signature": "SpanDays(tsVar)"
+        },
+        "SpanHours": {
+            "signature": "SpanHours({tsVar})"
+        },
+        "SpanMilliseconds": {
+            "signature": "SpanMilliseconds({tsVar})"
+        },
+        "SpanMinutes": {
+            "signature": "SpanMinutes({tsVar})"
+        },
+        "SpanSeconds": {
+            "signature": "SpanSeconds({tsVar})"
+        },
+        "SpanTotalDays": {
+            "signature": "SpanTotalDays({tsVar})"
+        },
+        "SpanTotalHours": {
+            "signature": "SpanTotalHours({tsVar})"
+        },
+        "SpanTotalMilliseconds": {
+            "signature": "SpanTotalMilliseconds({tsVar})"
+        },
+        "SpanTotalMinutes": {
+            "signature": "SpanTotalSeconds({tsVar})"
+        },
+        "SpanTotalSeconds": {
+            "signature": "SpanTotalSeconds({tsVar})"
+        },
+        "Sqrt": {
+            "signature": "Sqrt({expression})"
+        },
+        "StoreC": {
+            "signature": "StoreC({pMemory}, {iOffset}, {iValue})"
+        },
+        "StoreDw": {
+            "signature": "StoreDW({pMemory}, {iOffset}, {iValue})"
+        },
+        "StoreW": {
+            "signature": "StoreW({pMemory}, {iOffset}, {iValue})"
+        },
+        "StringToUCharArray": {
+            "signature": "StringToUCharArray({StringValue})"
+        },
+        "SysConf": {
+            "signature": "SysConf({environment_option})"
+        },
+        "Tan": {
+            "signature": "Tan({expression})"
+        },
+        "Trim": {
+            "signature": "Trim({string-value})"
+        },
+        "UCharArrayToString": {
+            "signature": "UCharArrayToString({UCharArray})"
+        },
+        "UCharArrayToWString": {
+            "signature": "UCharArrayToWString({UCharArray})"
+        },
+        "UCharToString": {
+            "signature": "UCharToString({UCharValue})"
+        },
+        "Uppercase": {
+            "signature": "Uppercase({string-value})"
+        },
+        "WStringToUCharArray": {
+            "signature": "WStringToUCharArray({WStringValue})"
+        }
+    }
+}
