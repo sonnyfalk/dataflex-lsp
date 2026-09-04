@@ -255,63 +255,63 @@
     "functions": {
         "Abs": [
             {
-                "signature": "Abs({value})",
+                "signature": "Abs(value)",
                 "description": "Abs returns an absolute value.",
                 "returns": "Number"
             }
         ],
         "Acos": [
             {
-                "signature": "Acos({expression})",
+                "signature": "Acos(expression)",
                 "description": "Acos returns the arc cosine of a value.",
                 "returns": "Real"
             }
         ],
         "AddressOf": [
             {
-                "signature": "AddressOf({var})",
+                "signature": "AddressOf(var)",
                 "description": "The AddressOf function returns a pointer to an argument.",
                 "returns": "Pointer"
             }
         ],
         "Alloc": [
             {
-                "signature": "Alloc({iBytesAllocated})",
+                "signature": "Alloc(iBytesAllocated)",
                 "description": "Allocates a block of memory.",
                 "returns": "Pointer"
             }
         ],
         "Append": [
             {
-                "signature": "Append({string1}, {string2})",
+                "signature": "Append(string1, string2)",
                 "description": "Append returns the concatenation of two strings.",
                 "returns": "String"
             }
         ],
         "AppendArray": [
             {
-                "signature": "AppendArray({Array1Id}, {Array2Id})",
+                "signature": "AppendArray(array1Id, array2Id)",
                 "description": "Returns an array consisting of one array appended to another array.",
                 "returns": "Array"
             }
         ],
         "Ascii": [
             {
-                "signature": "Ascii({character})",
+                "signature": "Ascii(character)",
                 "description": "Ascii returns the code point of a specified character.",
                 "returns": "Integer"
             }
         ],
         "Asin": [
             {
-                "signature": "Asin({expression})",
+                "signature": "Asin(expression)",
                 "description": "Asin returns the arc sine of a value.",
                 "returns": "Real"
             }
         ],
         "Atan": [
             {
-                "signature": "Atan({expression})",
+                "signature": "Atan(expression)",
                 "description": "Atan returns the arc tangent of a value.",
                 "returns": "Real"
             }
@@ -325,94 +325,94 @@
         ],
         "BinarySearchArray": [
             {
-                "signature": "BinarySearchArray({SearchVal}, {SortedArrayId})",
+                "signature": "BinarySearchArray(searchVal, sortedArray)",
                 "description": "Returns the index of an element equal to a particular value in a sorted array.",
                 "returns": "Integer"
             },
             {
-                "signature": "BinarySearchArray({SearchVal}, {SortedArrayId}, {ObjectId}, {MessageId})",
+                "signature": "BinarySearchArray(searchVal, sortedArray, objectId, messageId)",
                 "description": "Returns the index of an element equal to a particular value in a sorted array.",
                 "returns": "Integer"
             }
         ],
         "Cast": [
             {
-                "signature": "Cast({Var}, {Type})",
+                "signature": "Cast(var, Type)",
                 "description": "Returns a variable of the specified type using the best conversion from the original variable.",
-                "returns": "{Type}"
+                "returns": "Type"
             }
         ],
         "Center": [
             {
-                "signature": "Center({string-value}, {length})",
+                "signature": "Center(sString, length)",
                 "description": "Returns a string of a specified length, padded or truncated so the content is centered.",
                 "returns": "String"
             }
         ],
         "Character": [
             {
-                "signature": "Character({value})",
+                "signature": "Character(value)",
                 "description": "Returns the character related to a specified Unicode code point.",
                 "returns": "String"
             }
         ],
         "Convert": [
             {
-                "signature": "Convert({Var}, {Type})",
+                "signature": "Convert(var, Type)",
                 "description": "Returns a variable of the specified type using the best conversion from the original variable.",
-                "returns": "{Type}"
+                "returns": "Type"
             }
         ],
         "ConvertFromClient": [
             {
-                "signature": "ConvertFromClient(eDataType, sValue)",
+                "signature": "ConvertFromClient(eDataType, sString)",
                 "description": "In web applications, converts a typed value from generic transport format to DataFlex format.",
                 "returns": "String"
             }
         ],
         "ConvertToClient": [
             {
-                "signature": "ConvertToClient(eDataType, sValue)",
+                "signature": "ConvertToClient(eDataType, sString)",
                 "description": "In web applications, converts a DataFlex value to a generic client transport format.",
                 "returns": "String"
             }
         ],
         "CopyArray": [
             {
-                "signature": "CopyArray({ArrayId}, {indexFirst}, {indexLast})",
+                "signature": "CopyArray(array, indexFirst, indexLast)",
                 "description": "Returns an array representing a range of elements from an existing array.",
                 "returns": "Array"
             }
         ],
         "CountArray": [
             {
-                "signature": "CountArray({CompareVal}, {ArrayId})",
+                "signature": "CountArray(value, array)",
                 "description": "Returns the number of array elements equal to a test value.",
                 "returns": "Integer"
             },
             {
-                "signature": "CountArray({CompareVal}, {ArrayId}, {ObjectId}, {MessageId})",
+                "signature": "CountArray(value, array, objectId, messageId)",
                 "description": "Returns the number of array elements equal to a test value.",
                 "returns": "Integer"
             }
         ],
         "CStringSize": [
             {
-                "signature": "CStringSize({CStringAddress})",
+                "signature": "CStringSize(pointer)",
                 "description": "CStringSize returns the number of bytes in a null-terminated CString.",
                 "returns": "Integer"
             }
         ],
         "CStringLength": [
             {
-                "signature": "CStringLength({pointer})",
+                "signature": "CStringLength(pointer)",
                 "description": "CStringLength returns the number of code points in a null-terminated UTF-8 CString.",
                 "returns": "Integer"
             }
         ],
         "Cos": [
             {
-                "signature": "Cos({expression})",
+                "signature": "Cos(expression)",
                 "description": "Cos returns the cosine of a value.",
                 "returns": "Real"
             }
@@ -426,507 +426,507 @@
         ],
         "DateAddDay": [
             {
-                "signature": "DateAddDay({dtVar}, {iDaysToAdd})",
+                "signature": "DateAddDay(dtVar, iDaysToAdd)",
                 "description": "Adds or subtracts a number of days from a valid, non-null DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateAddHour": [
             {
-                "signature": "DateAddHour({dtVar}, {iHoursToAdd})",
+                "signature": "DateAddHour(dtVar, iHoursToAdd)",
                 "description": "Adds or subtracts a number of hours from a valid, non-null DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateAddMillisecond": [
             {
-                "signature": "DateAddMillisecond({dtVar}, {iMillisecondsToAdd})",
+                "signature": "DateAddMillisecond(dtVar, iMillisecondsToAdd)",
                 "description": "Adds or subtracts milliseconds from a valid, non-null DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateAddMinute": [
             {
-                "signature": "DateAddMinute({dtVar}, {iMinutesToAdd})",
+                "signature": "DateAddMinute(dtVar, iMinutesToAdd)",
                 "description": "Adds or subtracts minutes from a DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateAddMonth": [
             {
-                "signature": "DateAddMonth({dtVar}, {iMonthsToAdd})",
+                "signature": "DateAddMonth(dtVar, iMonthsToAdd)",
                 "description": "Adds or subtracts months from a DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateAddSecond": [
             {
-                "signature": "DateAddSecond({dtVar}, {iSecondsToAdd})",
+                "signature": "DateAddSecond(dtVar, iSecondsToAdd)",
                 "description": "Adds or subtracts seconds from a DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateAddYear": [
             {
-                "signature": "DateAddYear({dtVar}, {iYearsToAdd})",
+                "signature": "DateAddYear(dtVar, iYearsToAdd)",
                 "description": "Adds or subtracts years from a DateTime value.",
                 "returns": "DateTime"
             }
         ],
         "DateGetDay": [
             {
-                "signature": "DateGetDay({dtVar})",
+                "signature": "DateGetDay(dtVar)",
                 "description": "Returns the day-of-month component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetDayOfWeek": [
             {
-                "signature": "DateGetDayOfWeek({dtVar})",
+                "signature": "DateGetDayOfWeek(dtVar)",
                 "description": "Returns the day of the week of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetDayofWeek_WDS": [
             {
-                "signature": "DateGetDayOfWeek_WDS({dtVar}, {iWeekDayStart})",
+                "signature": "DateGetDayOfWeek_WDS(dtVar, iWeekDayStart)",
                 "description": "Returns day of week using a specified starting weekday.",
                 "returns": "Integer"
             }
         ],
         "DateGetDayofWeekISO": [
             {
-                "signature": "DateGetDayOfWeekISO({dtVar})",
+                "signature": "DateGetDayOfWeekISO(dtVar)",
                 "description": "Returns ISO day of week with Monday as day 1.",
                 "returns": "Integer"
             }
         ],
         "DateGetDayOfYear": [
             {
-                "signature": "DateGetDayOfYear({dtVar})",
+                "signature": "DateGetDayOfYear(dtVar)",
                 "description": "Returns the day of the year of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetHour": [
             {
-                "signature": "DateGetHour({dtVar})",
+                "signature": "DateGetHour(dtVar)",
                 "description": "Returns the hour component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetMillisecond": [
             {
-                "signature": "DateGetMillisecond({dtVar})",
+                "signature": "DateGetMillisecond(dtVar)",
                 "description": "Returns the millisecond component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetMinute": [
             {
-                "signature": "DateGetMinute({dtVar})",
+                "signature": "DateGetMinute(dtVar)",
                 "description": "Returns the minute component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetMonth": [
             {
-                "signature": "DateGetMonth({dtVar})",
+                "signature": "DateGetMonth(dtVar)",
                 "description": "Returns the month component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetSecond": [
             {
-                "signature": "DateGetSecond({dtVar})",
+                "signature": "DateGetSecond(dtVar)",
                 "description": "Returns the second component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetWeekOfYear": [
             {
-                "signature": "DateGetWeekOfYear({dtVar})",
+                "signature": "DateGetWeekOfYear(dtVar)",
                 "description": "Returns the week of the year for a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetWeekOfYear_WDS": [
             {
-                "signature": "DateGetWeekOfYear_WDS({dtVar}, {iWeekDayStart})",
+                "signature": "DateGetWeekOfYear_WDS(dtVar, iWeekDayStart)",
                 "description": "Returns week of year using a specified starting weekday.",
                 "returns": "Integer"
             }
         ],
         "DateGetWeekOfYearISO": [
             {
-                "signature": "DateGetWeekOfYearISO({dtVar})",
+                "signature": "DateGetWeekOfYearISO(dtVar)",
                 "description": "Returns the ISO week of year for a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetYear": [
             {
-                "signature": "DateGetYear({dtVar})",
+                "signature": "DateGetYear(dtVar)",
                 "description": "Returns the year component of a DateTime.",
                 "returns": "Integer"
             }
         ],
         "DateGetYearOfWeekISO": [
             {
-                "signature": "DateGetYearOfWeekISO({dtVar})",
+                "signature": "DateGetYearOfWeekISO(dtVar)",
                 "description": "Returns the ISO week-numbering year.",
                 "returns": "Integer"
             }
         ],
         "DateSet": [
             {
-                "signature": "DateSet({iYear}, {iMonth}, {iDay})",
+                "signature": "DateSet(iYear, iMonth, iDay)",
                 "description": "Returns a new DateTime from year, month, and day.",
                 "returns": "DateTime"
             }
         ],
         "DateSetDay": [
             {
-                "signature": "DateSetDay({dtVar}, {iDay})",
+                "signature": "DateSetDay(dtVar, iDay)",
                 "description": "Returns a DateTime with its day component changed.",
                 "returns": "DateTime"
             }
         ],
         "DateSetHour": [
             {
-                "signature": "DateSetHour({dtVar}, {iHour})",
+                "signature": "DateSetHour(dtVar, iHour)",
                 "description": "Returns a DateTime with its hour component changed.",
                 "returns": "DateTime"
             }
         ],
         "DateSetMillisecond": [
             {
-                "signature": "DateSetMillisecond({dtVar}, {iMillisecond})",
+                "signature": "DateSetMillisecond(dtVar, iMillisecond)",
                 "description": "Returns a DateTime with its millisecond component changed.",
                 "returns": "DateTime"
             }
         ],
         "DateSetMinute": [
             {
-                "signature": "DateSetMinute({dtVar}, {iMinute})",
+                "signature": "DateSetMinute(dtVar, iMinute)",
                 "description": "Returns a DateTime with its minute component changed.",
                 "returns": "DateTime"
             }
         ],
         "DateSetMonth": [
             {
-                "signature": "DateSetMonth({dtVar}, {iMonth})",
+                "signature": "DateSetMonth(dtVar, iMonth)",
                 "description": "Returns a DateTime with its month component changed.",
                 "returns": "DateTime"
             }
         ],
         "DateSetSecond": [
             {
-                "signature": "DateSetYear({dtVar}, {iYear})",
+                "signature": "DateSetYear(dtVar, iYear)",
                 "description": "Returns a DateTime with its second component changed.",
                 "returns": "DateTime"
             }
         ],
         "DateSetYear": [
             {
-                "signature": "DateSetYear({dtVar}, {iYear})",
+                "signature": "DateSetYear(dtVar, iYear)",
                 "description": "Returns a DateTime with its year component changed.",
                 "returns": "DateTime"
             }
         ],
         "DeRefC": [
             {
-                "signature": "DeRefC({pMemory}, {iOffset})",
+                "signature": "DeRefC(pMemory, iOffset)",
                 "description": "Retrieves one byte of memory through a Pointer.",
                 "returns": "Integer"
             }
         ],
         "DeRefDw": [
             {
-                "signature": "DeRefW({pMemory}, {iOffset})",
+                "signature": "DeRefW(pMemory, iOffset)",
                 "description": "Retrieves one double word (four bytes) through a Pointer.",
                 "returns": "Integer"
             }
         ],
         "DeRefW": [
             {
-                "signature": "DeRefW({pMemory}, {iOffset})",
+                "signature": "DeRefW(pMemory, iOffset)",
                 "description": "Retrieves one word (two bytes) of memory through a Pointer.",
                 "returns": "Integer"
             }
         ],
         "DeSerializeRowId": [
             {
-                "signature": "DeserializeRowId({sRowId})",
+                "signature": "DeserializeRowId(sRowId)",
                 "description": "Deserializes a RowId string back into a RowId value.",
                 "returns": "RowId"
             }
         ],
         "Eval": [
             {
-                "signature": "Eval({string-expression})",
+                "signature": "Eval(sExpression)",
                 "description": "Returns the value of a string evaluated as an expression at runtime.",
                 "returns": "String"
             }
         ],
         "Exp": [
             {
-                "signature": "Exp({expression})",
+                "signature": "Exp(expression)",
                 "description": "Returns the natural antilogarithm of a value.",
                 "returns": "Real"
             }
         ],
         "FillArray": [
             {
-                "signature": "FillArray({assignVal}, {ArrayId})",
+                "signature": "FillArray(assignVal, array)",
                 "description": "Fills an array element range with a specified value.",
                 "returns": "Array"
             },
             {
-                "signature": "FillArray({assignVal}, {ArrayId}, {indexFirst}, {indexLast})",
+                "signature": "FillArray(assignVal, array, indexFirst, indexLast)",
                 "description": "Fills an array element range with a specified value.",
                 "returns": "Array"
             }
         ],
         "FindByRowId": [
             {
-                "signature": "FindByRowId({hTable}, {RowId})",
+                "signature": "FindByRowId(hTable, RowId)",
                 "description": "Finds a record for a table by its RowId.",
                 "returns": "Boolean"
             }
         ],
         "Free": [
             {
-                "signature": "Free({pSomeAddress})",
+                "signature": "Free(pSomeAddress)",
                 "description": "Frees a block of memory.",
                 "returns": "Boolean"
             }
         ],
         "GetRowID": [
             {
-                "signature": "GetRowId({hTable})",
+                "signature": "GetRowId(hTable)",
                 "description": "Returns the RowId of the currently buffered database row.",
                 "returns": "RowId"
             }
         ],
         "Hi": [
             {
-                "signature": "Hi({expression})",
+                "signature": "Hi(expression)",
                 "description": "Returns the upper 16 bits of a folded Integer.",
                 "returns": "Integer"
             }
         ],
         "If": [
             {
-                "signature": "If({BooleanExpression}, {TrueExpression}, {FalseExpression})",
+                "signature": "If(BooleanExpression, TrueExpression, FalseExpression)",
                 "description": "Evaluates a Boolean expression and returns one of two values.",
                 "returns": "String"
             }
         ],
         "Insert": [
             {
-                "signature": "Insert({insert-string}, {host-string}, {position})",
+                "signature": "Insert(insertString, hostString, position)",
                 "description": "Returns a string with another string inserted at a specified position.",
                 "returns": "String"
             }
         ],
         "InsertInArray": [
             {
-                "signature": "InsertInArray({ArrayId}, {index}, {value})",
+                "signature": "InsertInArray(array, index, value)",
                 "description": "Returns an expanded array with a new element inserted at an index.",
                 "returns": "Array"
             }
         ],
         "IsCOMObject": [
             {
-                "signature": "IsComObject({vComObject})",
+                "signature": "IsComObject(vComObject)",
                 "description": "Returns True when a value is a non-null IDispatch*.",
                 "returns": "Boolean"
             }
         ],
         "IsDateValid": [
             {
-                "signature": "IsDateValid({dtVar})",
+                "signature": "IsDateValid(dtVar)",
                 "description": "Returns True if a date is valid.",
                 "returns": "Boolean"
             }
         ],
         "IsNullCOMObject": [
             {
-                "signature": "IsNullComObject({vComObject})",
+                "signature": "IsNullComObject(vComObject)",
                 "description": "Returns True when a variant IDispatch* is null.",
                 "returns": "Boolean"
             }
         ],
         "IsNullDateTime": [
             {
-                "signature": "IsNullDateTime({DateTime})",
+                "signature": "IsNullDateTime(DateTime)",
                 "description": "Determines whether a DateTime value is null.",
                 "returns": "Boolean"
             }
         ],
         "IsNullRowID": [
             {
-                "signature": "IsNullRowId({RowId})",
+                "signature": "IsNullRowId(RowId)",
                 "description": "Determines whether a RowId value is null.",
                 "returns": "Boolean"
             }
         ],
         "IsSameArray": [
             {
-                "signature": "IsSameArray({Array1Id}, {Array2Id})",
+                "signature": "IsSameArray(array1, array2)",
                 "description": "Determines whether two arrays are identical except for name.",
                 "returns": "Boolean"
             }
         ],
         "IsSameCOMObject": [
             {
-                "signature": "IsSameComObject({vComObject1}, {vComObject2})",
+                "signature": "IsSameComObject(vComObject1, vComObject2)",
                 "description": "Returns True if two variants point to the same COM object.",
                 "returns": "Boolean"
             }
         ],
         "IsSameRowID": [
             {
-                "signature": "IsSameRowID({RowId}, {RowId})",
+                "signature": "IsSameRowID(rowId1, rowId2)",
                 "description": "Determines whether two RowId values are the same.",
                 "returns": "Boolean"
             }
         ],
         "IsSameStruct": [
             {
-                "signature": "IsSameStruct({Struct1Id}, {Struct2Id})",
+                "signature": "IsSameStruct(struct1, struct2)",
                 "description": "Determines whether two structs are identical except for name.",
                 "returns": "Boolean"
             }
         ],
         "IsTimeSpanValid": [
             {
-                "signature": "IsTimeSpanValid({tsVar})",
+                "signature": "IsTimeSpanValid(tsVar)",
                 "description": "Returns True if a TimeSpan is valid.",
                 "returns": "Boolean"
             }
         ],
         "IsTimeValid": [
             {
-                "signature": "IsTimeValid({tVar})",
+                "signature": "IsTimeValid(tVar)",
                 "description": "Returns True if a Time value is valid.",
                 "returns": "Boolean"
             }
         ],
         "Left": [
             {
-                "signature": "Left({string-value}, {length})",
+                "signature": "Left(sString, length)",
                 "description": "Returns the left-most code points of a string up to a specified length.",
                 "returns": "String"
             }
         ],
         "Length": [
             {
-                "signature": "Length({string-value})",
+                "signature": "Length(sString)",
                 "description": "Returns the number of code points in a string.",
                 "returns": "Integer"
             }
         ],
         "Log": [
             {
-                "signature": "Log({expression})",
+                "signature": "Log(expression)",
                 "description": "Returns the natural logarithm of a value.",
                 "returns": "Real"
             }
         ],
         "Low": [
             {
-                "signature": "Low({expression})",
+                "signature": "Low(expression)",
                 "description": "Returns the lower 16 bits of a folded Integer.",
                 "returns": "Integer"
             }
         ],
         "Lowercase": [
             {
-                "signature": "Lowercase({string-value})",
+                "signature": "Lowercase(sString)",
                 "description": "Returns a string with all characters converted to lower case.",
                 "returns": "String"
             }
         ],
         "LTrim": [
             {
-                "signature": "LTrim({string-value})",
+                "signature": "LTrim(sString)",
                 "description": "Returns a string with leading white space removed.",
                 "returns": "String"
             }
         ],
         "MaxArray": [
             {
-                "signature": "MaxArray({ArrayId}",
+                "signature": "MaxArray(array}",
                 "description": "Returns the index of the array element with the maximum value.",
                 "returns": "Integer"
             }
         ],
         "MemCompare": [
             {
-                "signature": "MemCompare({pMemBlock1}, {pMemBlock2}, {iBytes})",
+                "signature": "MemCompare(pMemBlock1, pMemBlock2, iBytes)",
                 "description": "Compares the contents of two memory blocks.",
                 "returns": "Boolean"
             }
         ],
         "MemCopy": [
             {
-                "signature": "MemCopy({pDest}, {pSource}, {iBytesToCopy})",
+                "signature": "MemCopy(pDest, pSource, iBytesToCopy)",
                 "description": "Copies data from one memory address to another.",
                 "returns": "Boolean"
             }
         ],
         "MemSet": [
             {
-                "signature": "MemSet({pBlock}, {iValue}, {iBytesToSet})",
+                "signature": "MemSet(pBlock, iValue, iBytesToSet)",
                 "description": "Stores a byte value throughout a memory block.",
                 "returns": "Boolean"
             }
         ],
         "Mid": [
             {
-                "signature": "Mid({string-value}, {length}, {position})",
+                "signature": "Mid(sString, length, position)",
                 "description": "Returns a substring of specified length and position.",
                 "returns": "String"
             }
         ],
         "MinArray": [
             {
-                "signature": "MinArray({ArrayId})",
+                "signature": "MinArray(array)",
                 "description": "Returns the index of the array element with the minimum value.",
                 "returns": "Integer"
             }
         ],
         "Mod": [
             {
-                "signature": "Mod({dividend}, {divisor})",
+                "signature": "Mod(dividend, divisor)",
                 "description": "Returns the remainder from division of one LongPtr by another.",
                 "returns": "LongPtr"
             }
         ],
         "ModAlt": [
             {
-                "signature": "ModAlt({dividend}, {divisor})",
+                "signature": "ModAlt(dividend, divisor)",
                 "description": "Returns a positive-wrapping alternate modulo result.",
                 "returns": "Integer"
             }
         ],
         "NormalizeString": [
             {
-                "signature": "NormalizeString({StringVal})",
+                "signature": "NormalizeString(stringVal)",
                 "description": "Returns a normalized copy of a string.",
                 "returns": "String"
             },
             {
-                "signature": "NormalizeString({StringVal}, {NormalizationForm})",
+                "signature": "NormalizeString(stringVal, normalizationForm)",
                 "description": "Returns a normalized copy of a string.",
                 "returns": "String"
             }
         ],
         "Not": [
             {
-                "signature": "Not({variable})",
+                "signature": "Not(value)",
                 "description": "Returns the logical inverse of a value.",
                 "returns": "Boolean"
             }
@@ -954,467 +954,467 @@
         ],
         "Overstrike": [
             {
-                "signature": "Overstrike({new-string}, {host-string}, {position})",
+                "signature": "Overstrike(newString, hostString, position)",
                 "description": "Returns a string with characters replaced by another string at a specified position.",
                 "returns": "String"
             }
         ],
         "Pad": [
             {
-                "signature": "Pad({string-value}, {length})",
+                "signature": "Pad(sString, length)",
                 "description": "Returns a string padded or truncated on the right to a specified length.",
                 "returns": "String"
             }
         ],
         "PointerToString": [
             {
-                "signature": "PointerToString({Pointer-value})",
+                "signature": "PointerToString(pointer)",
                 "description": "Converts a pointer to a string in memory into a string.",
                 "returns": "String"
             }
         ],
         "PointerToWString": [
             {
-                "signature": "PointerToWString({Pointer-value})",
+                "signature": "PointerToWString(pointer)",
                 "description": "Converts a pointer to a WString in memory into a WString.",
                 "returns": "WString"
             }
         ],
         "Pos": [
             {
-                "signature": "Pos({sub-string}, {host-string})",
+                "signature": "Pos(subString, hostString)",
                 "description": "Returns the first position of a substring or zero if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "Pos({sub-string}, {host-string}, {StartingPosition})",
+                "signature": "Pos(subString, hostString, startingPosition)",
                 "description": "Returns the first position of a substring or zero if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "Pos({sub-string}, {host-string}, {StartingPosition}, {length})",
+                "signature": "Pos(subString, hostString, startingPosition, length)",
                 "description": "Returns the first position of a substring or zero if not found.",
                 "returns": "Integer"
             }
         ],
         "Random": [
             {
-                "signature": "Random({limit})",
+                "signature": "Random(limit)",
                 "description": "Returns a random number between zero and an upper limit.",
                 "returns": "Integer"
             }
         ],
         "ReAlloc": [
             {
-                "signature": "Realloc({aPointer}, {iNewSize})",
+                "signature": "Realloc(aPointer, iNewSize)",
                 "description": "Changes the size of a block of memory.",
                 "returns": "Pointer"
             }
         ],
         "RefClass": [
             {
-                "signature": "RefClass({ClassName})",
+                "signature": "RefClass(ClassName)",
                 "description": "References a class name in an undecorated manner.",
                 "returns": "Handle"
             }
         ],
         "RefFunc": [
             {
-                "signature": "RefFunc({FunctionName})",
+                "signature": "RefFunc(FunctionName)",
                 "description": "References a function name in an undecorated manner.",
                 "returns": "String"
             }
         ],
         "RefProc": [
             {
-                "signature": "RefProc({ProcedureName})",
+                "signature": "RefProc(ProcedureName)",
                 "description": "References a procedure name in an undecorated manner.",
                 "returns": "String"
             }
         ],
         "RefProcSet": [
             {
-                "signature": "RefProcSet({ProcedureName})",
+                "signature": "RefProcSet(ProcedureName)",
                 "description": "References a property setter method name in an undecorated manner.",
                 "returns": "String"
             }
         ],
         "RefTable": [
             {
-                "signature": "RefTable({TableName})",
+                "signature": "RefTable(TableName)",
                 "description": "References a table name in an undecorated manner.",
                 "returns": "Integer"
             }
         ],
         "Remove": [
             {
-                "signature": "Remove({host-string}, {position}, {length})",
+                "signature": "Remove(hostString, position, length)",
                 "description": "Returns a string with characters removed at a specified position.",
                 "returns": "String"
             }
         ],
         "RemoveBitValue": [
             {
-                "signature": "RemoveFromArray({ArrayId}, {index})",
+                "signature": "RemoveFromArray(array, index)",
                 "description": "Clears one integer bit pattern from another.",
                 "returns": "Integer"
             }
         ],
         "RemoveFromArray": [
             {
-                "signature": "RemoveFromArray({ArrayId}, {index})",
+                "signature": "RemoveFromArray(array, index)",
                 "description": "Returns an array copy with the element at an index removed.",
                 "returns": "Array"
             }
         ],
         "Repeat": [
             {
-                "signature": "Repeat({string-value}, {count})",
+                "signature": "Repeat(sString, count)",
                 "description": "Returns repeated copies of an input string.",
                 "returns": "String"
             }
         ],
         "Replace": [
             {
-                "signature": "Replace({old-substring}, {host-string}, {new-substring})",
+                "signature": "Replace(oldSubstring, hostString, newSubstring)",
                 "description": "Replaces the first occurrence of a substring.",
                 "returns": "String"
             }
         ],
         "Replaces": [
             {
-                "signature": "Replaces({old-substring}, {host-string}, {new-substring})",
+                "signature": "Replaces(oldSubstring, hostString, newSubstring)",
                 "description": "Replaces every occurrence of a substring.",
                 "returns": "String"
             }
         ],
         "ResizeArray": [
             {
-                "signature": "ResizeArray({ArrayId}, {iArraySize})",
+                "signature": "ResizeArray(array, iArraySize)",
                 "description": "Returns a resized copy of an array.",
                 "returns": "Array"
             },
             {
-                "signature": "ResizeArray({ArrayId}, {iArraySize}, {assignVal})",
+                "signature": "ResizeArray(array, iArraySize, assignVal)",
                 "description": "Returns a resized copy of an array.",
                 "returns": "Array"
             }
         ],
         "ReverseArray": [
             {
-                "signature": "ReverseArray({ArrayId})",
+                "signature": "ReverseArray(array)",
                 "description": "Returns an array with elements in reverse order.",
                 "returns": "Array"
             }
         ],
         "Right": [
             {
-                "signature": "Right({string-value}, {length})",
+                "signature": "Right(sString, length)",
                 "description": "Returns the right-most code points of a string.",
                 "returns": "String"
             }
         ],
         "RightPos": [
             {
-                "signature": "RightPos({sub-string}, {host-string})",
+                "signature": "RightPos(subString, hostString)",
                 "description": "Returns the last position of a substring or zero if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "RightPos({sub-string}, {host-string}, {StartingPosition})",
+                "signature": "RightPos(subString, hostString, startingPosition)",
                 "description": "Returns the last position of a substring or zero if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "RightPos({sub-string}, {host-string}, {StartingPosition}, {length})",
+                "signature": "RightPos(subString, hostString, startingPosition, length)",
                 "description": "Returns the last position of a substring or zero if not found.",
                 "returns": "Integer"
             }
         ],
         "Round": [
             {
-                "signature": "Round({expression})",
+                "signature": "Round(expression)",
                 "description": "Rounds a numeric value to a LongPtr.",
                 "returns": "LongPtr"
             }
         ],
         "RTrim": [
             {
-                "signature": "RTrim({string-value})",
+                "signature": "RTrim(sString)",
                 "description": "Returns a string with trailing white space removed.",
                 "returns": "String"
             }
         ],
         "SearchArray": [
             {
-                "signature": "SearchArray({SearchVal}, {ArrayId})",
+                "signature": "SearchArray(searchVal, array)",
                 "description": "Returns the first matching array index, or -1 if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "SearchArray({SearchVal}, {ArrayId}, {StartIndex})",
+                "signature": "SearchArray(searchVal, array, startIndex)",
                 "description": "Returns the first matching array index, or -1 if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "SearchArray({SearchVal}, {ArrayId}, {ObjectId}, {MessageId})",
+                "signature": "SearchArray(searchVal, array, objectId, messageId)",
                 "description": "Returns the first matching array index, or -1 if not found.",
                 "returns": "Integer"
             },
             {
-                "signature": "SearchArray({SearchVal}, {ArrayId}, {ObjectId}, {MessageId}, {StartIndex})",
+                "signature": "SearchArray(searchVal, array, objectId, messageId, startIndex)",
                 "description": "Returns the first matching array index, or -1 if not found.",
                 "returns": "Integer"
             }
         ],
         "SerializeRowId": [
             {
-                "signature": "SerializeRowId({RowId})",
+                "signature": "SerializeRowId(rowId)",
                 "description": "Serializes a RowId as a string.",
                 "returns": "String"
             }
         ],
         "ShuffleArray": [
             {
-                "signature": "ShuffleArray({ArrayId})",
+                "signature": "ShuffleArray(array)",
                 "description": "Returns an array with elements in random order.",
                 "returns": "Array"
             }
         ],
         "Sin": [
             {
-                "signature": "Sin({expression})",
+                "signature": "Sin(expression)",
                 "description": "Returns the sine of a value.",
                 "returns": "Real"
             }
         ],
         "SizeOfArray": [
             {
-                "signature": "SizeOfArray({ArrayId})",
+                "signature": "SizeOfArray(array)",
                 "description": "Returns the number of elements in an array or dimension.",
                 "returns": "Integer"
             }
         ],
         "SizeOfType": [
             {
-                "signature": "SizeOfType({type})",
+                "signature": "SizeOfType(type)",
                 "description": "Returns the size in bytes of a data type.",
                 "returns": "Integer"
             }
         ],
         "SizeOfString": [
             {
-                "signature": "SizeOfString({string-value})",
+                "signature": "SizeOfString(sString)",
                 "description": "Returns the size of a string in UTF-8 bytes.",
                 "returns": "Integer"
             }
         ],
         "SizeOfWString": [
             {
-                "signature": "SizeOfWString({WString-value})",
+                "signature": "SizeOfWString(wsString)",
                 "description": "Returns the number of WChar code units in a WString.",
                 "returns": "Integer"
             }
         ],
         "SortArray": [
             {
-                "signature": "SortArray({ArrayId}, Desktop, (RefFunc(DFSTRICMP)))",
-                "description": "Returns an array with sorted elements.",
+                "signature": "SortArray(array, objectId, messageId)",
+                "description": "Returns an array with sorted elements. e.g. SortArray(array, Desktop, (RefFunc(DFSTRICMP)))",
                 "returns": "Array"
             }
         ],
         "SpanAddDay": [
             {
-                "signature": "SpanAddDay({tsVar}, {iDaysToAdd})",
+                "signature": "SpanAddDay(tsVar, iDaysToAdd)",
                 "description": "Adds or subtracts days from a TimeSpan.",
                 "returns": "TimeSpan"
             }
         ],
         "SpanAddHour": [
             {
-                "signature": "SpanAddHour({tsVar}, {iHoursToAdd})",
+                "signature": "SpanAddHour(tsVar, iHoursToAdd)",
                 "description": "Adds or subtracts hours from a TimeSpan.",
                 "returns": "TimeSpan"
             }
         ],
         "SpanAddMillisecond": [
             {
-                "signature": "SpanAddMillisecond({tsVar}, {iMillisecondsToAdd})",
+                "signature": "SpanAddMillisecond(tsVar, iMillisecondsToAdd)",
                 "description": "Adds or subtracts milliseconds from a TimeSpan.",
                 "returns": "TimeSpan"
             }
         ],
         "SpanAddMinute": [
             {
-                "signature": "SpanAddMinute({tsVar}, {iMinutesToAdd})",
+                "signature": "SpanAddMinute(tsVar, iMinutesToAdd)",
                 "description": "Adds or subtracts minutes from a TimeSpan.",
                 "returns": "TimeSpan"
             }
         ],
         "SpanAddSecond": [
             {
-                "signature": "SpanAddSecond({tsVar}, {iSecondsToAdd})",
+                "signature": "SpanAddSecond(tsVar, iSecondsToAdd)",
                 "description": "Adds or subtracts seconds from a TimeSpan.",
                 "returns": "TimeSpan"
             }
         ],
         "SpanDays": [
             {
-                "signature": "SpanDays({tsVar})",
+                "signature": "SpanDays(tsVar)",
                 "description": "Returns the days component of a TimeSpan.",
                 "returns": "Integer"
             }
         ],
         "SpanHours": [
             {
-                "signature": "SpanHours({tsVar})",
+                "signature": "SpanHours(tsVar)",
                 "description": "Returns the hours component of a TimeSpan.",
                 "returns": "Integer"
             }
         ],
         "SpanMilliseconds": [
             {
-                "signature": "SpanMilliseconds({tsVar})",
+                "signature": "SpanMilliseconds(tsVar)",
                 "description": "Returns the millisecond component of a TimeSpan.",
                 "returns": "Integer"
             }
         ],
         "SpanMinutes": [
             {
-                "signature": "SpanMinutes({tsVar})",
+                "signature": "SpanMinutes(tsVar)",
                 "description": "Returns the minute component of a TimeSpan.",
                 "returns": "Integer"
             }
         ],
         "SpanSeconds": [
             {
-                "signature": "SpanSeconds({tsVar})",
+                "signature": "SpanSeconds(tsVar)",
                 "description": "Returns the second component of a TimeSpan.",
                 "returns": "Integer"
             }
         ],
         "SpanTotalDays": [
             {
-                "signature": "SpanTotalDays({tsVar})",
+                "signature": "SpanTotalDays(tsVar)",
                 "description": "Calculates total days in a TimeSpan.",
                 "returns": "Real"
             }
         ],
         "SpanTotalHours": [
             {
-                "signature": "SpanTotalHours({tsVar})",
+                "signature": "SpanTotalHours(tsVar)",
                 "description": "Calculates total hours in a TimeSpan.",
                 "returns": "Real"
             }
         ],
         "SpanTotalMilliseconds": [
             {
-                "signature": "SpanTotalMilliseconds({tsVar})",
+                "signature": "SpanTotalMilliseconds(tsVar)",
                 "description": "Calculates total milliseconds in a TimeSpan.",
                 "returns": "Real"
             }
         ],
         "SpanTotalMinutes": [
             {
-                "signature": "SpanTotalSeconds({tsVar})",
+                "signature": "SpanTotalSeconds(tsVar)",
                 "description": "Calculates total minutes in a TimeSpan.",
                 "returns": "Real"
             }
         ],
         "SpanTotalSeconds": [
             {
-                "signature": "SpanTotalSeconds({tsVar})",
+                "signature": "SpanTotalSeconds(tsVar)",
                 "description": "Calculates total seconds in a TimeSpan.",
                 "returns": "Real"
             }
         ],
         "Sqrt": [
             {
-                "signature": "Sqrt({expression})",
+                "signature": "Sqrt(expression)",
                 "description": "Returns the square root of a value.",
                 "returns": "Number"
             }
         ],
         "StoreC": [
             {
-                "signature": "StoreC({pMemory}, {iOffset}, {iValue})",
+                "signature": "StoreC(pMemory, iOffset, iValue)",
                 "description": "Places a one-byte value in memory.",
                 "returns": "Boolean"
             }
         ],
         "StoreDw": [
             {
-                "signature": "StoreDW({pMemory}, {iOffset}, {iValue})",
+                "signature": "StoreDW(pMemory, iOffset, iValue)",
                 "description": "Places a double-word value in memory.",
                 "returns": "Boolean"
             }
         ],
         "StoreW": [
             {
-                "signature": "StoreW({pMemory}, {iOffset}, {iValue})",
+                "signature": "StoreW(pMemory, iOffset, iValue)",
                 "description": "Places a one-word value in memory.",
                 "returns": "Boolean"
             }
         ],
         "StringToUCharArray": [
             {
-                "signature": "StringToUCharArray({StringValue})",
+                "signature": "StringToUCharArray(stringValue)",
                 "description": "Copies a DataFlex String to a UChar array.",
                 "returns": "UChar[]"
             }
         ],
         "SysConf": [
             {
-                "signature": "SysConf({environment_option})",
+                "signature": "SysConf(environmentOption)",
                 "description": "Returns environment-specific information.",
                 "returns": "String"
             }
         ],
         "Tan": [
             {
-                "signature": "Tan({expression})",
+                "signature": "Tan(expression)",
                 "description": "Returns the tangent of a value.",
                 "returns": "Real"
             }
         ],
         "Trim": [
             {
-                "signature": "Trim({string-value})",
+                "signature": "Trim(sString)",
                 "description": "Returns a string with leading and trailing white space removed.",
                 "returns": "String"
             }
         ],
         "UCharArrayToString": [
             {
-                "signature": "UCharArrayToString({UCharArray})",
+                "signature": "UCharArrayToString(UCharArray)",
                 "description": "Copies a UChar array into a string.",
                 "returns": "String"
             }
         ],
         "UCharArrayToWString": [
             {
-                "signature": "UCharArrayToWString({UCharArray})",
+                "signature": "UCharArrayToWString(UCharArray)",
                 "description": "Copies a UChar array into a WString.",
                 "returns": "WString"
             }
         ],
         "UCharToString": [
             {
-                "signature": "UCharToString({UCharValue})",
+                "signature": "UCharToString(UCharValue)",
                 "description": "Copies a UChar value into a string.",
                 "returns": "String"
             }
         ],
         "Uppercase": [
             {
-                "signature": "Uppercase({string-value})",
+                "signature": "Uppercase(sString)",
                 "description": "Returns a string with all letters capitalized.",
                 "returns": "String"
             }
         ],
         "WStringToUCharArray": [
             {
-                "signature": "WStringToUCharArray({WStringValue})",
+                "signature": "WStringToUCharArray(WStringValue)",
                 "description": "Copies a WString to a UChar array with UTF-16 data.",
                 "returns": "UChar[]"
             }
