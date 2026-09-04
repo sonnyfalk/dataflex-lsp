@@ -256,7 +256,7 @@
         "Abs": {
             "signature": "Abs({value})",
             "description": "Abs returns an absolute value.",
-            "returns": "unsigned numeric"
+            "returns": "Number"
         },
         "Acos": {
             "signature": "Acos({expression})",
@@ -311,7 +311,7 @@
         "Cast": {
             "signature": "Cast({Var}, {Type})",
             "description": "Returns a variable of the specified type using the best conversion from the original variable.",
-            "returns": "Specified type"
+            "returns": "{Type}"
         },
         "Center": {
             "signature": "Center({string-value}, {length})",
@@ -326,7 +326,7 @@
         "Convert": {
             "signature": "Convert({Var}, {Type})",
             "description": "Returns a variable of the specified type using the best conversion from the original variable.",
-            "returns": "Specified type"
+            "returns": "{Type}"
         },
         "ConvertFromClient": {
             "signature": "ConvertFromClient(eDataType, sValue)",
@@ -366,7 +366,7 @@
         "CurrentDateTime": {
             "signature": "CurrentDateTime()",
             "description": "Returns a DateTime or Time variable containing the current local time.",
-            "returns": "DateTime / Time / Date"
+            "returns": "DateTime"
         },
         "DateAddDay": {
             "signature": "DateAddDay({dtVar}, {iDaysToAdd})",
@@ -491,17 +491,17 @@
         "DateSetHour": {
             "signature": "DateSetHour({dtVar}, {iHour})",
             "description": "Returns a DateTime with its hour component changed.",
-            "returns": "DateTime or TimeSpan"
+            "returns": "DateTime"
         },
         "DateSetMillisecond": {
             "signature": "DateSetMillisecond({dtVar}, {iMillisecond})",
             "description": "Returns a DateTime with its millisecond component changed.",
-            "returns": "DateTime / TimeSpan"
+            "returns": "DateTime"
         },
         "DateSetMinute": {
             "signature": "DateSetMinute({dtVar}, {iMinute})",
             "description": "Returns a DateTime with its minute component changed.",
-            "returns": "DateTime or TimeSpan"
+            "returns": "DateTime"
         },
         "DateSetMonth": {
             "signature": "DateSetMonth({dtVar}, {iMonth})",
@@ -511,7 +511,7 @@
         "DateSetSecond": {
             "signature": "DateSetYear({dtVar}, {iYear})",
             "description": "Returns a DateTime with its second component changed.",
-            "returns": "DateTime or TimeSpan"
+            "returns": "DateTime"
         },
         "DateSetYear": {
             "signature": "DateSetYear({dtVar}, {iYear})",
@@ -725,8 +725,8 @@
         },
         "NullCOMObject": {
             "signature": "NullComObject()",
-            "description": "Returns a null variant IDispatch* value.",
-            "returns": "variant IDispatch*"
+            "description": "Returns a null Variant IDispatch* value.",
+            "returns": "Variant"
         },
         "NullDateTime": {
             "signature": "NullDateTime()",
@@ -737,11 +737,6 @@
             "signature": "NullRowID()",
             "description": "Returns a null RowId value.",
             "returns": "RowId"
-        },
-        "Number": {
-            "signature": "Number({expression})",
-            "description": "",
-            "returns": ""
         },
         "Overstrike": {
             "signature": "Overstrike({new-string}, {host-string}, {position})",
