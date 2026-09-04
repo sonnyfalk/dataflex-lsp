@@ -47,11 +47,13 @@ pub type WriteableIndexRef<'a> = std::sync::RwLockWriteGuard<'a, Index>;
 struct SystemData {
     types: Vec<SymbolName>,
     commands: Vec<SymbolName>,
-    functions: HashMap<SymbolName, SystemFunction>,
+    functions: HashMap<SymbolName, Vec<SystemFunction>>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SystemFunction {}
+pub struct SystemFunction {
+    pub signature: String,
+}
 
 impl Index {
     pub fn new(workspace: WorkspaceInfo) -> Self {
@@ -257,6 +259,14 @@ impl Index {
         self.files.keys().cloned().collect()
     }
 
+    pub fn find_system_function(&self, name: &SymbolName) -> impl Iterator<Item = &SystemFunction> {
+        self.system_data.functions.get(name).into_iter().flatten()
+    }
+
+    pub fn is_system_function(&self, name: &SymbolName) -> bool {
+        self.system_data.functions.contains_key(name)
+    }
+
     pub fn all_system_functions(&self) -> impl Iterator<Item = &SymbolName> {
         self.system_data.functions.keys()
     }
@@ -267,10 +277,6 @@ impl Index {
 
     pub fn all_system_types(&self) -> impl Iterator<Item = &SymbolName> {
         self.system_data.types.iter()
-    }
-
-    pub fn is_system_function(&self, name: &SymbolName) -> bool {
-        self.system_data.functions.contains_key(name)
     }
 
     pub fn matching_symbols<'a>(&'a self, query: &'a str) -> IndexSymbolIter<'a> {
