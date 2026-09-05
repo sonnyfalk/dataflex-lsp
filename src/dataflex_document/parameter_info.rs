@@ -107,6 +107,42 @@ impl ParameterInfo {
                     None
                 }
             })
+            .chain(
+                in_expression
+                    .then_some(
+                        doc.symbol_at_position(name_position)
+                            .iter()
+                            .flat_map(|name| index.find_system_function(name))
+                            .filter_map(|system_function| {
+                                let parameters: Vec<String> = system_function
+                                    .parameters()
+                                    .map(|parameter| parameter.into())
+                                    .collect();
+                                let active_parameter = cursor
+                                    .node()
+                                    .children(&mut cursor.node().walk())
+                                    .filter(|n| {
+                                        n.kind() == ","
+                                            || n.kind() == ")"
+                                            || n.child(0).filter(|n| n.kind() == ",").is_some()
+                                    })
+                                    .take_while(|n| n.end_position() <= position)
+                                    .filter(|n| !n.is_missing())
+                                    .count();
+                                if active_parameter < parameters.len() {
+                                    Some(ParameterInfo {
+                                        signature: system_function.signature.clone(),
+                                        parameters,
+                                        active_parameter,
+                                    })
+                                } else {
+                                    None
+                                }
+                            }),
+                    )
+                    .into_iter()
+                    .flatten(),
+            )
             .collect();
         Some(parameter_info)
     }
@@ -211,6 +247,22 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         assert_eq!(
             format!("{:?}", parameter_info),
             "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 2 }])"
+        );
+    }
+
+    #[test]
+    fn test_parameter_info_with_system_function() {
+        let test_content = r#"
+Move (SizeOfArray()) to iTest
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+
+        let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(1, 18), &index.get());
+        assert_eq!(
+            format!("{:?}", parameter_info),
+            "Some([ParameterInfo { signature: \"SizeOfArray(array)\", parameters: [\"array\"], active_parameter: 0 }])"
         );
     }
 }

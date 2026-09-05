@@ -479,6 +479,18 @@ impl IndexRef {
     }
 }
 
+impl SystemFunction {
+    pub fn parameters(&self) -> impl Iterator<Item = &str> {
+        self.signature
+            .split_once('(')
+            .and_then(|(_, parameters)| parameters.rsplit_once(')'))
+            .map(|(parameters, _)| parameters)
+            .into_iter()
+            .flat_map(|parameters| parameters.split(','))
+            .map(|parameter| parameter.trim())
+    }
+}
+
 #[cfg(test)]
 impl Index {
     pub fn make_test_index() -> Self {
