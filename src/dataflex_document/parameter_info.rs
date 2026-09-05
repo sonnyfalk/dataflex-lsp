@@ -3,6 +3,7 @@ use super::*;
 #[derive(Debug)]
 pub struct ParameterInfo {
     pub signature: String,
+    pub description: Option<String>,
     pub parameters: Vec<String>,
     pub active_parameter: usize,
 }
@@ -100,6 +101,7 @@ impl ParameterInfo {
                 if active_parameter < parameters.len() || in_expression {
                     Some(ParameterInfo {
                         signature,
+                        description: None,
                         parameters,
                         active_parameter,
                     })
@@ -132,6 +134,7 @@ impl ParameterInfo {
                                 if active_parameter < parameters.len() {
                                     Some(ParameterInfo {
                                         signature: system_function.signature.clone(),
+                                        description: Some(system_function.description.clone()),
                                         parameters,
                                         active_parameter,
                                     })
@@ -169,12 +172,12 @@ Send MyMethod of oTest "test" 1234
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 23), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 30), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 1 }])"
+            "Some([ParameterInfo { signature: \"Procedure MyMethod String sArg1 Integer iArg2\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\"], active_parameter: 1 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 35), &index.get());
         assert_eq!(format!("{:?}", parameter_info), "Some([])");
@@ -197,12 +200,12 @@ Send MyMethod of oTest File_Field OrderHeader.Order_Number "test"
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 34), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", description: None, parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 59), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 2 }])"
+            "Some([ParameterInfo { signature: \"Procedure MyMethod Integer iFile Integer iField String sArg1\", description: None, parameters: [\"Integer iFile\", \"Integer iField\", \"String sArg1\"], active_parameter: 2 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(6, 66), &index.get());
         assert_eq!(format!("{:?}", parameter_info), "Some([])");
@@ -226,27 +229,27 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 11), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 15), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 22), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 0 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 30), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 1 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 1 }])"
         );
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(7, 35), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 2 }])"
+            "Some([ParameterInfo { signature: \"Function MyMethod String sArg1 Integer iArg2 Returns Integer\", description: None, parameters: [\"String sArg1\", \"Integer iArg2\", \"Returns Integer\"], active_parameter: 2 }])"
         );
     }
 
@@ -262,7 +265,7 @@ Move (SizeOfArray()) to iTest
         let parameter_info = ParameterInfo::parameter_info(&doc, Point::new(1, 18), &index.get());
         assert_eq!(
             format!("{:?}", parameter_info),
-            "Some([ParameterInfo { signature: \"SizeOfArray(array)\", parameters: [\"array\"], active_parameter: 0 }])"
+            "Some([ParameterInfo { signature: \"SizeOfArray(array)\", description: Some(\"Returns the number of elements in an array or dimension.\"), parameters: [\"array\"], active_parameter: 0 }])"
         );
     }
 }

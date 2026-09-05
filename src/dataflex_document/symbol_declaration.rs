@@ -1,4 +1,4 @@
-use crate::index::{Index, QualifiedIndexSymbol};
+use crate::index::{Index, QualifiedIndexSymbol, SystemFunction};
 
 pub struct SymbolDeclaration {
     pub declaration: String,
@@ -6,7 +6,7 @@ pub struct SymbolDeclaration {
 }
 
 impl SymbolDeclaration {
-    pub fn new(qualified_symbol: QualifiedIndexSymbol<'_>, index: &Index) -> Self {
+    pub fn with_symbol(qualified_symbol: QualifiedIndexSymbol<'_>, index: &Index) -> Self {
         let description: String = index
             .associated_meta_tags("Description".into(), qualified_symbol)
             .map(|tag| tag.value.trim_matches('"'))
@@ -19,6 +19,13 @@ impl SymbolDeclaration {
             } else {
                 Some(description)
             },
+        }
+    }
+
+    pub fn with_system_function(function: &SystemFunction) -> Self {
+        Self {
+            declaration: function.signature.clone(),
+            description: Some(function.description.clone()),
         }
     }
 }

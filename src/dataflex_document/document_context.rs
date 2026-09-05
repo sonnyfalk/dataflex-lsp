@@ -200,6 +200,20 @@ impl DocumentContext {
         }
     }
 
+    pub fn can_reference_system_functions(&self) -> bool {
+        match self {
+            Self::ClassReference => false,
+            Self::MethodReference(_) => false,
+            Self::Expression => false,
+            Self::ParenExpression => true,
+            Self::DotMemberExpression => false,
+            Self::CommandReference => false,
+            Self::FileDependency => false,
+            Self::MethodDeclaration(_) => false,
+            Self::TypeReference => false,
+        }
+    }
+
     pub fn is_file_reference(&self) -> bool {
         match self {
             Self::FileDependency => true,

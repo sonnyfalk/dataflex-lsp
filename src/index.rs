@@ -53,6 +53,7 @@ struct SystemData {
 #[derive(Debug, Deserialize)]
 pub struct SystemFunction {
     pub signature: String,
+    pub description: String,
 }
 
 impl Index {

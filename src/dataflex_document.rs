@@ -303,10 +303,23 @@ impl DataFlexDocument {
                 "Table: {}",
                 table_ref.table.name
             )))
+        } else if context.can_reference_system_functions()
+            && let Some(name) = self.symbol_at_position(position)
+            && index.is_system_function(&name)
+        {
+            let functions = index.find_system_function(&name);
+            functions
+                .map(|function| {
+                    symbol_declaration::SymbolDeclaration::with_system_function(function)
+                })
+                .map(|symbol_declaration| {
+                    lsp_types::MarkedString::from_markdown(symbol_declaration.to_string())
+                })
+                .next()
         } else {
             let symbols = reference_resolver.resolve_reference(context, position);
             symbols
-                .map(|s| symbol_declaration::SymbolDeclaration::new(s, index))
+                .map(|s| symbol_declaration::SymbolDeclaration::with_symbol(s, index))
                 .map(|symbol_declaration| {
                     lsp_types::MarkedString::from_markdown(symbol_declaration.to_string())
                 })
@@ -447,7 +460,9 @@ impl From<parameter_info::ParameterInfo> for lsp_types::SignatureInformation {
     fn from(value: parameter_info::ParameterInfo) -> Self {
         Self {
             label: value.signature,
-            documentation: None,
+            documentation: value
+                .description
+                .map(|description| lsp_types::Documentation::String(description)),
             parameters: Some(
                 value
                     .parameters
