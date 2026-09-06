@@ -728,6 +728,54 @@ impl Indexer {
                             class_symbol.mixins.push(name.into());
                         }
                     }
+                    Some(TagsQueryIndexElement::ExternalFunctionDeclaration) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                        {
+                            let parameters = query_match
+                                .nodes_for_capture_index(parameter_capture_index)
+                                .filter_map(|parameter_node| {
+                                    let name = SymbolName::from(
+                                        parameter_node
+                                            .child_by_field_name("name")
+                                            .and_then(|n| n.utf8_text(content).ok())?,
+                                    );
+                                    let data_type =
+                                        parameter_node.child_by_field_name("type").and_then(
+                                            |n| DataFlexDataType::with_typedecl_node(n, content),
+                                        )?;
+                                    Some((name, data_type))
+                                })
+                                .collect();
+
+                            let return_type = query_match
+                                .nodes_for_capture_index(return_type_capture_index)
+                                .filter_map(|n| DataFlexDataType::with_typedecl_node(n, content))
+                                .next();
+                            let method_symbol = MethodSymbol {
+                                location: name_node.start_position().into(),
+                                range: element_range.unwrap_or_else(|| name_node.range().into()),
+                                symbol_path: SymbolPath::with_name(name),
+                                kind: MethodKind::Get,
+                                global: true,
+                                external: true,
+                                parameters: parameters,
+                                return_type: return_type,
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
+                            };
+                            index_file.symbols.push(IndexSymbol::Method(method_symbol));
+                        }
+                    }
                     Some(TagsQueryIndexElement::PopStackSymbol) => {
                         if let Some(symbol) = stack.pop() {
                             match stack.last_mut() {
@@ -842,6 +890,7 @@ enum TagsQueryIndexElement {
     GlobalVariableDeclaration,
     AliasDefinition,
     MixinClass,
+    ExternalFunctionDeclaration,
     PopStackSymbol,
 }
 
@@ -1136,6 +1185,24 @@ mod tests {
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
             "[Method(MethodSymbol { location: SourceLocation { line: 0, column: 9 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 16 } }, symbol_path: SymbolPath(\"SayHello\"), kind: Get, global: true, external: false, parameters: [], return_type: Some(DataFlexDataType(\"String\")), metadata: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_external_function() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "External_Function MyTestFunc \"MyTestFunc\" Test.dll Integer iArg1 String sArg2 Returns Integer\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Method(MethodSymbol { location: SourceLocation { line: 0, column: 18 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 0 } }, symbol_path: SymbolPath(\"MyTestFunc\"), kind: Get, global: true, external: true, parameters: [(SymbolName(\"iArg1\"), DataFlexDataType(\"Integer\")), (SymbolName(\"sArg2\"), DataFlexDataType(\"String\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] })]"
         );
     }
 

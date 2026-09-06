@@ -118,3 +118,9 @@
 (mixin_class
   name: (identifier) @name
   (#set! index.element mixin_class)) @element_node
+
+(external_function_declaration
+    name: (identifier) @name
+    (parameter)* @parameter
+    return_type: (typedecl) @return_type
+  (#set! index.element external_function_declaration)) @element_node

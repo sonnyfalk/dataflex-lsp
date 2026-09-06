@@ -521,6 +521,28 @@ mod tests {
     }
 
     #[test]
+    fn test_external_function_method_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "External_Function MyTestFunc \"MyTestFunc\" Test.dll Integer iArg1 String sArg2 Returns Integer\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Get)
+                    .get(&"MyTestFunc".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"MyTestFunc\") })"
+        );
+    }
+
+    #[test]
     fn test_property_lookup_table() {
         let index_ref = IndexRef::make_test_index_ref();
 
