@@ -1,4 +1,5 @@
 use super::*;
+use index::IndexSymbolType;
 
 #[derive(Debug)]
 pub struct ParameterInfo {
@@ -66,6 +67,9 @@ impl ParameterInfo {
                 };
 
                 let active_parameter = if in_expression {
+                    let skip_count = index::MethodSymbol::from_index_symbol(s.symbol)
+                        .map(|m| if !m.global { 1 } else { 0 })
+                        .unwrap_or_default();
                     cursor
                         .node()
                         .children(&mut cursor.node().walk())
@@ -76,7 +80,7 @@ impl ParameterInfo {
                         })
                         .take_while(|n| n.end_position() <= position)
                         .filter(|n| !n.is_missing())
-                        .skip(1)
+                        .skip(skip_count)
                         .count()
                 } else {
                     cursor
