@@ -36,14 +36,14 @@
   (procedure_header
     name: (identifier) @name
     global: (_)? @global
-    (parameter)* @parameter)
+    ((parameter) (_)*)* @parameter)
   (#set! index.element method_procedure_definition)) @element_node
 
 (function_definition
   (function_header
     name: (identifier) @name
     global: (_)? @global
-    (parameter)* @parameter
+    ((parameter) (_)*)* @parameter
     return_type: (typedecl) @return_type)
   (#set! index.element method_function_definition)) @element_node
 
@@ -121,6 +121,6 @@
 
 (external_function_declaration
     name: (identifier) @name
-    (parameter)* @parameter
+    ((parameter) (_)*)* @parameter
     return_type: (typedecl) @return_type
   (#set! index.element external_function_declaration)) @element_node

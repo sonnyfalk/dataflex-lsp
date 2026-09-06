@@ -1204,6 +1204,20 @@ mod tests {
             ),
             "[Method(MethodSymbol { location: SourceLocation { line: 0, column: 18 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 1, column: 0 } }, symbol_path: SymbolPath(\"MyTestFunc\"), kind: Get, global: true, external: true, parameters: [(SymbolName(\"iArg1\"), DataFlexDataType(\"Integer\")), (SymbolName(\"sArg2\"), DataFlexDataType(\"String\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] })]"
         );
+
+        Indexer::index_test_content(
+            "External_Function MyTestFunc \"MyTestFunc\" Test.dll;\n Integer iArg1;\n String sArg2;\n Returns Integer\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Method(MethodSymbol { location: SourceLocation { line: 0, column: 18 }, range: SourceRange { start: SourceLocation { line: 0, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"MyTestFunc\"), kind: Get, global: true, external: true, parameters: [(SymbolName(\"iArg1\"), DataFlexDataType(\"Integer\")), (SymbolName(\"sArg2\"), DataFlexDataType(\"String\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] })]"
+        );
     }
 
     #[test]
