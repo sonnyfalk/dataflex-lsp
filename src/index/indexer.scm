@@ -32,35 +32,20 @@
   (object_footer)
   (#set! index.element pop_stack_symbol)) @element_node
 
-(class_definition
-  (procedure_definition
-    (procedure_header
-      name: (identifier) @name
-      (parameter)* @parameter)
-    (#set! index.element method_procedure_definition)) @element_node)
+(procedure_definition
+  (procedure_header
+    name: (identifier) @name
+    global: (_)? @global
+    (parameter)* @parameter)
+  (#set! index.element method_procedure_definition)) @element_node
 
-(class_definition
-  (function_definition
-    (function_header
-      name: (identifier) @name
-      (parameter)* @parameter
-      return_type: (typedecl) @return_type)
-    (#set! index.element method_function_definition)) @element_node)
-
-(object_definition
-  (procedure_definition
-    (procedure_header
-      name: (identifier) @name
-      (parameter)* @parameter)
-    (#set! index.element method_procedure_definition)) @element_node)
-
-(object_definition
-  (function_definition
-    (function_header
-      name: (identifier) @name
-      (parameter)* @parameter
-      return_type: (typedecl) @return_type)
-    (#set! index.element method_function_definition)) @element_node)
+(function_definition
+  (function_header
+    name: (identifier) @name
+    global: (_)? @global
+    (parameter)* @parameter
+    return_type: (typedecl) @return_type)
+  (#set! index.element method_function_definition)) @element_node
 
 (property_definition
   type: [

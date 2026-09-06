@@ -38,6 +38,8 @@ pub struct MethodSymbol {
     pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub kind: MethodKind,
+    pub global: bool,
+    pub external: bool,
     pub parameters: Vec<(SymbolName, DataFlexDataType)>,
     pub return_type: Option<DataFlexDataType>,
     pub metadata: Vec<MetadataTagSet>,

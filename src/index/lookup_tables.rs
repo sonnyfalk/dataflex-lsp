@@ -448,6 +448,79 @@ mod tests {
     }
 
     #[test]
+    fn test_file_level_and_global_method_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content(
+            "Procedure SayHello\n    End_Procedure\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
+                    .get(&"SayHello".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"SayHello\") })"
+        );
+
+        Indexer::index_test_content(
+            "Function SayHello Returns String\n    End_Function\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
+                    .get(&"SayHello".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"SayHello\") })"
+        );
+
+        Indexer::index_test_content(
+            "Procedure SayHello\n    End_Procedure\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
+                    .get(&"SayHello".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"SayHello\") })"
+        );
+
+        Indexer::index_test_content(
+            "Function SayHello Returns String\n    End_Function\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .method_lookup_table(MethodKind::Msg)
+                    .get(&"SayHello".into())
+            ),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"SayHello\") })"
+        );
+    }
+
+    #[test]
     fn test_property_lookup_table() {
         let index_ref = IndexRef::make_test_index_ref();
 

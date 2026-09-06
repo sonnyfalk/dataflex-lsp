@@ -584,7 +584,7 @@ End_Object
             reference_resolver.resolve_method_reference(Point::new(4, 16), MethodKind::Msg);
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg, parameters: [], return_type: None, metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"cMyClass.testIt\"), kind: Msg, global: false, external: false, parameters: [], return_type: None, metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -614,7 +614,7 @@ End_Object
             reference_resolver.resolve_method_reference(Point::new(9, 15), MethodKind::Msg);
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 5, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 4 }, end: SourceLocation { line: 6, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None, metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 5, column: 14 }, range: SourceRange { start: SourceLocation { line: 5, column: 4 }, end: SourceLocation { line: 6, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, global: false, external: false, parameters: [], return_type: None, metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -638,7 +638,7 @@ Send foo of oMyObject
         let mut symbol = reference_resolver.resolve_expr_reference(Point::new(6, 16));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Object(ClassSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 10 } }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, parameters: [], return_type: None, metadata: [] })], metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Object(ClassSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 10 } }, symbol_path: SymbolPath(\"oMyObject\"), superclass: SymbolName(\"cObject\"), mixins: [], members: [Method(MethodSymbol { location: SourceLocation { line: 2, column: 14 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 17 } }, symbol_path: SymbolPath(\"oMyObject.foo\"), kind: Msg, global: false, external: false, parameters: [], return_type: None, metadata: [] })], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
@@ -821,7 +821,7 @@ Move (MyMethod(oTest, "test", 1234)) to iTest
         let mut symbol = reference_resolver.resolve_paren_expr_reference(Point::new(7, 10));
         assert_eq!(
             format!("{:?}", symbol.next()),
-            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 13 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 16 } }, symbol_path: SymbolPath(\"oTest.MyMethod\"), kind: Get, parameters: [(SymbolName(\"sArg1\"), DataFlexDataType(\"String\")), (SymbolName(\"iArg2\"), DataFlexDataType(\"Integer\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] }) })"
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Method(MethodSymbol { location: SourceLocation { line: 2, column: 13 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 16 } }, symbol_path: SymbolPath(\"oTest.MyMethod\"), kind: Get, global: false, external: false, parameters: [(SymbolName(\"sArg1\"), DataFlexDataType(\"String\")), (SymbolName(\"iArg2\"), DataFlexDataType(\"Integer\"))], return_type: Some(DataFlexDataType(\"Integer\")), metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }
