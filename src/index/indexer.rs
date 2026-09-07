@@ -33,7 +33,7 @@ pub trait IndexerObserver {
     fn state_transition(&self, old_state: IndexerState, new_state: IndexerState);
 }
 
-const CURRENT_SERIALIZED_VERSION: usize = 2;
+const CURRENT_SERIALIZED_VERSION: usize = 3;
 
 #[derive(Deserialize)]
 struct DeserializedIndex {
