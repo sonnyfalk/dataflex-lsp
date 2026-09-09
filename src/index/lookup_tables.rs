@@ -3,35 +3,35 @@ use symbols_diff::SymbolsDiff;
 
 #[derive(Debug)]
 pub struct LookupTables {
-    class_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
+    class_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     object_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
-    struct_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
+    struct_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     method_lookup_tables: [MultiMap<SymbolName, IndexSymbolRef>; 3],
     property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
-    global_variable_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
-    alias_lookup_table: HashMap<SymbolName, IndexSymbolRef>,
-    table_lookup_table: HashMap<SymbolName, IndexFileRef>,
+    global_variable_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
+    alias_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
+    table_lookup_table: MultiMap<SymbolName, IndexFileRef>,
 }
 
 impl LookupTables {
     pub fn new() -> Self {
         Self {
-            class_lookup_table: HashMap::new(),
+            class_lookup_table: MultiMap::new(),
             object_lookup_table: MultiMap::new(),
-            struct_lookup_table: HashMap::new(),
+            struct_lookup_table: MultiMap::new(),
             method_lookup_tables: [MultiMap::new(), MultiMap::new(), MultiMap::new()],
             property_lookup_table: MultiMap::new(),
-            global_variable_lookup_table: HashMap::new(),
-            alias_lookup_table: HashMap::new(),
-            table_lookup_table: HashMap::new(),
+            global_variable_lookup_table: MultiMap::new(),
+            alias_lookup_table: MultiMap::new(),
+            table_lookup_table: MultiMap::new(),
         }
     }
 
-    pub fn class_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+    pub fn class_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
         &self.class_lookup_table
     }
 
-    pub fn class_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+    pub fn class_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.class_lookup_table
     }
 
@@ -43,11 +43,11 @@ impl LookupTables {
         &mut self.object_lookup_table
     }
 
-    pub fn struct_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+    pub fn struct_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
         &self.struct_lookup_table
     }
 
-    pub fn struct_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+    pub fn struct_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.struct_lookup_table
     }
 
@@ -78,27 +78,29 @@ impl LookupTables {
         &mut self.property_lookup_table
     }
 
-    pub fn global_variable_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+    pub fn global_variable_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
         &self.global_variable_lookup_table
     }
 
-    pub fn global_variable_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+    pub fn global_variable_lookup_table_mut(
+        &mut self,
+    ) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.global_variable_lookup_table
     }
 
-    pub fn alias_lookup_table(&self) -> &HashMap<SymbolName, IndexSymbolRef> {
+    pub fn alias_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
         &self.alias_lookup_table
     }
 
-    pub fn alias_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexSymbolRef> {
+    pub fn alias_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.alias_lookup_table
     }
 
-    pub fn dataflex_table_lookup_table(&self) -> &HashMap<SymbolName, IndexFileRef> {
+    pub fn dataflex_table_lookup_table(&self) -> &MultiMap<SymbolName, IndexFileRef> {
         &self.table_lookup_table
     }
 
-    pub fn dataflex_table_lookup_table_mut(&mut self) -> &mut HashMap<SymbolName, IndexFileRef> {
+    pub fn dataflex_table_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexFileRef> {
         &mut self.table_lookup_table
     }
 
@@ -115,7 +117,15 @@ impl LookupTables {
     ) {
         if let Some(tables) = old_tables {
             tables.iter().for_each(|table| {
-                self.dataflex_table_lookup_table_mut().remove(&table.name);
+                if let Some(table_files) = self
+                    .dataflex_table_lookup_table_mut()
+                    .get_vec_mut(&table.name)
+                {
+                    table_files.retain(|table_file| table_file != file_ref);
+                    if table_files.is_empty() {
+                        self.dataflex_table_lookup_table_mut().remove(&table.name);
+                    }
+                }
             });
         }
         if let Some(tables) = new_tables {
@@ -135,64 +145,54 @@ impl LookupTables {
             match symbol {
                 IndexSymbol::Class(class_symbol) => {
                     self.remove_symbols(class_symbol.members.iter(), file_ref);
-                    // FIXME: This needs to be updated to support multiple classes with the same name.
-                    self.class_lookup_table_mut()
-                        .remove(class_symbol.symbol_path.name());
+                    remove_matching_symbol(
+                        self.class_lookup_table_mut(),
+                        &class_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
                 IndexSymbol::Object(class_symbol) => {
                     self.remove_symbols(class_symbol.members.iter(), file_ref);
-                    if let Some(object_symbols) = self
-                        .object_lookup_table_mut()
-                        .get_vec_mut(class_symbol.symbol_path.name())
-                    {
-                        object_symbols.retain(|s| {
-                            s.symbol_path != class_symbol.symbol_path || s.file_ref != *file_ref
-                        });
-                        if object_symbols.is_empty() {
-                            self.object_lookup_table_mut()
-                                .remove(class_symbol.symbol_path.name());
-                        }
-                    }
+                    remove_matching_symbol(
+                        self.object_lookup_table_mut(),
+                        &class_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
                 IndexSymbol::Struct(struct_symbol) => {
-                    self.struct_lookup_table_mut()
-                        .remove(struct_symbol.symbol_path.name());
+                    remove_matching_symbol(
+                        self.struct_lookup_table_mut(),
+                        &struct_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
                 IndexSymbol::Method(method_symbol) => {
-                    if let Some(method_symbols) = self
-                        .method_lookup_table_mut(method_symbol.kind)
-                        .get_vec_mut(method_symbol.symbol_path.name())
-                    {
-                        method_symbols.retain(|s| {
-                            s.symbol_path != method_symbol.symbol_path || s.file_ref != *file_ref
-                        });
-                        if method_symbols.is_empty() {
-                            self.method_lookup_table_mut(method_symbol.kind)
-                                .remove(method_symbol.symbol_path.name());
-                        }
-                    }
+                    remove_matching_symbol(
+                        self.method_lookup_table_mut(method_symbol.kind),
+                        &method_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
                 IndexSymbol::Property(property_symbol) => {
-                    if let Some(property_symbols) = self
-                        .property_lookup_table_mut()
-                        .get_vec_mut(property_symbol.symbol_path.name())
-                    {
-                        property_symbols.retain(|s| {
-                            s.symbol_path != property_symbol.symbol_path || s.file_ref != *file_ref
-                        });
-                        if property_symbols.is_empty() {
-                            self.property_lookup_table_mut()
-                                .remove(property_symbol.symbol_path.name());
-                        }
-                    }
+                    remove_matching_symbol(
+                        self.property_lookup_table_mut(),
+                        &property_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
                 IndexSymbol::Variable(variable_symbol) => {
-                    self.global_variable_lookup_table_mut()
-                        .remove(variable_symbol.symbol_path.name());
+                    remove_matching_symbol(
+                        self.global_variable_lookup_table_mut(),
+                        &variable_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
                 IndexSymbol::Alias(alias_symbol) => {
-                    self.alias_lookup_table_mut()
-                        .remove(alias_symbol.symbol_path.name());
+                    remove_matching_symbol(
+                        self.alias_lookup_table_mut(),
+                        &alias_symbol.symbol_path,
+                        file_ref,
+                    );
                 }
             }
         }
@@ -250,6 +250,19 @@ impl LookupTables {
                     );
                 }
             }
+        }
+    }
+}
+
+fn remove_matching_symbol(
+    multi_map: &mut MultiMap<SymbolName, IndexSymbolRef>,
+    symbol_path: &SymbolPath,
+    file_ref: &IndexFileRef,
+) {
+    if let Some(symbols) = multi_map.get_vec_mut(symbol_path.name()) {
+        symbols.retain(|s| s.symbol_path != *symbol_path || s.file_ref != *file_ref);
+        if symbols.is_empty() {
+            multi_map.remove(symbol_path.name());
         }
     }
 }
