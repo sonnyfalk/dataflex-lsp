@@ -94,9 +94,9 @@ impl CodeLens {
                 .nodes_for_capture_index(superclass_capture_index)
                 .next()
                 .map(|n| SymbolName::from(doc.line_map.text_for_node(&n)))
-                .and_then(|name| index.find_class(&name))
-                .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
                 .into_iter()
+                .flat_map(|name| index.find_class(&name))
+                .filter_map(|symbol_ref| index.resolve_symbol(symbol_ref))
                 .flat_map(|c| index.class_hierarchy(c))
                 .filter_map(|qualified_symbol| {
                     ClassSymbol::from_index_symbol(qualified_symbol.symbol)

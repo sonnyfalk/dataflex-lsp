@@ -1,7 +1,7 @@
 use super::*;
 use index::{
     ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
-    QualifiedDataFlexTableRef, QualifiedIndexSymbol, StructSymbol, SymbolName, VariableSymbol,
+    QualifiedDataFlexTableRef, StructSymbol, SymbolName, VariableSymbol,
 };
 
 pub struct ReferenceResolver<'a> {
@@ -58,20 +58,21 @@ impl<'a> ReferenceResolver<'a> {
     pub fn resolve_table_reference(
         &self,
         position: Point,
-    ) -> Option<QualifiedDataFlexTableRef<'_>> {
-        let mut cursor = self.doc.cursor()?;
-        if !cursor.goto_descendant_for_point(position) {
-            return None;
-        }
-        let node = if cursor.goto_enclosing_postfix_expression() {
-            cursor.node().child_by_field_name("name")
+    ) -> impl Iterator<Item = QualifiedDataFlexTableRef<'_>> {
+        let name = if let Some(mut cursor) = self.doc.cursor()
+            && cursor.goto_descendant_for_point(position)
+        {
+            if cursor.goto_enclosing_postfix_expression() {
+                cursor.node().child_by_field_name("name")
+            } else {
+                cursor.is_identifier().then_some(cursor.node())
+            }
         } else {
-            cursor.is_identifier().then_some(cursor.node())
-        };
-        node.and_then(|n| {
-            self.index
-                .find_dataflex_table(&self.doc.line_map.text_for_node(&n).into())
-        })
+            None
+        }
+        .map(|n| SymbolName::from(self.doc.line_map.text_for_node(&n)));
+        name.into_iter()
+            .flat_map(|name| self.index.find_dataflex_table(&name))
     }
 
     pub fn find_local_variable(
@@ -187,8 +188,7 @@ impl<'a> ReferenceResolver<'a> {
         IndexSymbolIter::new(
             self.index
                 .find_class(&name)
-                .and_then(|s| self.index.resolve_symbol(s))
-                .into_iter(),
+                .filter_map(|s| self.index.resolve_symbol(s)),
         )
     }
 
@@ -197,26 +197,28 @@ impl<'a> ReferenceResolver<'a> {
             return IndexSymbolIter::empty();
         };
 
-        let member = self.resolve_call_receiver(position).and_then(|class| {
-            let members: Vec<&index::IndexSymbolRef> =
-                self.index.find_members(&name, kind).collect();
-            self.index
-                .class_hierarchy(class)
-                .filter_map(|qualified_symbol| {
-                    ClassSymbol::from_index_symbol(qualified_symbol.symbol)
-                })
-                .find_map(|class| {
-                    members.iter().find(|member| {
-                        member.symbol_path.parent_slice() == class.symbol_path.as_slice()
+        let candidates: Vec<&index::IndexSymbolRef> =
+            self.index.find_members(&name, kind).collect();
+        let mut members = self
+            .resolve_call_receiver(position)
+            .filter_map(move |class| {
+                self.index
+                    .class_hierarchy(class)
+                    .filter_map(|qualified_symbol| {
+                        ClassSymbol::from_index_symbol(qualified_symbol.symbol)
                     })
-                })
-                .cloned()
-        });
+                    .find_map(|class| {
+                        candidates.iter().find(|member| {
+                            member.symbol_path.parent_slice() == class.symbol_path.as_slice()
+                        })
+                    })
+                    .cloned()
+            })
+            .peekable();
 
-        if let Some(member) = member {
+        if members.peek().is_some() {
             IndexSymbolIter::new(
-                std::iter::once(member)
-                    .filter_map(|member_ref| self.index.resolve_symbol(member_ref)),
+                members.filter_map(|member_ref| self.index.resolve_symbol(member_ref)),
             )
         } else {
             let members = self.index.find_members(&name, kind);
@@ -226,15 +228,17 @@ impl<'a> ReferenceResolver<'a> {
         }
     }
 
-    fn resolve_call_receiver(&self, position: Point) -> Option<QualifiedIndexSymbol<'_>> {
-        let mut cursor = self.doc.cursor()?;
+    fn resolve_call_receiver(&self, position: Point) -> IndexSymbolIter<'_> {
+        let Some(mut cursor) = self.doc.cursor() else {
+            return IndexSymbolIter::empty();
+        };
         cursor
             .goto_leaf_node_at_or_after_point(position)
             .then(|| cursor.goto_enclosing_method_call());
 
         if cursor.is_method_call_with_dynamic_receiver() {
             // Don't try to filter on the receiver if this is `Delegate`, `Broadcast`, or `Broadcast_Focus`.
-            return None;
+            return IndexSymbolIter::empty();
         }
 
         let receiver = cursor
@@ -248,29 +252,35 @@ impl<'a> ReferenceResolver<'a> {
                 .goto_enclosing_object_or_class()
                 .then(|| {
                     if cursor.is_object_definition() {
-                        index::SymbolPath::try_from(cursor.clone())
-                            .ok()
-                            .map(|symbol_path| index::IndexSymbolRef {
-                                file_ref: index::IndexFileRef::from(&self.doc.file_path),
-                                symbol_path,
-                            })
-                            .and_then(|symbol_ref| self.index.resolve_symbol(&symbol_ref))
+                        IndexSymbolIter::new(
+                            index::SymbolPath::try_from(cursor.clone())
+                                .ok()
+                                .map(|symbol_path| index::IndexSymbolRef {
+                                    file_ref: index::IndexFileRef::from(&self.doc.file_path),
+                                    symbol_path,
+                                })
+                                .and_then(|symbol_ref| self.index.resolve_symbol(&symbol_ref))
+                                .into_iter(),
+                        )
                     } else {
-                        cursor
-                            .node()
-                            .child(0)
-                            .and_then(|n| n.child_by_field_name("name"))
-                            .and_then(|n| {
-                                self.index
-                                    .find_class(&self.doc.line_map.text_for_node(&n).into())
-                            })
-                            .and_then(|symbol_ref| self.index.resolve_symbol(symbol_ref))
+                        IndexSymbolIter::new(
+                            cursor
+                                .node()
+                                .child(0)
+                                .and_then(|n| n.child_by_field_name("name"))
+                                .into_iter()
+                                .flat_map(|n| {
+                                    self.index
+                                        .find_class(&self.doc.line_map.text_for_node(&n).into())
+                                })
+                                .filter_map(|symbol_ref| self.index.resolve_symbol(symbol_ref)),
+                        )
                     }
                 })
-                .flatten()
+                .unwrap_or(IndexSymbolIter::empty())
         } else {
             // FIXME: Handle non-self receiver.
-            None
+            IndexSymbolIter::empty()
         }
     }
 
@@ -343,7 +353,7 @@ impl<'a> ReferenceResolver<'a> {
         {
             let current_symbol = self
                 .resolve_type_of_variable(position, &variable_name)
-                .and_then(|data_type| self.index.find_struct(data_type.name()))
+                .and_then(|data_type| self.index.find_struct(data_type.name()).next())
                 .and_then(|struct_ref| self.index.resolve_symbol(struct_ref));
 
             query_match
@@ -356,6 +366,7 @@ impl<'a> ReferenceResolver<'a> {
                     {
                         self.index
                             .find_struct(variable.data_type.name())
+                            .next()
                             .and_then(|struct_ref| self.index.resolve_symbol(struct_ref))
                     } else {
                         current_symbol
@@ -405,7 +416,6 @@ impl<'a> ReferenceResolver<'a> {
         IndexSymbolIter::new(
             self.index
                 .find_struct(&name)
-                .into_iter()
                 .chain(self.index.find_alias_symbols(&name))
                 .filter_map(|s| self.index.resolve_symbol(s)),
         )

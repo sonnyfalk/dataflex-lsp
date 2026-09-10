@@ -206,12 +206,12 @@ impl CodeCompletion {
                 .child(0)
                 .and_then(|n| n.child_by_field_name("superclass"))
                 .map(|n| doc.line_map.text_for_node(&n))
-                .and_then(|superclass_name| index.find_class(&superclass_name.into()))
-                .and_then(|symbol_ref| index.resolve_symbol(symbol_ref));
+                .into_iter()
+                .flat_map(|superclass_name| index.find_class(&superclass_name.into()))
+                .filter_map(|symbol_ref| index.resolve_symbol(symbol_ref));
 
             // TODO: Filter out already overridden methods.
             superclass
-                .into_iter()
                 .flat_map(|superclass| index.inherited_class_members(superclass, kind))
                 .map(|m| {
                     let mut details = String::new();
@@ -380,7 +380,7 @@ impl CodeCompletion {
         let qualified_symbol = if let Some(name) = root_name.as_ref() {
             reference_resolver
                 .resolve_type_of_variable(cursor.node().start_position(), name)
-                .and_then(|data_type| index.find_struct(data_type.name()))
+                .and_then(|data_type| index.find_struct(data_type.name()).next())
                 .and_then(|struct_ref| index.resolve_symbol(struct_ref))
         } else {
             reference_resolver
@@ -404,7 +404,7 @@ impl CodeCompletion {
                 .unwrap_or_default()
         } else if let Some(table) = root_name
             .as_ref()
-            .and_then(|name| index.find_dataflex_table(name).map(|t| t.table))
+            .and_then(|name| index.find_dataflex_table(name).map(|t| t.table).next())
         {
             table
                 .columns

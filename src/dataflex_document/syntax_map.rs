@@ -237,7 +237,7 @@ impl SyntaxMap {
                                         index
                                             .find_dataflex_table(&root_name)
                                             .map(|t| t.table)
-                                            .and_then(|table| {
+                                            .find_map(|table| {
                                                 table
                                                     .columns
                                                     .contains(

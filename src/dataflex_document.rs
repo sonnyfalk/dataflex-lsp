@@ -208,7 +208,7 @@ impl DataFlexDocument {
                 lsp_types::Range::from(index::SourceRange::with_location(variable.location)),
             )]
         } else if context.can_reference_tables()
-            && let Some(table_ref) = reference_resolver.resolve_table_reference(position)
+            && let Some(table_ref) = reference_resolver.resolve_table_reference(position).next()
         {
             vec![lsp_types::Location::new(
                 lsp_types::Url::from_file_path(&table_ref.file.path).unwrap(),
@@ -297,7 +297,7 @@ impl DataFlexDocument {
                 variable.to_string(),
             ))
         } else if context.can_reference_tables()
-            && let Some(table_ref) = reference_resolver.resolve_table_reference(position)
+            && let Some(table_ref) = reference_resolver.resolve_table_reference(position).next()
         {
             Some(lsp_types::MarkedString::String(format!(
                 "Table: {}",

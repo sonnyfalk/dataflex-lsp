@@ -67,8 +67,12 @@ impl Index {
         }
     }
 
-    pub fn find_class(&self, name: &SymbolName) -> Option<&IndexSymbolRef> {
-        self.lookup_tables.class_lookup_table().get(name)
+    pub fn find_class(&self, name: &SymbolName) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
+        self.lookup_tables
+            .class_lookup_table()
+            .get_vec(name)
+            .into_iter()
+            .flatten()
     }
 
     pub fn is_known_class(&self, name: &SymbolName) -> bool {
@@ -98,12 +102,15 @@ impl Index {
             .collect()
     }
 
-    pub fn find_properties(&self, name: &SymbolName) -> core::slice::Iter<'_, IndexSymbolRef> {
+    pub fn find_properties(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
         self.lookup_tables
             .property_lookup_table()
             .get_vec(name)
-            .map(|v| v.iter())
-            .unwrap_or_default()
+            .into_iter()
+            .flatten()
     }
 
     pub fn is_known_method(&self, name: &SymbolName, kind: MethodKind) -> bool {
@@ -125,12 +132,12 @@ impl Index {
         &self,
         name: &SymbolName,
         kind: MethodKind,
-    ) -> core::slice::Iter<'_, IndexSymbolRef> {
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
         self.lookup_tables
             .method_lookup_table(kind)
             .get_vec(name)
-            .map(|v| v.iter())
-            .unwrap_or_default()
+            .into_iter()
+            .flatten()
     }
 
     pub fn find_members(
@@ -143,7 +150,7 @@ impl Index {
             MethodKind::Get | MethodKind::Set => Some(self.find_properties(name)),
             MethodKind::Msg => None,
         };
-        methods.chain(properties.unwrap_or_default())
+        methods.chain(properties.into_iter().flatten())
     }
 
     pub fn is_known_object(&self, name: &SymbolName) -> bool {
@@ -157,12 +164,15 @@ impl Index {
             .map(|(_, symbols)| symbols)
     }
 
-    pub fn find_objects(&self, name: &SymbolName) -> core::slice::Iter<'_, IndexSymbolRef> {
+    pub fn find_objects(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
         self.lookup_tables
             .object_lookup_table()
             .get_vec(name)
-            .map(|v| v.iter())
-            .unwrap_or_default()
+            .into_iter()
+            .flatten()
     }
 
     pub fn all_known_global_variables(&self) -> Vec<SymbolName> {
@@ -179,8 +189,9 @@ impl Index {
     ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
         self.lookup_tables
             .global_variable_lookup_table()
-            .get(name)
+            .get_vec(name)
             .into_iter()
+            .flatten()
     }
 
     pub fn is_known_alias_symbol(&self, name: &SymbolName) -> bool {
@@ -201,12 +212,20 @@ impl Index {
     ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
         self.lookup_tables
             .alias_lookup_table()
-            .get(name)
+            .get_vec(name)
             .into_iter()
+            .flatten()
     }
 
-    pub fn find_struct(&self, name: &SymbolName) -> Option<&IndexSymbolRef> {
-        self.lookup_tables.struct_lookup_table().get(name)
+    pub fn find_struct(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
+        self.lookup_tables
+            .struct_lookup_table()
+            .get_vec(name)
+            .into_iter()
+            .flatten()
     }
 
     pub fn is_known_struct(&self, name: &SymbolName) -> bool {
@@ -221,19 +240,23 @@ impl Index {
             .collect()
     }
 
-    pub fn find_dataflex_table(&self, name: &SymbolName) -> Option<QualifiedDataFlexTableRef<'_>> {
-        let index_file = self
-            .lookup_tables
+    pub fn find_dataflex_table(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = QualifiedDataFlexTableRef<'_>> + use<'_> {
+        self.lookup_tables
             .dataflex_table_lookup_table()
-            .get(name)
-            .and_then(|f| self.files.get(f))?;
-        index_file
-            .tables
-            .as_ref()
-            .and_then(|t| t.iter().find(|t| t.name == *name))
-            .map(|table| QualifiedDataFlexTableRef {
-                file: index_file,
-                table: table,
+            .get_vec(&name)
+            .into_iter()
+            .flatten()
+            .filter_map(|f| self.files.get(f))
+            .flat_map(|index_file| {
+                index_file.tables.as_deref().into_iter().flat_map(|t| {
+                    t.iter().map(|t| QualifiedDataFlexTableRef {
+                        file: index_file,
+                        table: t,
+                    })
+                })
             })
     }
 
@@ -406,7 +429,7 @@ impl<'a> Iterator for ClassHierarchyIter<'a> {
         if let Some(mixin) = self
             .mixins
             .next()
-            .and_then(|class_name| self.index.find_class(class_name))
+            .and_then(|class_name| self.index.find_class(class_name).next())
             .and_then(|symbol_ref| self.index.resolve_symbol(symbol_ref))
         {
             Some(mixin)
@@ -425,7 +448,7 @@ impl<'a> Iterator for ClassHierarchyIter<'a> {
                 .and_then(|qualified_symbol| {
                     ClassSymbol::from_index_symbol(qualified_symbol.symbol)
                 })
-                .and_then(|class| self.index.find_class(&class.superclass))
+                .and_then(|class| self.index.find_class(&class.superclass).next())
                 .and_then(|symbol_ref| self.index.resolve_symbol(symbol_ref));
             if let Some(next) = next {
                 self.current.replace(next)
@@ -520,7 +543,10 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().find_class(&"cMyClass".into())),
+            format!(
+                "{:?}",
+                index_ref.get().find_class(&"cMyClass".into()).next()
+            ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
         );
     }
@@ -535,9 +561,39 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{:?}", index_ref.get().find_class(&"cmyclass".into())),
+            format!(
+                "{:?}",
+                index_ref.get().find_class(&"cmyclass".into()).next()
+            ),
             "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
         );
+    }
+
+    #[test]
+    fn test_find_multiple_classes() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            "fileA.pkg".into(),
+            &index_ref,
+        );
+        Indexer::index_test_content(
+            "Class cMyClass is a cBaseClass\nEnd_Class\n",
+            "fileB.pkg".into(),
+            &index_ref,
+        );
+
+        let index = index_ref.get();
+        let mut classes = index.find_class(&"cMyClass".into());
+        assert_eq!(
+            format!("{:?}", classes.next()),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"fileA.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+        );
+        assert_eq!(
+            format!("{:?}", classes.next()),
+            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"fileB.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+        );
+        assert_eq!(format!("{:?}", classes.next()), "None");
     }
 
     #[test]
@@ -606,6 +662,7 @@ mod tests {
         let index = index_ref.get();
         let class = index
             .find_class(&"cMySubClass".into())
+            .next()
             .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
 
@@ -647,6 +704,7 @@ End_Class
         let index = index_ref.get();
         let class = index
             .find_class(&"cMySubClass".into())
+            .next()
             .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
 
@@ -689,6 +747,7 @@ End_Class
 
         let class = index
             .find_class(&"cMyBaseClass".into())
+            .next()
             .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
         let mut tags = index.associated_meta_tags("Description".into(), class);
@@ -700,6 +759,7 @@ End_Class
 
         let class = index
             .find_class(&"cMySubClass".into())
+            .next()
             .and_then(|symbol_ref| index.resolve_symbol(symbol_ref))
             .unwrap();
         let mut tags = index.associated_meta_tags("Description".into(), class);
