@@ -1,6 +1,6 @@
 use super::*;
 use index::{
-    ClassSymbol, DataFlexDataType, IndexFileRef, IndexSymbolIter, IndexSymbolType, MethodKind,
+    ClassSymbol, DataFlexDataType, IndexSymbolIter, IndexSymbolType, MethodKind,
     QualifiedDataFlexTableRef, StructSymbol, SymbolName, VariableSymbol,
 };
 
@@ -256,7 +256,7 @@ impl<'a> ReferenceResolver<'a> {
                             index::SymbolPath::try_from(cursor.clone())
                                 .ok()
                                 .map(|symbol_path| index::IndexSymbolRef {
-                                    file_ref: index::IndexFileRef::from(&self.doc.file_path),
+                                    file_path: self.doc.file_path.clone(),
                                     symbol_path,
                                 })
                                 .and_then(|symbol_ref| self.index.resolve_symbol(&symbol_ref))
@@ -288,11 +288,10 @@ impl<'a> ReferenceResolver<'a> {
         let Some(name) = self.doc.symbol_at_position(position) else {
             return IndexSymbolIter::empty();
         };
-        let file_ref = IndexFileRef::from(&self.doc.file_path);
         IndexSymbolIter::new(
             self.index
                 .find_objects(&name)
-                .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
+                .filter(move |&s| s.symbol_path.is_top_level() || s.file_path == self.doc.file_path)
                 .chain(self.index.find_global_variables(&name))
                 .chain(self.index.find_alias_symbols(&name))
                 .filter_map(|s| self.index.resolve_symbol(s)),
@@ -303,11 +302,10 @@ impl<'a> ReferenceResolver<'a> {
         let Some(name) = self.doc.symbol_at_position(position) else {
             return IndexSymbolIter::empty();
         };
-        let file_ref = IndexFileRef::from(&self.doc.file_path);
         IndexSymbolIter::new(
             self.index
                 .find_objects(&name)
-                .filter(move |&s| s.symbol_path.is_top_level() || s.file_ref == file_ref)
+                .filter(move |&s| s.symbol_path.is_top_level() || s.file_path == self.doc.file_path)
                 .chain(self.index.find_global_variables(&name))
                 .chain(self.index.find_alias_symbols(&name))
                 .chain(self.index.find_class(&name))

@@ -836,18 +836,18 @@ impl Indexer {
                     observer.state_transition(IndexerState::Inactive, IndexerState::Indexing);
                     for path in paths {
                         if path.is_dir() {
-                            let files: Vec<IndexFileRef> = index
+                            let files: Vec<PathBuf> = index
                                 .get()
                                 .files
                                 .iter()
                                 .filter(|(_, file)| file.path.starts_with(&path))
-                                .map(|(file_ref, _)| file_ref.clone())
+                                .map(|(_, index_file)| index_file.path.clone())
                                 .collect();
                             for file in files {
-                                index.get_mut().remove_file(file);
+                                index.get_mut().remove_file(&file);
                             }
                         } else {
-                            index.get_mut().remove_file(IndexFileRef::from(&path));
+                            index.get_mut().remove_file(&path);
                         }
                     }
                     observer.state_transition(IndexerState::Indexing, IndexerState::Inactive);
@@ -897,26 +897,27 @@ enum TagsQueryIndexElement {
 impl Index {
     fn update_file(&mut self, index_file: IndexFile) {
         let file_ref = IndexFileRef::from(&index_file.path);
+        let file_path = index_file.path.clone();
         let old_index_file = self.files.insert(file_ref.clone(), index_file);
         let new_index_file = self.files.get(&file_ref);
         let symbols_diff = SymbolsDiff::diff_index_files(old_index_file.as_ref(), new_index_file);
-        self.lookup_tables.update_symbols(symbols_diff, &file_ref);
+        self.lookup_tables.update_symbols(symbols_diff, &file_path);
         self.lookup_tables.update_dataflex_table_references(
             old_index_file.as_ref().and_then(|f| f.tables.as_deref()),
             new_index_file.and_then(|f| f.tables.as_deref()),
-            &file_ref,
+            &file_path,
         );
         self.updated_file_count += 1;
     }
 
-    fn remove_file(&mut self, file_ref: IndexFileRef) {
-        if let Some(index_file) = self.files.remove(&file_ref) {
+    fn remove_file(&mut self, file_path: &PathBuf) {
+        if let Some(index_file) = self.files.remove(&IndexFileRef::from(file_path)) {
             let symbols_diff = SymbolsDiff::diff_index_files(Some(&index_file), None);
-            self.lookup_tables.update_symbols(symbols_diff, &file_ref);
+            self.lookup_tables.update_symbols(symbols_diff, file_path);
             self.lookup_tables.update_dataflex_table_references(
                 index_file.tables.as_deref(),
                 None,
-                &file_ref,
+                file_path,
             );
             self.updated_file_count += 1;
         }

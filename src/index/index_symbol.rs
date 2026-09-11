@@ -118,7 +118,7 @@ pub struct QualifiedIndexSymbol<'a> {
 
 #[derive(Debug)]
 pub struct IndexSymbolRef {
-    pub file_ref: IndexFileRef,
+    pub file_path: PathBuf,
     pub symbol_path: SymbolPath,
 }
 
@@ -531,9 +531,9 @@ impl IndexSymbolType for VariableSymbol {
 }
 
 impl IndexSymbolRef {
-    pub fn new(file_ref: IndexFileRef, symbol_path: SymbolPath) -> Self {
+    pub fn new(file_path: PathBuf, symbol_path: SymbolPath) -> Self {
         Self {
-            file_ref,
+            file_path,
             symbol_path,
         }
     }

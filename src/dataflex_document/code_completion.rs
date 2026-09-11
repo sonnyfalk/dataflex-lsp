@@ -482,11 +482,10 @@ impl CodeCompletion {
         doc: &DataFlexDocument,
         index: &index::Index,
     ) -> impl Iterator<Item = CompletionItem> {
-        let local_file_ref = index::IndexFileRef::from(&doc.file_path);
         index.all_object_symbols().map(move |symbols| {
             let local_object = symbols
                 .iter()
-                .find(|symbol_ref| symbol_ref.file_ref == local_file_ref);
+                .find(|symbol_ref| symbol_ref.file_path == doc.file_path);
             let top_level_object = local_object
                 .is_none()
                 .then(|| {

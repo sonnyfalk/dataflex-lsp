@@ -249,7 +249,7 @@ impl Index {
             .get_vec(&name)
             .into_iter()
             .flatten()
-            .filter_map(|f| self.files.get(f))
+            .filter_map(|f| self.files.get(&IndexFileRef::from(f)))
             .flat_map(|index_file| {
                 index_file.tables.as_deref().into_iter().flat_map(|t| {
                     t.iter().map(|t| QualifiedDataFlexTableRef {
@@ -403,7 +403,7 @@ impl Index {
     }
 
     pub fn resolve_symbol(&self, symbol_ref: &IndexSymbolRef) -> Option<QualifiedIndexSymbol<'_>> {
-        if let Some(index_file) = self.files.get(&symbol_ref.file_ref) {
+        if let Some(index_file) = self.files.get(&IndexFileRef::from(&symbol_ref.file_path)) {
             index_file
                 .resolve(&symbol_ref.symbol_path)
                 .map(|index_symbol| QualifiedIndexSymbol {
@@ -547,7 +547,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().find_class(&"cMyClass".into()).next()
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
         );
     }
 
@@ -565,7 +565,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().find_class(&"cmyclass".into()).next()
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
         );
     }
 
@@ -587,11 +587,11 @@ mod tests {
         let mut classes = index.find_class(&"cMyClass".into());
         assert_eq!(
             format!("{:?}", classes.next()),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"fileA.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+            "Some(IndexSymbolRef { file_path: \"fileA.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
         );
         assert_eq!(
             format!("{:?}", classes.next()),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"fileB.pkg\"), symbol_path: SymbolPath(\"cMyClass\") })"
+            "Some(IndexSymbolRef { file_path: \"fileB.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
         );
         assert_eq!(format!("{:?}", classes.next()), "None");
     }
@@ -629,7 +629,7 @@ mod tests {
                     .find_methods(&"SayHello".into(), MethodKind::Msg)
                     .next()
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.SayHello\") })"
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"cMyClass.SayHello\") })"
         );
     }
 
@@ -647,7 +647,7 @@ mod tests {
                 "{:?}",
                 index_ref.get().find_properties(&"piTest".into()).next()
             ),
-            "Some(IndexSymbolRef { file_ref: IndexFileRef(\"test.pkg\"), symbol_path: SymbolPath(\"cMyClass.piTest\") })"
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"cMyClass.piTest\") })"
         );
     }
 
