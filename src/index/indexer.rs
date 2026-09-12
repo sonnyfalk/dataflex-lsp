@@ -33,7 +33,7 @@ pub trait IndexerObserver {
     fn state_transition(&self, old_state: IndexerState, new_state: IndexerState);
 }
 
-const CURRENT_SERIALIZED_VERSION: usize = 3;
+const CURRENT_SERIALIZED_VERSION: usize = 4;
 
 #[derive(Deserialize)]
 struct DeserializedIndex {
@@ -92,7 +92,11 @@ impl Indexer {
 
         let content = rmp_serde::to_vec(&SerializableIndex {
             version: CURRENT_SERIALIZED_VERSION,
-            files: index.files.values().collect(),
+            files: index
+                .files
+                .flat_iter()
+                .map(|(_, index_file)| index_file)
+                .collect(),
         });
 
         if let Ok(content) = content {
@@ -136,7 +140,10 @@ impl Indexer {
             }
             log::info!("Indexing workspace");
             Self::index_workspace(&index);
-            log::info!("Finished indexing: {} files", index.get().files.len());
+            log::info!(
+                "Finished indexing: {} files",
+                index.get().files.flat_iter().count()
+            );
             log::trace!("{:#?}", index.get());
             observer.state_transition(IndexerState::InitialIndexing, IndexerState::Inactive);
             Self::watch_and_index_changed_files(&index, receiver, &observer);
@@ -839,8 +846,8 @@ impl Indexer {
                             let files: Vec<PathBuf> = index
                                 .get()
                                 .files
-                                .iter()
-                                .filter(|(_, file)| file.path.starts_with(&path))
+                                .flat_iter()
+                                .filter(|(_, index_file)| index_file.path.starts_with(&path))
                                 .map(|(_, index_file)| index_file.path.clone())
                                 .collect();
                             for file in files {
@@ -896,22 +903,37 @@ enum TagsQueryIndexElement {
 
 impl Index {
     fn update_file(&mut self, index_file: IndexFile) {
-        let file_ref = IndexFileRef::from(&index_file.path);
-        let file_path = index_file.path.clone();
-        let old_index_file = self.files.insert(file_ref.clone(), index_file);
-        let new_index_file = self.files.get(&file_ref);
-        let symbols_diff = SymbolsDiff::diff_index_files(old_index_file.as_ref(), new_index_file);
-        self.lookup_tables.update_symbols(symbols_diff, &file_path);
+        let index_files = self
+            .files
+            .entry(IndexFileRef::from(&index_file.path))
+            .or_insert_vec(Vec::new());
+        let old_index_file = index_files
+            .extract_if(.., |old_index_file| old_index_file.path == index_file.path)
+            .next();
+        let new_index_file = index_files.push_mut(index_file);
+
+        let symbols_diff =
+            SymbolsDiff::diff_index_files(old_index_file.as_ref(), Some(new_index_file));
+        self.lookup_tables
+            .update_symbols(symbols_diff, &new_index_file.path);
         self.lookup_tables.update_dataflex_table_references(
             old_index_file.as_ref().and_then(|f| f.tables.as_deref()),
-            new_index_file.and_then(|f| f.tables.as_deref()),
-            &file_path,
+            new_index_file.tables.as_deref(),
+            &new_index_file.path,
         );
         self.updated_file_count += 1;
     }
 
     fn remove_file(&mut self, file_path: &PathBuf) {
-        if let Some(index_file) = self.files.remove(&IndexFileRef::from(file_path)) {
+        if let Some(index_file) = self
+            .files
+            .get_vec_mut(&IndexFileRef::from(file_path))
+            .and_then(|index_files| {
+                index_files
+                    .extract_if(.., |index_file| index_file.path == *file_path)
+                    .next()
+            })
+        {
             let symbols_diff = SymbolsDiff::diff_index_files(Some(&index_file), None);
             self.lookup_tables.update_symbols(symbols_diff, file_path);
             self.lookup_tables.update_dataflex_table_references(
@@ -919,6 +941,11 @@ impl Index {
                 None,
                 file_path,
             );
+            if let Some(index_files) = self.files.get_vec_mut(&IndexFileRef::from(file_path))
+                && index_files.is_empty()
+            {
+                self.files.remove(&IndexFileRef::from(file_path));
+            }
             self.updated_file_count += 1;
         }
     }

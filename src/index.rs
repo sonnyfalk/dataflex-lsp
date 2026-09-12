@@ -30,7 +30,7 @@ use lookup_tables::LookupTables;
 pub struct Index {
     workspace: WorkspaceInfo,
     system_data: SystemData,
-    files: HashMap<IndexFileRef, IndexFile>,
+    files: MultiMap<IndexFileRef, IndexFile>,
     lookup_tables: LookupTables,
     updated_file_count: usize,
 }
@@ -61,7 +61,7 @@ impl Index {
         Self {
             workspace,
             system_data: serde_json::from_str(include_str!("index/system_data.json")).unwrap(),
-            files: HashMap::new(),
+            files: MultiMap::new(),
             lookup_tables: LookupTables::new(),
             updated_file_count: 0,
         }
@@ -249,7 +249,7 @@ impl Index {
             .get_vec(&name)
             .into_iter()
             .flatten()
-            .filter_map(|f| self.files.get(&IndexFileRef::from(f)))
+            .filter_map(|file_path| self.index_file(file_path))
             .flat_map(|index_file| {
                 index_file.tables.as_deref().into_iter().flat_map(|t| {
                     t.iter().map(|t| QualifiedDataFlexTableRef {
@@ -275,8 +275,12 @@ impl Index {
             .collect()
     }
 
-    pub fn find_file_path(&self, file: &IndexFileRef) -> Option<&PathBuf> {
-        self.files.get(file).map(|index_file| &index_file.path)
+    pub fn find_file_path(&self, file: &IndexFileRef) -> impl Iterator<Item = &PathBuf> {
+        self.files
+            .get_vec(file)
+            .into_iter()
+            .flatten()
+            .map(|index_file| &index_file.path)
     }
 
     pub fn all_known_files(&self) -> Vec<IndexFileRef> {
@@ -304,7 +308,7 @@ impl Index {
     }
 
     pub fn matching_symbols<'a>(&'a self, query: &'a str) -> IndexSymbolIter<'a> {
-        IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
+        IndexSymbolIter::new(self.files.flat_iter().flat_map(|(_, index_file)| {
             let symbols: Vec<QualifiedIndexSymbol<'_>> = index_file
                 .symbols
                 .par_iter()
@@ -320,7 +324,7 @@ impl Index {
     }
 
     pub fn top_level_class_and_object_symbols<'a>(&'a self) -> IndexSymbolIter<'a> {
-        IndexSymbolIter::new(self.files.values().flat_map(|index_file| {
+        IndexSymbolIter::new(self.files.flat_iter().flat_map(|(_, index_file)| {
             let symbols: Vec<QualifiedIndexSymbol<'_>> = index_file
                 .symbols
                 .par_iter()
@@ -403,7 +407,7 @@ impl Index {
     }
 
     pub fn resolve_symbol(&self, symbol_ref: &IndexSymbolRef) -> Option<QualifiedIndexSymbol<'_>> {
-        if let Some(index_file) = self.files.get(&IndexFileRef::from(&symbol_ref.file_path)) {
+        if let Some(index_file) = self.index_file(&symbol_ref.file_path) {
             index_file
                 .resolve(&symbol_ref.symbol_path)
                 .map(|index_symbol| QualifiedIndexSymbol {
@@ -413,6 +417,16 @@ impl Index {
         } else {
             None
         }
+    }
+
+    fn index_file(&self, file_path: &PathBuf) -> Option<&IndexFile> {
+        self.files
+            .get_vec(&IndexFileRef::from(file_path))
+            .and_then(|index_files| {
+                index_files
+                    .iter()
+                    .find(|index_file| index_file.path == *file_path)
+            })
     }
 }
 
@@ -574,12 +588,12 @@ mod tests {
         let index_ref = IndexRef::make_test_index_ref();
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            "fileA.pkg".into(),
+            "First/cMyClass.pkg".into(),
             &index_ref,
         );
         Indexer::index_test_content(
             "Class cMyClass is a cBaseClass\nEnd_Class\n",
-            "fileB.pkg".into(),
+            "Second/cMyClass.pkg".into(),
             &index_ref,
         );
 
@@ -587,11 +601,11 @@ mod tests {
         let mut classes = index.find_class(&"cMyClass".into());
         assert_eq!(
             format!("{:?}", classes.next()),
-            "Some(IndexSymbolRef { file_path: \"fileA.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
+            "Some(IndexSymbolRef { file_path: \"First/cMyClass.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
         );
         assert_eq!(
             format!("{:?}", classes.next()),
-            "Some(IndexSymbolRef { file_path: \"fileB.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
+            "Some(IndexSymbolRef { file_path: \"Second/cMyClass.pkg\", symbol_path: SymbolPath(\"cMyClass\") })"
         );
         assert_eq!(format!("{:?}", classes.next()), "None");
     }

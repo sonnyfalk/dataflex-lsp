@@ -230,7 +230,6 @@ impl DataFlexDocument {
                         lsp_types::Range::default(),
                     )
                 })
-                .into_iter()
                 .collect()
         } else {
             let symbols = reference_resolver.resolve_reference(context, position);
