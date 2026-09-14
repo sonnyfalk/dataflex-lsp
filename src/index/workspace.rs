@@ -13,7 +13,7 @@ pub struct WorkspaceInfo {
     root_folder: PathBuf,
     dataflex_version: Option<DataFlexVersion>,
     projects: Vec<ProjectInfo>,
-    local_packages: Vec<PathBuf>,
+    packages: WorkspaceDependencies,
 }
 
 #[allow(dead_code)]
@@ -24,6 +24,12 @@ pub struct ProjectInfo {
     make_path: Option<Vec<PathBuf>>,
 }
 
+#[derive(Debug, Clone)]
+pub enum WorkspaceDependencies {
+    LocalPackages(Vec<PathBuf>),
+    AllPackages(Vec<PathBuf>),
+}
+
 #[derive(Deserialize)]
 struct RawWorkspaceFile {
     df: serde_json::Number,
@@ -31,16 +37,23 @@ struct RawWorkspaceFile {
     dependencies: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct RawWorkspaceConfig {
+    sws: PathBuf,
     projects: Vec<RawWorkspaceConfigProject>,
+    dependencies: HashMap<String, RawWorkspaceConfigDependency>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct RawWorkspaceConfigProject {
     name: String,
     toolchain: String,
     makepath: Vec<PathBuf>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawWorkspaceConfigDependency {
+    loaded: RawWorkspaceConfig,
 }
 
 impl WorkspaceInfo {
@@ -50,7 +63,7 @@ impl WorkspaceInfo {
             root_folder: PathBuf::new(),
             dataflex_version: None,
             projects: Vec::new(),
-            local_packages: Vec::new(),
+            packages: WorkspaceDependencies::LocalPackages(Vec::new()),
         }
     }
 
@@ -72,7 +85,7 @@ impl WorkspaceInfo {
                 root_folder: path.clone(),
                 dataflex_version: None,
                 projects: Vec::new(),
-                local_packages: Vec::new(),
+                packages: WorkspaceDependencies::LocalPackages(Vec::new()),
             }
         }
     }
@@ -98,33 +111,35 @@ impl WorkspaceInfo {
                     make_path: None,
                 })
                 .collect();
-            let local_packages: Vec<PathBuf> = raw_workspace_file
-                .dependencies
-                .iter()
-                .flat_map(|d| d.iter())
-                .filter_map(|dependency| {
-                    if let serde_json::Value::String(s) = dependency {
-                        Some(s)
-                    } else {
-                        None
-                    }
-                })
-                .filter(|s| s.starts_with("..") || s.starts_with("/"))
-                .map(PathBuf::from)
-                .filter_map(|p| {
-                    if p.is_relative() {
-                        std::path::absolute(root_folder.join(&p)).ok()
-                    } else {
-                        Some(p)
-                    }
-                })
-                .collect();
+            let packages = WorkspaceDependencies::LocalPackages(
+                raw_workspace_file
+                    .dependencies
+                    .iter()
+                    .flat_map(|d| d.iter())
+                    .filter_map(|dependency| {
+                        if let serde_json::Value::String(s) = dependency {
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter(|s| s.starts_with("..") || s.starts_with("/"))
+                    .map(PathBuf::from)
+                    .filter_map(|p| {
+                        if p.is_relative() {
+                            std::path::absolute(root_folder.join(&p)).ok()
+                        } else {
+                            Some(p)
+                        }
+                    })
+                    .collect(),
+            );
             Some(Self {
                 sws_path: path,
                 root_folder,
                 dataflex_version,
                 projects,
-                local_packages,
+                packages,
             })
         } else if let Ok(ini_file) = ini::Ini::load_from_str_opt(
             &content,
@@ -148,27 +163,29 @@ impl WorkspaceInfo {
                     make_path: None,
                 })
                 .collect();
-            let local_packages: Vec<PathBuf> = ini_file
-                .section(Some("Libraries"))
-                .iter()
-                .flat_map(|libraries| libraries.iter())
-                .map(|(_, l)| PathBuf::from(l))
-                .filter_map(|p| {
-                    if p.is_relative() && p.starts_with("..") {
-                        std::path::absolute(root_folder.join(&p)).ok()
-                    } else if p.is_absolute() {
-                        Some(p)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+            let packages = WorkspaceDependencies::LocalPackages(
+                ini_file
+                    .section(Some("Libraries"))
+                    .iter()
+                    .flat_map(|libraries| libraries.iter())
+                    .map(|(_, l)| PathBuf::from(l))
+                    .filter_map(|p| {
+                        if p.is_relative() && p.starts_with("..") {
+                            std::path::absolute(root_folder.join(&p)).ok()
+                        } else if p.is_absolute() {
+                            Some(p)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            );
             Some(Self {
                 sws_path: path,
                 root_folder,
                 dataflex_version,
                 projects,
-                local_packages,
+                packages,
             })
         } else {
             None
@@ -177,20 +194,21 @@ impl WorkspaceInfo {
 
     fn load_from_folder(path: &PathBuf) -> Self {
         // Synthesize a folder workspace, with local packages pointing to any immediate subfolders containing .sws files.
-        let local_packages = path
-            .read_dir()
-            .into_iter()
-            .flat_map(|read_dir| read_dir.flatten())
-            .map(|entry| entry.path())
-            .filter_map(|p| p.is_dir().then(|| Self::find_first_sws(&p)).flatten())
-            .collect();
+        let packages = WorkspaceDependencies::LocalPackages(
+            path.read_dir()
+                .into_iter()
+                .flat_map(|read_dir| read_dir.flatten())
+                .map(|entry| entry.path())
+                .filter_map(|p| p.is_dir().then(|| Self::find_first_sws(&p)).flatten())
+                .collect(),
+        );
 
         return Self {
             sws_path: path.clone(),
             root_folder: path.clone(),
             dataflex_version: None,
             projects: Vec::new(),
-            local_packages,
+            packages,
         };
     }
 
@@ -202,20 +220,32 @@ impl WorkspaceInfo {
         self.dataflex_version.as_ref()
     }
 
-    pub fn local_workspace_dependencies(&self) -> Vec<WorkspaceInfo> {
-        let mut workspaces = Vec::new();
-        let mut dependencies = self.local_packages.clone();
-        let mut visited = std::collections::HashSet::new();
+    pub fn workspace_dependencies(&self) -> Vec<WorkspaceInfo> {
+        match &self.packages {
+            WorkspaceDependencies::LocalPackages(local_packages) => {
+                let mut workspaces = Vec::new();
+                let mut dependencies = local_packages.clone();
+                let mut visited = std::collections::HashSet::new();
 
-        while let Some(dependency) = dependencies.pop() {
-            if visited.insert(dependency.clone()) {
-                let workspace = WorkspaceInfo::load_from_path(&dependency);
-                dependencies.extend(workspace.local_packages.iter().cloned());
-                workspaces.push(workspace);
+                while let Some(dependency) = dependencies.pop() {
+                    if visited.insert(dependency.clone()) {
+                        let workspace = WorkspaceInfo::load_from_path(&dependency);
+                        if let WorkspaceDependencies::LocalPackages(local_packages) =
+                            &workspace.packages
+                        {
+                            dependencies.extend(local_packages.iter().cloned());
+                        }
+                        workspaces.push(workspace);
+                    }
+                }
+
+                workspaces
             }
+            WorkspaceDependencies::AllPackages(packages) => packages
+                .iter()
+                .map(|dependency| WorkspaceInfo::load_from_path(dependency))
+                .collect(),
         }
-
-        workspaces
     }
 
     pub fn fetch_package_dependencies_and_extended_info(&self) -> Option<WorkspaceInfo> {
@@ -258,6 +288,9 @@ impl WorkspaceInfo {
                     existing_project.make_path.replace(project.makepath);
                 }
             }
+            workspace.packages = WorkspaceDependencies::AllPackages(
+                flatten_dependencies(config.dependencies.into_values()).collect(),
+            );
             Some(workspace)
         } else if !suppress_fetch_dependencies {
             // Try running df-cli without --json output since older versions don't support it, just to fetch packages.
@@ -295,6 +328,27 @@ impl WorkspaceInfo {
     }
 }
 
+fn flatten_dependencies(
+    dependencies: impl Iterator<Item = RawWorkspaceConfigDependency>,
+) -> impl Iterator<Item = PathBuf> {
+    fn dependencies_into(dep: RawWorkspaceConfig, result: &mut HashSet<PathBuf>) {
+        if let Ok(sws_path) = std::path::absolute(dep.sws)
+            && result.insert(sws_path)
+        {
+            for dep in dep.dependencies.into_values() {
+                dependencies_into(dep.loaded, result);
+            }
+        }
+    }
+
+    dependencies
+        .fold(HashSet::<PathBuf>::new(), |mut paths, dep| {
+            dependencies_into(dep.loaded, &mut paths);
+            paths
+        })
+        .into_iter()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,6 +369,13 @@ mod tests {
         let ws = WorkspaceInfo::load_from_str(sws_content, "Test.sws".into()).unwrap();
         assert_eq!(ws.dataflex_version, Some(DataFlexVersion::from("26.0")));
         assert_eq!(ws.projects.len(), 2);
-        assert_eq!(ws.local_packages.len(), 1);
+        assert_eq!(
+            if let WorkspaceDependencies::LocalPackages(packages) = ws.packages {
+                packages.len()
+            } else {
+                0
+            },
+            1
+        );
     }
 }

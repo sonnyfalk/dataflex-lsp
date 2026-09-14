@@ -217,7 +217,7 @@ impl Indexer {
         let local_dependencies: Vec<PathBuf> = index
             .get()
             .workspace
-            .local_workspace_dependencies()
+            .workspace_dependencies()
             .into_iter()
             .filter(|ws| !ws.get_root_folder().starts_with(&root_folder))
             .map(|ws| ws.get_root_folder().clone())
