@@ -11,6 +11,8 @@ use serde::Deserialize;
 pub struct WorkspaceInfo {
     sws_path: PathBuf,
     root_folder: PathBuf,
+    appsrc_path: Vec<PathBuf>,
+    ddsrc_path: Vec<PathBuf>,
     dataflex_version: Option<DataFlexVersion>,
     projects: Vec<ProjectInfo>,
     packages: WorkspaceDependencies,
@@ -33,8 +35,15 @@ pub enum WorkspaceDependencies {
 #[derive(Deserialize)]
 struct RawWorkspaceFile {
     df: serde_json::Number,
+    paths: Option<RawWorkspacePaths>,
     projects: Option<Vec<serde_json::Value>>,
     dependencies: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(Deserialize)]
+struct RawWorkspacePaths {
+    app_src: Option<serde_json::Value>,
+    dd_src: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,6 +70,8 @@ impl WorkspaceInfo {
         Self {
             sws_path: PathBuf::new(),
             root_folder: PathBuf::new(),
+            appsrc_path: Vec::new(),
+            ddsrc_path: Vec::new(),
             dataflex_version: None,
             projects: Vec::new(),
             packages: WorkspaceDependencies::LocalPackages(Vec::new()),
@@ -83,6 +94,8 @@ impl WorkspaceInfo {
             Self {
                 sws_path: path.clone(),
                 root_folder: path.clone(),
+                appsrc_path: Vec::new(),
+                ddsrc_path: Vec::new(),
                 dataflex_version: None,
                 projects: Vec::new(),
                 packages: WorkspaceDependencies::LocalPackages(Vec::new()),
@@ -91,105 +104,248 @@ impl WorkspaceInfo {
     }
 
     fn load_from_str(content: &str, path: PathBuf) -> Option<Self> {
-        if let Ok(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content) {
-            let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
-            let dataflex_version = Some(DataFlexVersion::from(raw_workspace_file.df.to_string()));
-            let projects: Vec<ProjectInfo> = raw_workspace_file
-                .projects
-                .unwrap_or_default()
-                .iter()
-                .filter_map(|project| match project {
-                    serde_json::Value::String(file) => Some(file.as_str()),
-                    serde_json::Value::Object(fields) => {
-                        fields.get("name").and_then(|name| name.as_str())
-                    }
-                    _ => None,
-                })
-                .map(|f| ProjectInfo {
-                    main_file: root_folder.join("AppSrc").join(f),
-                    toolchain: None,
-                    make_path: None,
-                })
-                .collect();
-            let packages = WorkspaceDependencies::LocalPackages(
-                raw_workspace_file
-                    .dependencies
+        Self::load_json_workspace_from_str(content, path)
+            .or_else(|path| Self::load_ini_workspace_from_str(content, path))
+            .ok()
+    }
+
+    fn load_json_workspace_from_str(content: &str, path: PathBuf) -> Result<Self, PathBuf> {
+        let Ok(raw_workspace_file) = serde_json::from_str::<RawWorkspaceFile>(&content) else {
+            return Err(path);
+        };
+
+        let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+        let appsrc_path: Vec<_> = raw_workspace_file
+            .paths
+            .as_ref()
+            .and_then(|paths| paths.app_src.as_ref())
+            .map(|value| match value {
+                serde_json::Value::String(path) => vec![PathBuf::from(path)],
+                serde_json::Value::Array(paths) => paths
                     .iter()
-                    .flat_map(|d| d.iter())
-                    .filter_map(|dependency| {
-                        if let serde_json::Value::String(s) = dependency {
-                            Some(s)
-                        } else {
-                            None
-                        }
-                    })
-                    .filter(|s| s.starts_with("..") || s.starts_with("/"))
-                    .map(PathBuf::from)
-                    .filter_map(|p| {
-                        if p.is_relative() {
-                            std::path::absolute(root_folder.join(&p)).ok()
-                        } else {
-                            Some(p)
-                        }
-                    })
+                    .filter_map(|value| value.as_str())
+                    .map(|path| PathBuf::from(path))
                     .collect(),
-            );
-            Some(Self {
-                sws_path: path,
-                root_folder,
-                dataflex_version,
-                projects,
-                packages,
+                _ => Vec::new(),
             })
-        } else if let Ok(ini_file) = ini::Ini::load_from_str_opt(
+            .into_iter()
+            .flat_map(|v| v.into_iter())
+            .filter_map(|p| {
+                if p.is_relative() {
+                    std::path::absolute(root_folder.join(p)).ok()
+                } else {
+                    Some(p)
+                }
+            })
+            .collect();
+        let ddsrc_path: Vec<_> = raw_workspace_file
+            .paths
+            .as_ref()
+            .and_then(|paths| paths.dd_src.as_ref())
+            .map(|value| match value {
+                serde_json::Value::String(path) => vec![PathBuf::from(path)],
+                serde_json::Value::Array(paths) => paths
+                    .iter()
+                    .filter_map(|value| value.as_str())
+                    .map(|path| PathBuf::from(path))
+                    .collect(),
+                _ => Vec::new(),
+            })
+            .into_iter()
+            .flat_map(|v| v.into_iter())
+            .filter_map(|p| {
+                if p.is_relative() {
+                    std::path::absolute(root_folder.join(p)).ok()
+                } else {
+                    Some(p)
+                }
+            })
+            .collect();
+        let dataflex_version = Some(DataFlexVersion::from(raw_workspace_file.df.to_string()));
+        let projects: Vec<ProjectInfo> = raw_workspace_file
+            .projects
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|project| match project {
+                serde_json::Value::String(file) => Some(file.as_str()),
+                serde_json::Value::Object(fields) => {
+                    fields.get("name").and_then(|name| name.as_str())
+                }
+                _ => None,
+            })
+            .map(|f| ProjectInfo {
+                main_file: root_folder.join("AppSrc").join(f),
+                toolchain: None,
+                make_path: None,
+            })
+            .collect();
+        let packages = WorkspaceDependencies::LocalPackages(
+            raw_workspace_file
+                .dependencies
+                .iter()
+                .flat_map(|d| d.iter())
+                .filter_map(|dependency| {
+                    if let serde_json::Value::String(s) = dependency {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                })
+                .filter(|s| s.starts_with("..") || s.starts_with("/"))
+                .map(PathBuf::from)
+                .filter_map(|p| {
+                    if p.is_relative() {
+                        std::path::absolute(root_folder.join(&p)).ok()
+                    } else {
+                        Some(p)
+                    }
+                })
+                .collect(),
+        );
+        Ok(Self {
+            sws_path: path,
+            appsrc_path: if !appsrc_path.is_empty() {
+                appsrc_path
+            } else {
+                vec![root_folder.join("AppSrc")]
+            },
+            ddsrc_path: if !ddsrc_path.is_empty() {
+                ddsrc_path
+            } else {
+                vec![root_folder.join("DDSrc")]
+            },
+            root_folder,
+            dataflex_version,
+            projects,
+            packages,
+        })
+    }
+
+    fn load_ini_workspace_from_str(content: &str, path: PathBuf) -> Result<Self, PathBuf> {
+        let Ok(ini_file) = ini::Ini::load_from_str_opt(
             &content,
             ini::ParseOption {
                 enabled_escape: false,
                 ..Default::default()
             },
-        ) {
-            let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
-            let dataflex_version = ini_file
-                .section(Some("Properties"))
-                .and_then(|properties| properties.get("Version"))
-                .map(DataFlexVersion::from);
-            let projects: Vec<ProjectInfo> = ini_file
-                .section(Some("Projects"))
+        ) else {
+            return Err(path);
+        };
+
+        let root_folder = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+        let dataflex_version = ini_file
+            .section(Some("Properties"))
+            .and_then(|properties| properties.get("Version"))
+            .map(DataFlexVersion::from);
+        let projects: Vec<ProjectInfo> = ini_file
+            .section(Some("Projects"))
+            .iter()
+            .flat_map(|projects| projects.iter())
+            .map(|(_, v)| ProjectInfo {
+                main_file: root_folder.join("AppSrc").join(v),
+                toolchain: None,
+                make_path: None,
+            })
+            .collect();
+        let packages = WorkspaceDependencies::LocalPackages(
+            ini_file
+                .section(Some("Libraries"))
                 .iter()
-                .flat_map(|projects| projects.iter())
-                .map(|(_, v)| ProjectInfo {
-                    main_file: root_folder.join("AppSrc").join(v),
-                    toolchain: None,
-                    make_path: None,
+                .flat_map(|libraries| libraries.iter())
+                .map(|(_, l)| PathBuf::from(l))
+                .filter_map(|p| {
+                    if p.is_relative() && p.starts_with("..") {
+                        std::path::absolute(root_folder.join(&p)).ok()
+                    } else if p.is_absolute() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        );
+        let config_path = ini_file
+            .section(Some("WorkspacePaths"))
+            .and_then(|properties| properties.get("ConfigFile"))
+            .map(PathBuf::from)
+            .and_then(|p| {
+                if p.is_relative() {
+                    std::path::absolute(root_folder.join(&p)).ok()
+                } else if p.is_absolute() {
+                    Some(p)
+                } else {
+                    None
+                }
+            });
+        let (appsrc_path, ddsrc_path) = if let Some(config_path) = config_path
+            && let Some(config_ini) = ini::Ini::load_from_file_noescape(&config_path).ok()
+            && let Some(section) = config_ini.section(Some("Workspace"))
+        {
+            let home = section
+                .get("Home")
+                .map(PathBuf::from)
+                .and_then(|p| {
+                    if p.is_relative() {
+                        std::path::absolute(config_path.parent().unwrap().join(&p)).ok()
+                    } else if p.is_absolute() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| root_folder.clone());
+            let appsrc_path = section
+                .get("AppSrcPath")
+                .iter()
+                .flat_map(|p| p.split(';'))
+                .map(PathBuf::from)
+                .filter_map(|p| {
+                    if p.is_relative() {
+                        std::path::absolute(home.join(&p)).ok()
+                    } else if p.is_absolute() {
+                        Some(p)
+                    } else {
+                        None
+                    }
                 })
                 .collect();
-            let packages = WorkspaceDependencies::LocalPackages(
-                ini_file
-                    .section(Some("Libraries"))
-                    .iter()
-                    .flat_map(|libraries| libraries.iter())
-                    .map(|(_, l)| PathBuf::from(l))
-                    .filter_map(|p| {
-                        if p.is_relative() && p.starts_with("..") {
-                            std::path::absolute(root_folder.join(&p)).ok()
-                        } else if p.is_absolute() {
-                            Some(p)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect(),
-            );
-            Some(Self {
-                sws_path: path,
-                root_folder,
-                dataflex_version,
-                projects,
-                packages,
-            })
+            let ddsrc_path = section
+                .get("DDSrcPath")
+                .iter()
+                .flat_map(|p| p.split(';'))
+                .map(PathBuf::from)
+                .filter_map(|p| {
+                    if p.is_relative() {
+                        std::path::absolute(home.join(&p)).ok()
+                    } else if p.is_absolute() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            (appsrc_path, ddsrc_path)
         } else {
-            None
-        }
+            (Vec::new(), Vec::new())
+        };
+
+        Ok(Self {
+            sws_path: path,
+            appsrc_path: if !appsrc_path.is_empty() {
+                appsrc_path
+            } else {
+                vec![root_folder.join("AppSrc")]
+            },
+            ddsrc_path: if !ddsrc_path.is_empty() {
+                ddsrc_path
+            } else {
+                vec![root_folder.join("DDSrc")]
+            },
+            root_folder,
+            dataflex_version,
+            projects,
+            packages,
+        })
     }
 
     fn load_from_folder(path: &PathBuf) -> Self {
@@ -206,6 +362,8 @@ impl WorkspaceInfo {
         return Self {
             sws_path: path.clone(),
             root_folder: path.clone(),
+            appsrc_path: Vec::new(),
+            ddsrc_path: Vec::new(),
             dataflex_version: None,
             projects: Vec::new(),
             packages,
