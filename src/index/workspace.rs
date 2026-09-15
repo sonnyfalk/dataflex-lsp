@@ -27,7 +27,7 @@ pub struct ProjectInfo {
 }
 
 #[derive(Debug, Clone)]
-pub enum WorkspaceDependencies {
+enum WorkspaceDependencies {
     LocalPackages(Vec<PathBuf>),
     AllPackages(Vec<PathBuf>),
 }
@@ -374,8 +374,20 @@ impl WorkspaceInfo {
         &self.root_folder
     }
 
+    pub fn get_source_paths(&self) -> Vec<PathBuf> {
+        self.appsrc_path
+            .iter()
+            .chain(self.ddsrc_path.iter())
+            .cloned()
+            .collect()
+    }
+
     pub fn get_dataflex_version(&self) -> Option<&DataFlexVersion> {
         self.dataflex_version.as_ref()
+    }
+
+    pub fn all_packages_resolved(&self) -> bool {
+        matches!(self.packages, WorkspaceDependencies::AllPackages(_))
     }
 
     pub fn workspace_dependencies(&self) -> Vec<WorkspaceInfo> {
@@ -407,6 +419,11 @@ impl WorkspaceInfo {
     }
 
     pub fn fetch_package_dependencies_and_extended_info(&self) -> Option<WorkspaceInfo> {
+        if self.sws_path.is_dir() {
+            log::info!("Skip fetching package dependencies for synthesized folder workspace");
+            return None;
+        }
+
         let df_cli = DataFlexConfig::system_config().df_cli_path()?;
         log::info!("Using df_cli from: {:?}", df_cli);
         let suppress_fetch_dependencies = self.should_suppress_fetch_dependencies();
