@@ -30,7 +30,6 @@ The index is populated by `Indexer`, which takes the workspace paths and recusiv
 
 ## Open tasks / known issues
 - Fuzzy matching for workspace symbols
-- Support `External_Function`, `Register_Function` and related, in parser and indexing
 - Support `Open`, `Add/Subtract/Subtotal`, `Find`, `For_All`, `Function_Return/Procedure_Return`, `WebPublishFunction/WebPublishProcedure`, `WebSetResponsive, WebRegisterPath` in parser, code completion etc.
 - Handle `#ifdef` with indexing
 - Support embedded SQL nested syntax highlighting

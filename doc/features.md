@@ -41,4 +41,3 @@ All workspace symbols available for navigation between files across the workspac
 #### Current Limitations
 
 - Fuzzy matching for workspace symbols not implemented yet, only strict case-sensitive prefix matching.
-- Functions defined via `Register_Function` not yet listed in code completion or goto definition.
