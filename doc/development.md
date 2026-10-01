@@ -38,7 +38,6 @@ The index is populated by `Indexer`, which takes the workspace paths and recusiv
 - Support separate toolchains for each project
 - Enhance code completion for `WebGet/WebSet` to filter on `WebProperty` methods/properties
 - Collect doc comments/comments in addition to "description" for mouse hover details
-- Add parameter information to system expr evaluator functions
 - Enhance code completion with documentation and additional details
 - Enhance goto definition to narrow down candidates based on object receiver class
 - Show inline hint after `end` block, indicating matching `begin`

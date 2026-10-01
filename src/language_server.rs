@@ -19,7 +19,6 @@ struct DataFlexLanguageServerInner {
     client: Client,
     client_supports_apply_edit_preserve_selection: OnceLock<bool>,
     open_files: DashMap<Url, OpenFile>,
-    workspace_root: OnceLock<PathBuf>,
     indexer: OnceLock<index::Indexer>,
     edited_files_notification: tokio::sync::Notify,
 }
@@ -48,7 +47,6 @@ impl DataFlexLanguageServer {
                 client,
                 client_supports_apply_edit_preserve_selection: OnceLock::new(),
                 open_files: DashMap::new(),
-                workspace_root: OnceLock::new(),
                 indexer: OnceLock::new(),
                 edited_files_notification: tokio::sync::Notify::new(),
             }),
@@ -68,10 +66,19 @@ impl LanguageServer for DataFlexLanguageServer {
             .uri
             .to_file_path()
             .ok();
+
+        let workspace_file = params
+            .initialization_options
+            .as_ref()
+            .and_then(|v| v.as_object().and_then(|o| o.get("workspaceFile")))
+            .and_then(|v| v.as_str())
+            .map(PathBuf::from);
+
         log::info!(
-            "initialize - client: {}, path: {:?}",
+            "initialize - client: {}, path: {:?}, workspaceFile: {:?}",
             params.client_info.as_ref().unwrap().name,
-            workspace_root
+            workspace_root,
+            workspace_file,
         );
 
         _ = self
@@ -89,10 +96,12 @@ impl LanguageServer for DataFlexLanguageServer {
                     .unwrap_or(false),
             );
 
-        _ = self
-            .inner
-            .workspace_root
-            .set(workspace_root.unwrap_or_default());
+        let workspace_info = workspace_file
+            .or(workspace_root)
+            .map(|path| index::WorkspaceInfo::load_from_path(&path))
+            .unwrap_or(index::WorkspaceInfo::new());
+
+        _ = self.inner.indexer.set(index::Indexer::new(workspace_info));
 
         let semantic_tokens_options = if params
             .capabilities
@@ -157,15 +166,6 @@ impl LanguageServer for DataFlexLanguageServer {
 
     async fn initialized(&self, _: InitializedParams) {
         log::info!("initialized() called");
-
-        let workspace_info = self
-            .inner
-            .workspace_root
-            .get()
-            .map(|path| index::WorkspaceInfo::load_from_path(path))
-            .unwrap_or(index::WorkspaceInfo::new());
-
-        _ = self.inner.indexer.set(index::Indexer::new(workspace_info));
 
         if let Ok(configs) = self
             .inner
