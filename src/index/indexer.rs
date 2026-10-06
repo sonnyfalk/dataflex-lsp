@@ -8,7 +8,6 @@ use symbols_diff::SymbolsDiff;
 
 pub struct Indexer {
     index: IndexRef,
-    dataflex_version: Option<DataFlexVersion>,
     channel: OnceLock<mpsc::Sender<IndexerMessage>>,
 }
 
@@ -49,10 +48,8 @@ struct SerializableIndex<'a> {
 
 impl Indexer {
     pub fn new(workspace: WorkspaceInfo) -> Self {
-        let dataflex_version = workspace.get_dataflex_version().cloned();
         Self {
             index: IndexRef::new(Index::new(workspace)),
-            dataflex_version,
             channel: OnceLock::new(),
         }
     }
@@ -119,8 +116,8 @@ impl Indexer {
         }
 
         let index = self.index.clone();
-        let system_paths =
-            DataFlexConfig::system_config().system_path(self.dataflex_version.as_ref());
+        let system_paths = DataFlexConfig::system_config()
+            .system_path(self.index.get().workspace.get_dataflex_version());
         rayon::spawn(move || {
             let extended_workspace = index
                 .get()
