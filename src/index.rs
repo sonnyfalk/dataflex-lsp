@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use multimap::MultiMap;
@@ -65,6 +64,10 @@ impl Index {
             lookup_tables: LookupTables::new(),
             updated_file_count: 0,
         }
+    }
+
+    pub fn workspace(&self) -> &WorkspaceInfo {
+        &self.workspace
     }
 
     pub fn find_class(&self, name: &SymbolName) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {

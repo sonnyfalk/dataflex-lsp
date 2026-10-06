@@ -40,6 +40,18 @@ impl Settings {
         logging::set_log_level_filter(Self::get().log_level);
     }
 
+    pub fn is_dataflex_source_file(&self, path: &std::path::Path) -> bool {
+        path.extension()
+            .and_then(std::ffi::OsStr::to_str)
+            .map(str::to_ascii_lowercase)
+            .is_some_and(|extension| {
+                matches!(
+                    extension.as_str(),
+                    "pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc"
+                )
+            })
+    }
+
     fn deserialize_log_level<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<LevelFilter, D::Error> {

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use super::*;
+use crate::settings::Settings;
 use index::{IndexSymbolType, MethodKind, MethodSymbol, StructSymbol, SymbolName};
 
 pub struct CodeCompletion {}
@@ -33,6 +34,7 @@ pub enum CompletionItemKind {
     TableColumn,
     Command,
     File,
+    Folder,
     Struct,
 }
 
@@ -92,7 +94,7 @@ impl CodeCompletion {
                 Some(Self::dot_completions(doc, position, index))
             }
             DocumentContext::CommandReference => Some(Self::command_completions(index)),
-            DocumentContext::FileDependency => Some(Self::file_completions(index)),
+            DocumentContext::FileDependency => Some(Self::file_completions(doc, position, index)),
             DocumentContext::MethodDeclaration(kind) => {
                 Some(Self::override_completions(doc, position, kind, index))
             }
@@ -436,14 +438,60 @@ impl CodeCompletion {
             .collect()
     }
 
-    fn file_completions(index: &index::Index) -> Vec<CompletionItem> {
-        index
-            .all_known_files()
+    fn file_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        index: &index::Index,
+    ) -> Vec<CompletionItem> {
+        let Some(cursor) = doc.cursor().and_then(|mut cursor| {
+            cursor
+                .goto_leaf_node_at_or_before_point(position)
+                .then_some(cursor)
+        }) else {
+            return vec![];
+        };
+
+        let subfolder = cursor
+            .is_file_path()
+            .then(|| {
+                doc.line_map
+                    .text_in_range(cursor.node().start_position(), position)
+            })
+            .and_then(|s| {
+                s.rsplit_once(|c| c == '\\' || c == '/')
+                    .map(|(prefix, _)| String::from(prefix))
+            });
+
+        let system_paths = index::DataFlexConfig::system_config()
+            .system_path(index.workspace().get_dataflex_version())
+            .cloned();
+        let settings = Settings::get();
+
+        let paths = index
+            .workspace()
+            .all_source_paths()
             .into_iter()
-            .filter_map(|file_ref| {
+            .chain(system_paths.into_iter().flatten())
+            .map(|p| subfolder.as_ref().map(|s| p.join(s)).unwrap_or(p))
+            .flat_map(|p| p.read_dir())
+            .flatten()
+            .filter_map(|e| e.map(|e| e.path()).ok())
+            .filter(|p| p.is_dir() || settings.is_dataflex_source_file(p));
+
+        let mut dedupe_set = HashSet::new();
+        paths
+            .filter_map(|p| {
                 Some(CompletionItem {
-                    label: file_ref.try_into().ok()?,
-                    kind: CompletionItemKind::File,
+                    label: p
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .map(String::from)
+                        .filter(|s| dedupe_set.insert(s.clone()))?,
+                    kind: if p.is_dir() {
+                        CompletionItemKind::Folder
+                    } else {
+                        CompletionItemKind::File
+                    },
                     ..Default::default()
                 })
             })
@@ -560,6 +608,7 @@ impl<'a> CompletionItemRanker<'a> {
                 CompletionItemRank::Mid.adjusted(self.command_adjustment(&completion_item.label))
             }
             CompletionItemKind::File => CompletionItemRank::Mid,
+            CompletionItemKind::Folder => CompletionItemRank::Mid,
             CompletionItemKind::Struct => CompletionItemRank::Mid,
             CompletionItemKind::OtherObject => CompletionItemRank::NearBottom,
             CompletionItemKind::GlobalVariable => CompletionItemRank::NearBottom,

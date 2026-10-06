@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{OnceLock, mpsc};
 
 use crate::dataflex_parser::DataFlexTreeParser;
+use crate::settings::Settings;
 
 use super::*;
 use symbols_diff::SymbolsDiff;
@@ -856,15 +857,7 @@ impl Indexer {
     }
 
     pub fn should_index_file(path: &PathBuf) -> bool {
-        path.extension()
-            .and_then(OsStr::to_str)
-            .map(str::to_ascii_lowercase)
-            .is_some_and(|extension| {
-                matches!(
-                    extension.as_str(),
-                    "pkg" | "vw" | "wo" | "sl" | "dd" | "src" | "dg" | "bp" | "rv" | "fd" | "inc"
-                )
-            })
+        Settings::get().is_dataflex_source_file(path)
     }
 
     fn indexer_query() -> &'static str {
