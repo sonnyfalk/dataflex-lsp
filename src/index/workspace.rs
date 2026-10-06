@@ -374,7 +374,36 @@ impl WorkspaceInfo {
         &self.root_folder
     }
 
-    pub fn get_source_paths(&self) -> Vec<PathBuf> {
+    pub fn all_source_paths(&self) -> Vec<PathBuf> {
+        let all_packages_resolved = self.all_packages_resolved();
+        let dependencies = self
+            .workspace_dependencies()
+            .into_iter()
+            .filter(|ws| {
+                all_packages_resolved || !ws.get_root_folder().starts_with(&self.root_folder)
+            })
+            .map(|ws| {
+                let source_paths = ws.get_source_paths();
+                if !source_paths.is_empty() {
+                    source_paths
+                } else {
+                    vec![ws.get_root_folder().clone()]
+                }
+            })
+            .flatten();
+
+        let mut source_paths = self.get_source_paths();
+        if source_paths.is_empty() {
+            source_paths.push(self.root_folder.clone());
+        } else if !all_packages_resolved {
+            source_paths.push(self.root_folder.join("DfPkg"));
+        }
+        source_paths.extend(dependencies);
+
+        source_paths
+    }
+
+    fn get_source_paths(&self) -> Vec<PathBuf> {
         self.appsrc_path
             .iter()
             .chain(self.ddsrc_path.iter())

@@ -213,50 +213,9 @@ impl Indexer {
     }
 
     fn index_workspace(index: &IndexRef) {
-        let root_folder = index.get().workspace.get_root_folder().clone();
-        let all_packages_resolved = index.get().workspace.all_packages_resolved();
-
-        let source_paths = index.get().workspace.get_source_paths();
-        let dependencies: Vec<PathBuf> = index
-            .get()
-            .workspace
-            .workspace_dependencies()
-            .into_iter()
-            .filter(|ws| all_packages_resolved || !ws.get_root_folder().starts_with(&root_folder))
-            .map(|ws| {
-                let source_paths = ws.get_source_paths();
-                if !source_paths.is_empty() {
-                    source_paths
-                } else {
-                    vec![ws.get_root_folder().clone()]
-                }
-            })
-            .flatten()
-            .chain(
-                (!source_paths.is_empty() && !all_packages_resolved)
-                    .then(|| root_folder.join("DfPkg"))
-                    .into_iter(),
-            )
-            .collect();
+        let index_paths = index.get().workspace.all_source_paths();
 
         rayon::in_place_scope(|scope| {
-            let index_paths = {
-                if !source_paths.is_empty() {
-                    // Index all source paths.
-                    log::trace!("Indexing workspace source paths: {:#?}", source_paths);
-                    source_paths.into_iter()
-                } else {
-                    // If no source paths, index root folder instead, which includes all of DfPkg.
-                    log::trace!("Indexing workspace root folder: {:#?}", root_folder);
-                    vec![root_folder].into_iter()
-                }
-                .chain({
-                    // Index dependencies.
-                    log::trace!("Indexing workspace dependency paths: {:#?}", dependencies);
-                    dependencies.into_iter()
-                })
-            };
-
             for path in index_paths {
                 Self::index_directory(&path, index, scope);
             }
