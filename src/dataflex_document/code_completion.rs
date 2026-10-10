@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+use std::path::Path;
 
 use super::*;
 use crate::settings::Settings;
@@ -467,27 +468,40 @@ impl CodeCompletion {
             .cloned();
         let settings = Settings::get();
 
-        let paths = index
+        let entries = index
             .workspace()
             .all_source_paths()
             .into_iter()
             .chain(system_paths.into_iter().flatten())
             .map(|p| subfolder.as_ref().map(|s| p.join(s)).unwrap_or(p))
-            .flat_map(|p| p.read_dir())
-            .flatten()
-            .filter_map(|e| e.map(|e| e.path()).ok())
-            .filter(|p| p.is_dir() || settings.is_dataflex_source_file(p));
+            .flat_map(|root_path| {
+                walkdir::WalkDir::new(&root_path)
+                    .into_iter()
+                    .flatten()
+                    .filter(|entry| {
+                        settings.is_dataflex_source_file(entry.path())
+                            || (entry.path().is_dir()
+                                && walkdir::WalkDir::new(entry.path())
+                                    .into_iter()
+                                    .flatten()
+                                    .any(|e| settings.is_dataflex_source_file(e.path())))
+                    })
+                    .map(move |entry| (root_path.clone(), entry))
+            });
 
         let mut dedupe_set = HashSet::new();
-        paths
-            .filter_map(|p| {
+        entries
+            .filter_map(|(root_path, entry)| {
+                let label = entry
+                    .path()
+                    .strip_prefix(root_path)
+                    .ok()
+                    .and_then(Path::to_str)
+                    .map(String::from)
+                    .filter(|s| dedupe_set.insert(s.clone()))?;
                 Some(CompletionItem {
-                    label: p
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .map(String::from)
-                        .filter(|s| dedupe_set.insert(s.clone()))?,
-                    kind: if p.is_dir() {
+                    label: label,
+                    kind: if entry.path().is_dir() {
                         CompletionItemKind::Folder
                     } else {
                         CompletionItemKind::File
