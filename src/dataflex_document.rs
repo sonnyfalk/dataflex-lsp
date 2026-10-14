@@ -218,12 +218,21 @@ impl DataFlexDocument {
                 })),
             )]
         } else if context.is_file_reference()
-            && let Some(file_ref) = self.node_at_position(position).map(|node| {
-                index::IndexFileRef::from(&PathBuf::from(self.line_map.text_for_node(&node)))
-            })
+            && let Some(file_ref_text) = self
+                .node_at_position(position)
+                .map(|node| self.line_map.text_for_node(&node))
         {
+            let system_paths = index::DataFlexConfig::system_config()
+                .system_path(index.workspace().get_dataflex_version())
+                .cloned();
+
             index
-                .find_file_path(&file_ref)
+                .workspace()
+                .all_source_paths()
+                .into_iter()
+                .chain(system_paths.into_iter().flatten())
+                .map(|path| path.join(&file_ref_text))
+                .filter(|path| path.exists())
                 .map(|path| {
                     lsp_types::Location::new(
                         lsp_types::Url::from_file_path(path).unwrap(),
