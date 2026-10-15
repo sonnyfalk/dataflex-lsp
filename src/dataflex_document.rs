@@ -374,13 +374,24 @@ impl DataFlexDocument {
                     })
                     .to_vec(),
             )
-        } else {
-            let allow_default_highlights = DocumentContext::context(self, position).is_some();
-            if allow_default_highlights {
-                None
-            } else {
-                Some(vec![])
+        } else if let Some(context) = DocumentContext::context(self, position) {
+            match context {
+                DocumentContext::FileDependency => Some(
+                    self.node_at_position(position)
+                        .map(|node| lsp_types::DocumentHighlight {
+                            range: lsp_types::Range::new(
+                                self.lsp_position_from_point(node.start_position()),
+                                self.lsp_position_from_point(node.end_position()),
+                            ),
+                            kind: Some(lsp_types::DocumentHighlightKind::TEXT),
+                        })
+                        .into_iter()
+                        .collect(),
+                ),
+                _ => None,
             }
+        } else {
+            Some(vec![])
         }
     }
 
