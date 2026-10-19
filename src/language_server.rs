@@ -271,15 +271,15 @@ impl LanguageServer for DataFlexLanguageServer {
             let mut preserve_selection = false;
             (
                 followup_edits.map(|mut edits| {
-                    if edits
-                        .first()
-                        .is_some_and(|e| e.range.start.line >= open_file.doc.line_count() as u32)
+                    if let Some(edit_index) = edits
+                        .iter()
+                        .position(|e| e.range.start.line >= open_file.doc.line_count() as u32)
                     {
                         let end = open_file
                             .doc
                             .lsp_position_from_point(open_file.doc.end_of_document());
                         edits.insert(
-                            0,
+                            edit_index,
                             TextEdit {
                                 range: Range {
                                     start: end,

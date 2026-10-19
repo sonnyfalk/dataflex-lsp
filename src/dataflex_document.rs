@@ -9,8 +9,10 @@ use crate::utf16_utils::StrExt;
 use document_context::DocumentContext;
 use reference_resolver::ReferenceResolver;
 use streaming_iterator::StreamingIterator;
+use text_edit::TextEdit;
 use tree_cursor::DataFlexTreeCursor;
 
+mod auto_correct;
 mod code_completion;
 mod code_lens;
 mod document_context;
@@ -20,6 +22,7 @@ mod reference_resolver;
 mod scope_balancer;
 mod symbol_declaration;
 mod syntax_map;
+mod text_edit;
 mod tree_cursor;
 
 pub struct DataFlexDocument {
@@ -161,21 +164,41 @@ impl DataFlexDocument {
 
         if changes.len() == 1
             && let Some(change) = changes.first()
-            && scope_balancer::ScopeBalancer::is_auto_close_scope_trigger(&change.text)
             && let Some(position) = change
                 .range
                 .map(|range| self.point_from_lsp_position(range.start))
         {
-            scope_balancer::ScopeBalancer::auto_close_scope(self, position, &change.text).map(
-                |edit| {
-                    let start = self.lsp_position_from_point(edit.range.start);
-                    let end = self.lsp_position_from_point(edit.range.end);
-                    vec![lsp_types::TextEdit {
-                        range: lsp_types::Range::new(start, end),
-                        new_text: edit.text,
-                    }]
-                },
-            )
+            let mut edits = Vec::new();
+            if auto_correct::AutoCorrect::is_auto_correct_trigger(&change.text) {
+                edits.extend(auto_correct::AutoCorrect::auto_correct(
+                    self, position, index,
+                ));
+            }
+
+            if scope_balancer::ScopeBalancer::is_auto_close_scope_trigger(&change.text) {
+                edits.extend(
+                    scope_balancer::ScopeBalancer::auto_close_scope(self, position, &change.text)
+                        .into_iter(),
+                );
+            }
+
+            if !edits.is_empty() {
+                Some(
+                    edits
+                        .into_iter()
+                        .map(|edit| {
+                            let start = self.lsp_position_from_point(edit.range.start);
+                            let end = self.lsp_position_from_point(edit.range.end);
+                            lsp_types::TextEdit {
+                                range: lsp_types::Range::new(start, end),
+                                new_text: edit.text,
+                            }
+                        })
+                        .collect(),
+                )
+            } else {
+                None
+            }
         } else {
             None
         }

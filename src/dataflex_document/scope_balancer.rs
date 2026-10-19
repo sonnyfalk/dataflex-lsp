@@ -2,12 +2,6 @@ use super::*;
 
 pub struct ScopeBalancer {}
 
-#[derive(Debug)]
-pub struct TextEdit {
-    pub range: std::ops::Range<tree_sitter::Point>,
-    pub text: String,
-}
-
 impl ScopeBalancer {
     const fn auto_close_scope_pairs() -> &'static [(&'static str, &'static str)] {
         &[
