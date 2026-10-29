@@ -381,11 +381,45 @@ impl Indexer {
                                 range: element_range.unwrap_or_else(|| name_node.range().into()),
                                 symbol_path: SymbolPath::with_name(name),
                                 members: Vec::new(),
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
                             };
                             stack.push(IndexSymbol::Struct(struct_symbol));
                         }
                     }
-                    Some(TagsQueryIndexElement::StructMember) => {
+                    Some(TagsQueryIndexElement::EntityDeclaration) => {
+                        if let Some(name_node) = query_match
+                            .nodes_for_capture_index(name_capture_index)
+                            .next()
+                            && let Some(name) = name_node.utf8_text(content).ok()
+                        {
+                            let struct_symbol = StructSymbol {
+                                location: name_node.start_position().into(),
+                                range: element_range.unwrap_or_else(|| name_node.range().into()),
+                                symbol_path: SymbolPath::with_name(name),
+                                members: Vec::new(),
+                                metadata: element_node
+                                    .as_ref()
+                                    .and_then(|symbol_node| {
+                                        MetadataTagSet::associated_metadata_tag_sets(
+                                            symbol_node,
+                                            content,
+                                        )
+                                    })
+                                    .unwrap_or_default(),
+                            };
+                            stack.push(IndexSymbol::Entity(struct_symbol));
+                        }
+                    }
+                    Some(TagsQueryIndexElement::StructMember)
+                    | Some(TagsQueryIndexElement::EntityField) => {
                         if let Some(name_node) = query_match
                             .nodes_for_capture_index(name_capture_index)
                             .next()
@@ -783,6 +817,7 @@ impl Indexer {
                                     class_symbol.members.push(symbol);
                                 }
                                 Some(IndexSymbol::Struct(_))
+                                | Some(IndexSymbol::Entity(_))
                                 | Some(IndexSymbol::Method(_))
                                 | Some(IndexSymbol::Property(_))
                                 | Some(IndexSymbol::Variable(_))
@@ -876,6 +911,8 @@ enum TagsQueryIndexElement {
     PropertyDefinition,
     StructDeclaration,
     StructMember,
+    EntityDeclaration,
+    EntityField,
     GlobalVariableDeclaration,
     AliasDefinition,
     MixinClass,
@@ -1357,7 +1394,29 @@ End_Struct
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 5, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }), Variable(VariableSymbol { location: SourceLocation { line: 3, column: 14 }, range: SourceRange { start: SourceLocation { line: 3, column: 4 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), data_type: DataFlexDataType(\"Integer[]\"), metadata: [] })] })]"
+            "[Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 5, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] }), Variable(VariableSymbol { location: SourceLocation { line: 3, column: 14 }, range: SourceRange { start: SourceLocation { line: 3, column: 4 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.iValues\"), data_type: DataFlexDataType(\"Integer[]\"), metadata: [] })], metadata: [] })]"
+        );
+    }
+
+    #[test]
+    fn test_index_entity() {
+        let index_ref = IndexRef::make_test_index_ref();
+        Indexer::index_test_content(
+            r#"
+Entity Room
+    String Name
+End_Entity
+            "#,
+            "test.pkg".into(),
+            &index_ref,
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
+            ),
+            "[Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [], metadata: [] })]"
         );
     }
 

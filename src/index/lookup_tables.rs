@@ -6,6 +6,7 @@ pub struct LookupTables {
     class_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     object_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     struct_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
+    entity_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     method_lookup_tables: [MultiMap<SymbolName, IndexSymbolRef>; 3],
     property_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
     global_variable_lookup_table: MultiMap<SymbolName, IndexSymbolRef>,
@@ -19,6 +20,7 @@ impl LookupTables {
             class_lookup_table: MultiMap::new(),
             object_lookup_table: MultiMap::new(),
             struct_lookup_table: MultiMap::new(),
+            entity_lookup_table: MultiMap::new(),
             method_lookup_tables: [MultiMap::new(), MultiMap::new(), MultiMap::new()],
             property_lookup_table: MultiMap::new(),
             global_variable_lookup_table: MultiMap::new(),
@@ -49,6 +51,15 @@ impl LookupTables {
 
     pub fn struct_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
         &mut self.struct_lookup_table
+    }
+
+    #[allow(dead_code)]
+    pub fn entity_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
+        &self.entity_lookup_table
+    }
+
+    pub fn entity_lookup_table_mut(&mut self) -> &mut MultiMap<SymbolName, IndexSymbolRef> {
+        &mut self.entity_lookup_table
     }
 
     pub fn method_lookup_table(&self, kind: MethodKind) -> &MultiMap<SymbolName, IndexSymbolRef> {
@@ -166,6 +177,13 @@ impl LookupTables {
                         file_path,
                     );
                 }
+                IndexSymbol::Entity(struct_symbol) => {
+                    remove_matching_symbol(
+                        self.entity_lookup_table_mut(),
+                        &struct_symbol.symbol_path,
+                        file_path,
+                    );
+                }
                 IndexSymbol::Method(method_symbol) => {
                     remove_matching_symbol(
                         self.method_lookup_table_mut(method_symbol.kind),
@@ -221,6 +239,12 @@ impl LookupTables {
                 }
                 IndexSymbol::Struct(struct_symbol) => {
                     self.struct_lookup_table_mut().insert(
+                        struct_symbol.symbol_path.name().clone(),
+                        IndexSymbolRef::new(file_path.clone(), struct_symbol.symbol_path.clone()),
+                    );
+                }
+                IndexSymbol::Entity(struct_symbol) => {
+                    self.entity_lookup_table_mut().insert(
                         struct_symbol.symbol_path.name().clone(),
                         IndexSymbolRef::new(file_path.clone(), struct_symbol.symbol_path.clone()),
                     );
@@ -869,6 +893,91 @@ mod tests {
                     .get(&"tOtherStruct".into())
             ),
             "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"tOtherStruct\") })"
+        );
+    }
+
+    #[test]
+    fn test_entity_lookup_table() {
+        let index_ref = IndexRef::make_test_index_ref();
+
+        Indexer::index_test_content("Entity Room\nEnd_Entity\n", "test.pkg".into(), &index_ref);
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .entity_lookup_table()
+                    .get(&"Room".into())
+            ),
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"Room\") })"
+        );
+
+        Indexer::index_test_content(
+            "Entity Room\nEnd_Entity\n\nEntity Presentation\nEnd_Entity\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .entity_lookup_table()
+                    .get(&"Room".into())
+            ),
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"Room\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .entity_lookup_table()
+                    .get(&"Presentation".into())
+            ),
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"Presentation\") })"
+        );
+
+        Indexer::index_test_content(
+            "Entity RenamedRoom\nEnd_Entity\n\nEntity Presentation\nEnd_Entity\n",
+            "test.pkg".into(),
+            &index_ref,
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .entity_lookup_table()
+                    .get(&"Room".into())
+            ),
+            "None"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .entity_lookup_table()
+                    .get(&"RenamedRoom".into())
+            ),
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"RenamedRoom\") })"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                index_ref
+                    .get()
+                    .lookup_tables
+                    .entity_lookup_table()
+                    .get(&"Presentation".into())
+            ),
+            "Some(IndexSymbolRef { file_path: \"test.pkg\", symbol_path: SymbolPath(\"Presentation\") })"
         );
     }
 

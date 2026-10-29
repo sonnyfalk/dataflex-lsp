@@ -7,6 +7,7 @@ pub enum IndexSymbol {
     Class(ClassSymbol),
     Object(ClassSymbol),
     Struct(StructSymbol),
+    Entity(StructSymbol),
     Method(MethodSymbol),
     Property(VariableSymbol),
     Variable(VariableSymbol),
@@ -30,6 +31,7 @@ pub struct StructSymbol {
     pub range: SourceRange,
     pub symbol_path: SymbolPath,
     pub members: Vec<IndexSymbol>,
+    pub metadata: Vec<MetadataTagSet>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -128,6 +130,7 @@ impl IndexSymbol {
             Self::Class(class_symbol) => class_symbol.symbol_path.name(),
             Self::Object(class_symbol) => class_symbol.symbol_path.name(),
             Self::Struct(struct_symbol) => struct_symbol.symbol_path.name(),
+            Self::Entity(struct_symbol) => struct_symbol.symbol_path.name(),
             Self::Method(method_symbol) => method_symbol.symbol_path.name(),
             Self::Property(variable_symbol) => variable_symbol.symbol_path.name(),
             Self::Variable(variable_symbol) => variable_symbol.symbol_path.name(),
@@ -140,6 +143,7 @@ impl IndexSymbol {
             Self::Class(class_symbol) => &class_symbol.symbol_path,
             Self::Object(class_symbol) => &class_symbol.symbol_path,
             Self::Struct(struct_symbol) => &struct_symbol.symbol_path,
+            Self::Entity(struct_symbol) => &struct_symbol.symbol_path,
             Self::Method(method_symbol) => &method_symbol.symbol_path,
             Self::Property(variable_symbol) => &variable_symbol.symbol_path,
             Self::Variable(variable_symbol) => &variable_symbol.symbol_path,
@@ -152,6 +156,7 @@ impl IndexSymbol {
             Self::Class(class_symbol) => class_symbol.location,
             Self::Object(class_symbol) => class_symbol.location,
             Self::Struct(struct_symbol) => struct_symbol.location,
+            Self::Entity(struct_symbol) => struct_symbol.location,
             Self::Method(method_symbol) => method_symbol.location,
             Self::Property(variable_symbol) => variable_symbol.location,
             Self::Variable(variable_symbol) => variable_symbol.location,
@@ -164,6 +169,7 @@ impl IndexSymbol {
             Self::Class(class_symbol) => class_symbol.range,
             Self::Object(class_symbol) => class_symbol.range,
             Self::Struct(struct_symbol) => struct_symbol.range,
+            Self::Entity(struct_symbol) => struct_symbol.range,
             Self::Method(method_symbol) => method_symbol.range,
             Self::Property(variable_symbol) => variable_symbol.range,
             Self::Variable(variable_symbol) => variable_symbol.range,
@@ -175,10 +181,11 @@ impl IndexSymbol {
         let metadata = match self {
             Self::Class(class_symbol) => Some(&class_symbol.metadata),
             Self::Object(class_symbol) => Some(&class_symbol.metadata),
+            Self::Struct(struct_symbol) => Some(&struct_symbol.metadata),
+            Self::Entity(struct_symbol) => Some(&struct_symbol.metadata),
             Self::Method(method_symbol) => Some(&method_symbol.metadata),
             Self::Property(variable_symbol) => Some(&variable_symbol.metadata),
             Self::Variable(variable_symbol) => Some(&variable_symbol.metadata),
-            Self::Struct(_) => None,
             Self::Alias(_) => None,
         };
         metadata
@@ -197,6 +204,9 @@ impl IndexSymbol {
             (Self::Struct(struct_symbol), Self::Struct(other_struct_symbol)) => {
                 struct_symbol.symbol_path == other_struct_symbol.symbol_path
             }
+            (Self::Entity(struct_symbol), Self::Entity(other_struct_symbol)) => {
+                struct_symbol.symbol_path == other_struct_symbol.symbol_path
+            }
             (Self::Method(method_symbol), Self::Method(other_method_symbol)) => {
                 method_symbol.symbol_path == other_method_symbol.symbol_path
             }
@@ -212,6 +222,7 @@ impl IndexSymbol {
             (Self::Class(_), _) => false,
             (Self::Object(_), _) => false,
             (Self::Struct(_), _) => false,
+            (Self::Entity(_), _) => false,
             (Self::Method(_), _) => false,
             (Self::Property(_), _) => false,
             (Self::Variable(_), _) => false,
@@ -224,6 +235,7 @@ impl IndexSymbol {
             Self::Class(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
             Self::Object(class_symbol) => class_symbol.members.iter().find(|s| s.name() == name),
             Self::Struct(struct_symbol) => struct_symbol.members.iter().find(|s| s.name() == name),
+            Self::Entity(struct_symbol) => struct_symbol.members.iter().find(|s| s.name() == name),
             Self::Method(_) => None,
             Self::Property(_) => None,
             Self::Variable(_) => None,
@@ -236,6 +248,7 @@ impl IndexSymbol {
             Self::Class(class_symbol) => class_symbol.members.iter(),
             Self::Object(class_symbol) => class_symbol.members.iter(),
             Self::Struct(struct_symbol) => struct_symbol.members.iter(),
+            Self::Entity(struct_symbol) => struct_symbol.members.iter(),
             Self::Method(_) => Default::default(),
             Self::Property(_) => Default::default(),
             Self::Variable(_) => Default::default(),
@@ -560,6 +573,13 @@ impl std::fmt::Display for IndexSymbol {
                     writeln!(f, "   {}", member)?;
                 }
                 writeln!(f, "End_Struct")
+            }
+            Self::Entity(struct_symbol) => {
+                writeln!(f, "Entity {}", struct_symbol.symbol_path.name())?;
+                for member in &struct_symbol.members {
+                    writeln!(f, "   {}", member)?;
+                }
+                writeln!(f, "End_Entity")
             }
             Self::Method(method_symbol) => {
                 write!(

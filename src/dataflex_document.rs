@@ -573,6 +573,7 @@ impl From<&index::IndexSymbol> for lsp_types::SymbolKind {
             index::IndexSymbol::Class(_) => Self::CLASS,
             index::IndexSymbol::Object(_) => Self::OBJECT,
             index::IndexSymbol::Struct(_) => Self::STRUCT,
+            index::IndexSymbol::Entity(_) => Self::STRUCT,
             index::IndexSymbol::Method(_) => Self::METHOD,
             index::IndexSymbol::Property(_) => Self::PROPERTY,
             index::IndexSymbol::Variable(_) => Self::VARIABLE,

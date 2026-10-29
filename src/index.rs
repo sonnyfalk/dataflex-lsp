@@ -369,9 +369,10 @@ impl Index {
                     None
                 }
             }
-            IndexSymbol::Struct(_) => None,
-            IndexSymbol::Variable(_) => None,
-            IndexSymbol::Alias(_) => None,
+            IndexSymbol::Struct(_)
+            | IndexSymbol::Entity(_)
+            | IndexSymbol::Variable(_)
+            | IndexSymbol::Alias(_) => Some(qualified_symbol.symbol),
         };
 
         symbol_with_tag

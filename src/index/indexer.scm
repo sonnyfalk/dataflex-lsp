@@ -81,6 +81,28 @@
     (identifier) @name) @element_node
   (#set! index.element struct_member))
 
+(entity_declaration
+  (entity_header
+    name: (identifier) @name)
+  (#set! index.element entity_declaration)) @element_node
+
+(entity_declaration
+  (entity_footer)
+  (#set! index.element pop_stack_symbol)) @element_node
+
+(entity_declaration
+  (entity_field
+    [
+      (system_typedecl
+        (system_type) @type
+        (array_decl)* @array)
+      (custom_typedecl
+        (identifier) @type
+        (array_decl)* @array)
+    ]
+    (identifier) @name) @element_node
+  (#set! index.element entity_field))
+
 (global_variable_declaration
   [
     (system_typedecl

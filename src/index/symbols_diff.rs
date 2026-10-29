@@ -84,6 +84,7 @@ fn diff_symbols<'a>(
                     (IndexSymbol::Class(_), _) => None,
                     (IndexSymbol::Object(_), _) => None,
                     (IndexSymbol::Struct(_), _) => None,
+                    (IndexSymbol::Entity(_), _) => None,
                     (IndexSymbol::Method(_), _) => None,
                     (IndexSymbol::Property(_), _) => None,
                     (IndexSymbol::Variable(_), _) => None,
