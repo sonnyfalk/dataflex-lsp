@@ -318,6 +318,7 @@ impl<'a> ReferenceResolver<'a> {
     }
 
     fn resolve_member_expr_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+        log::trace!("resolve_member_expr_reference");
         let Some(postfix_expr_node) = self.doc.cursor().and_then(|mut cursor| {
             (cursor.goto_leaf_node_at_or_before_point(position)
                 && cursor.goto_enclosing_postfix_expression())
@@ -349,10 +350,20 @@ impl<'a> ReferenceResolver<'a> {
                 .next()
                 .map(|n| SymbolName::from(self.doc.line_map.text_for_node(&n)))
         {
+            log::trace!(
+                "resolve_member_expr_reference - variable = {:?}",
+                variable_name
+            );
+
             let current_symbol = self
                 .resolve_type_of_variable(position, &variable_name)
                 .and_then(|data_type| self.index.find_struct(data_type.name()).next())
                 .and_then(|struct_ref| self.index.resolve_symbol(struct_ref));
+
+            log::trace!(
+                "resolve_member_expr_reference - type = {:?}",
+                current_symbol
+            );
 
             query_match
                 .nodes_for_capture_index(member_capture_index)
@@ -369,6 +380,11 @@ impl<'a> ReferenceResolver<'a> {
                     } else {
                         current_symbol
                     };
+
+                    log::trace!(
+                        "resolve_member_expr_reference - member type = {:?}",
+                        current_symbol
+                    );
 
                     let Some(member_node) = node
                         .child_by_field_name("name")
@@ -404,6 +420,7 @@ impl<'a> ReferenceResolver<'a> {
             None
         };
 
+        log::trace!("resolve_member_expr_reference - result = {:?}", symbol);
         IndexSymbolIter::new(symbol.into_iter())
     }
 
@@ -682,6 +699,33 @@ End_Procedure
             format!("{:?}", symbol.next()),
             "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Struct(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"tMyStruct.sName\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] }) })"
         );
+    }
+
+    #[test]
+    fn test_resolve_entity_field_expr_reference() {
+        let test_content = r#"
+Entity Room
+    String Name
+End_Entity
+
+Procedure test
+    Room myRoom
+    String sName
+    Move myRoom.Name to sName
+End_Procedure
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
+
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
+        let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(8, 18));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
     }
 
     #[test]

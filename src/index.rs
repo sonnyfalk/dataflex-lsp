@@ -228,17 +228,25 @@ impl Index {
             .struct_lookup_table()
             .get_vec(name)
             .into_iter()
+            .chain(
+                self.lookup_tables
+                    .entity_lookup_table()
+                    .get_vec(name)
+                    .into_iter(),
+            )
             .flatten()
     }
 
     pub fn is_known_struct(&self, name: &SymbolName) -> bool {
         self.lookup_tables.struct_lookup_table().get(name).is_some()
+            || self.lookup_tables.entity_lookup_table().get(name).is_some()
     }
 
     pub fn all_known_structs(&self) -> Vec<SymbolName> {
         self.lookup_tables
             .struct_lookup_table()
             .keys()
+            .chain(self.lookup_tables.entity_lookup_table().keys())
             .cloned()
             .collect()
     }

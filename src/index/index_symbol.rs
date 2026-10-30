@@ -493,6 +493,8 @@ impl IndexSymbolType for StructSymbol {
     fn from_index_symbol(index_symbol: &IndexSymbol) -> Option<&Self> {
         if let IndexSymbol::Struct(struct_symbol) = index_symbol {
             Some(struct_symbol)
+        } else if let IndexSymbol::Entity(struct_symbol) = index_symbol {
+            Some(struct_symbol)
         } else {
             None
         }
@@ -500,6 +502,8 @@ impl IndexSymbolType for StructSymbol {
 
     fn from_index_symbol_mut(index_symbol: &mut IndexSymbol) -> Option<&mut Self> {
         if let IndexSymbol::Struct(struct_symbol) = index_symbol {
+            Some(struct_symbol)
+        } else if let IndexSymbol::Entity(struct_symbol) = index_symbol {
             Some(struct_symbol)
         } else {
             None
