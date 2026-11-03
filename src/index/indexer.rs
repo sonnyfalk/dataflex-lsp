@@ -1416,7 +1416,7 @@ End_Entity
                 "{:?}",
                 index_ref.get().files[&IndexFileRef::from("test.pkg")].symbols
             ),
-            "[Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [], metadata: [] })]"
+            "[Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] })]"
         );
     }
 
