@@ -49,6 +49,20 @@ impl<'a> ReferenceResolver<'a> {
             .map(|variable| variable.data_type.clone())
     }
 
+    pub fn resolve_object_entity_type(
+        &self,
+        name: &SymbolName,
+        position: Point,
+    ) -> Option<DataFlexDataType> {
+        self.resolve_object_class(name, position)
+            .find_map(|qualified_symbol| {
+                self.index
+                    .associated_meta_tags("Entity".into(), qualified_symbol)
+                    .next()
+            })
+            .map(|entity_tag| DataFlexDataType::Simple(entity_tag.value.as_str().into()))
+    }
+
     pub fn resolve_local_variable(&self, position: Point) -> Option<VariableSymbol> {
         self.doc
             .symbol_at_position(position)
@@ -245,9 +259,19 @@ impl<'a> ReferenceResolver<'a> {
             .node()
             .child_by_field_name("receiver")
             .map(|n| self.doc.line_map.text_for_node(&n))
-            .unwrap_or(String::from("self"));
+            .map(SymbolName::from)
+            .unwrap_or(SymbolName::from("self"));
 
-        if receiver.eq_ignore_ascii_case("self") {
+        self.resolve_object_class(&receiver, position)
+    }
+
+    fn resolve_object_class(&self, name: &SymbolName, position: Point) -> IndexSymbolIter<'_> {
+        if name.eq(&"self".into()) {
+            let Some(mut cursor) = self.doc.cursor() else {
+                return IndexSymbolIter::empty();
+            };
+            cursor.goto_leaf_node_at_or_after_point(position);
+
             cursor
                 .goto_enclosing_object_or_class()
                 .then(|| {
@@ -357,6 +381,7 @@ impl<'a> ReferenceResolver<'a> {
 
             let current_symbol = self
                 .resolve_type_of_variable(position, &variable_name)
+                .or_else(|| self.resolve_object_entity_type(&variable_name, position))
                 .and_then(|data_type| self.index.find_struct(data_type.name()).next())
                 .and_then(|struct_ref| self.index.resolve_symbol(struct_ref));
 
@@ -724,6 +749,35 @@ End_Procedure
         assert_eq!(
             format!("{:?}", symbol.next()),
             "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+    }
+
+    #[test]
+    fn test_resolve_object_entity_field_expr_reference() {
+        let test_content = r#"
+Entity Room
+    String Name
+End_Entity
+
+{ Entity=Room }
+Class cRoomDataDictionary is a cDataDictionary
+    Procedure test
+        String sName
+        Move Self.Name to sName
+    End_Procedure
+End_Class
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
+
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
+        let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(9, 18));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
     }

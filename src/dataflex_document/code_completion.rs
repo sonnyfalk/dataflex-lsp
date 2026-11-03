@@ -382,7 +382,8 @@ impl CodeCompletion {
 
         let qualified_symbol = if let Some(name) = root_name.as_ref() {
             reference_resolver
-                .resolve_type_of_variable(cursor.node().start_position(), name)
+                .resolve_type_of_variable(position, name)
+                .or_else(|| reference_resolver.resolve_object_entity_type(name, position))
                 .and_then(|data_type| index.find_struct(data_type.name()).next())
                 .and_then(|struct_ref| index.resolve_symbol(struct_ref))
         } else {

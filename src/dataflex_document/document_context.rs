@@ -1129,6 +1129,14 @@ mod test {
 
         let doc = DataFlexDocument::new(
             "test.pkg".into(),
+            "Move Self.\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 0, column: 10 });
+        assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
             "Move iZipCode to shippingAddress.iZipCode\n",
             &index::Index::make_test_index(),
         );
