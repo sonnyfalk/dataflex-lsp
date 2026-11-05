@@ -453,8 +453,11 @@ impl WorkspaceInfo {
             return None;
         }
 
-        let df_cli = DataFlexConfig::system_config().df_cli_path()?;
-        log::info!("Using df_cli from: {:?}", df_cli);
+        let Some(df_cli) = DataFlexConfig::system_config().df_cli_path() else {
+            log::info!("No df-cli found - skip fetching package dependencies");
+            return None;
+        };
+        log::info!("Using df-cli from: {:?}", df_cli);
         let suppress_fetch_dependencies = self.should_suppress_fetch_dependencies();
         if !suppress_fetch_dependencies {
             log::info!("Fetching package dependencies");

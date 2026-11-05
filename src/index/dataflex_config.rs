@@ -35,6 +35,10 @@ impl DataFlexConfig {
     }
 
     pub fn df_cli_path(&self) -> Option<PathBuf> {
+        log::trace!(
+            "df_cli_path() - Looking for df-cli in path: {:?}",
+            std::env::var_os("PATH")
+        );
         if let Ok(df_cli) = which::which_global("df-cli") {
             return Some(df_cli);
         }
@@ -48,6 +52,10 @@ impl DataFlexConfig {
         )
         .ok();
 
+        log::trace!(
+            "df_cli_path() - Looking for df-cli in known DataFlex installation paths: {:?}",
+            paths
+        );
         which::which_in_global("df-cli", paths).ok()?.next()
     }
 
