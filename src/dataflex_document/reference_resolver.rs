@@ -303,8 +303,14 @@ impl<'a> ReferenceResolver<'a> {
                 })
                 .unwrap_or(IndexSymbolIter::empty())
         } else {
-            // FIXME: Handle non-self receiver.
-            IndexSymbolIter::empty()
+            IndexSymbolIter::new(
+                self.index
+                    .find_objects(&name)
+                    .filter(move |&s| {
+                        s.symbol_path.is_top_level() || s.file_path == self.doc.file_path
+                    })
+                    .filter_map(|s| self.index.resolve_symbol(s)),
+            )
         }
     }
 
@@ -767,6 +773,14 @@ Class cRoomDataDictionary is a cDataDictionary
         Move Self.Name to sName
     End_Procedure
 End_Class
+
+Object oRoomDataDictionary is a cRoomDataDictionary
+End_Object
+
+Procedure testIt
+    String sName
+    Move oRoomDataDictionary.Name to sName
+End_Procedure
         "#;
         let index = index::IndexRef::make_test_index_ref();
         index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
@@ -775,6 +789,13 @@ End_Class
 
         let reference_resolver = ReferenceResolver::new(&doc, &index);
         let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(9, 18));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+
+        let mut symbol = reference_resolver.resolve_member_expr_reference(Point::new(18, 29));
         assert_eq!(
             format!("{:?}", symbol.next()),
             "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] }) })"
