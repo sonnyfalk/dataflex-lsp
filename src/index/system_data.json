@@ -1018,6 +1018,13 @@
                 "returns": "Handle"
             }
         ],
+        "RefEntity": [
+            {
+                "signature": "RefEntity(EntityName)",
+                "description": "References an entity name in an undecorated manner.",
+                "returns": "Integer"
+            }
+        ],
         "RefFunc": [
             {
                 "signature": "RefFunc(FunctionName)",
