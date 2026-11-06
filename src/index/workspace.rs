@@ -464,25 +464,31 @@ impl WorkspaceInfo {
         } else {
             log::info!("Skip fetching package dependencies");
         }
-        let output = if suppress_fetch_dependencies {
-            std::process::Command::new(&df_cli)
+        let mut df_cli_cmd = std::process::Command::new(&df_cli);
+        if suppress_fetch_dependencies {
+            df_cli_cmd
                 .arg("config")
                 .arg("--json")
                 .arg("--no-dependencies")
-                .arg(&self.sws_path)
-                .output()
+                .arg(&self.sws_path);
         } else {
-            std::process::Command::new(&df_cli)
-                .arg("config")
-                .arg("--json")
-                .arg(&self.sws_path)
-                .output()
+            df_cli_cmd.arg("config").arg("--json").arg(&self.sws_path);
         };
-        log::trace!("df_cli output: {:?}", output);
+        let output = df_cli_cmd.output();
+        log::trace!("df-cli output: {:?}", output);
         let output = output.ok()?;
 
         if output.status.success() {
-            let config = serde_json::from_slice::<RawWorkspaceConfig>(&output.stdout).ok()?;
+            let config = serde_json::from_slice::<RawWorkspaceConfig>(&output.stdout)
+                .ok()
+                .or_else(|| {
+                    // Unable to parse json output, try one more time in case the output contained mix of
+                    // human readable text and json, e.g. "Running scheduled cache prune..."
+                    df_cli_cmd.output().ok().and_then(|output| {
+                        log::trace!("df-cli output second time: {:?}", output);
+                        serde_json::from_slice::<RawWorkspaceConfig>(&output.stdout).ok()
+                    })
+                })?;
             let mut workspace = self.clone();
             // Merge in additional project info with computed makepath etc., and return the extended WorkspaceInfo.
             for project in config.projects {
