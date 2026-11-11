@@ -11,6 +11,7 @@ impl ScopeBalancer {
             ("Procedure", "End_Procedure"),
             ("Function", "End_Function"),
             ("Struct", "End_Struct"),
+            ("Entity", "End_Entity"),
             ("Enum_List", "End_Enum_List"),
             ("For", "Loop"),
             ("While", "Loop"),
@@ -28,6 +29,7 @@ impl ScopeBalancer {
             ("procedure_header", "procedure_footer"),
             ("function_header", "function_footer"),
             ("struct_header", "struct_footer"),
+            ("entity_header", "entity_footer"),
             ("enum_header", "enum_footer"),
             ("for_header", "for_footer"),
             ("while_header", "while_footer"),
@@ -282,6 +284,20 @@ mod tests {
         assert_eq!(
             format!("{:?}", edits),
             "Some(TextEdit { range: Point { row: 2, column: 0 }..Point { row: 2, column: 0 }, text: \"    End_Struct\\n\" })"
+        );
+    }
+
+    #[test]
+    fn test_auto_close_entity() {
+        let test_content = r#"
+    Entity 
+            "#;
+        let index = index::Index::make_test_index();
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index);
+        let edits = ScopeBalancer::auto_close_scope(&doc, Point::new(1, 11), " ");
+        assert_eq!(
+            format!("{:?}", edits),
+            "Some(TextEdit { range: Point { row: 2, column: 0 }..Point { row: 2, column: 0 }, text: \"    End_Entity\\n\" })"
         );
     }
 
