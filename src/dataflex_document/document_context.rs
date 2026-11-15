@@ -12,6 +12,7 @@ pub enum DocumentContext {
     FileDependency,
     MethodDeclaration(MethodKind),
     TypeReference,
+    EntityFieldReference,
 }
 
 struct ContextScanner<'a> {
@@ -183,6 +184,7 @@ impl DocumentContext {
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityFieldReference => false,
         }
     }
 
@@ -197,6 +199,7 @@ impl DocumentContext {
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityFieldReference => false,
         }
     }
 
@@ -211,6 +214,7 @@ impl DocumentContext {
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityFieldReference => false,
         }
     }
 
@@ -225,6 +229,7 @@ impl DocumentContext {
             Self::CommandReference => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityFieldReference => false,
         }
     }
 
@@ -287,6 +292,9 @@ impl DocumentContext {
             }
             ("keyword", "property") => {
                 context_scanner_match!(scanner, typedecl, identifier, expr)
+            }
+            ("keyword", "add_index") => {
+                context_scanner_match!(scanner, identifier -> Self::EntityFieldReference)
             }
             ("keyword", "if") => {
                 let context =
@@ -1192,6 +1200,17 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 0, column: 39 });
         assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+    }
+
+    #[test]
+    fn test_add_index_entity_field_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Index \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 10 });
+        assert_eq!(context, Some(DocumentContext::EntityFieldReference));
     }
 
     #[test]

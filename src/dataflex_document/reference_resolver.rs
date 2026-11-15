@@ -29,6 +29,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::FileDependency => IndexSymbolIter::empty(),
             DocumentContext::MethodDeclaration(_) => IndexSymbolIter::empty(),
             DocumentContext::TypeReference => self.resolve_type_reference(position),
+            DocumentContext::EntityFieldReference => self.resolve_entity_field_reference(position),
         }
     }
 
@@ -455,6 +456,48 @@ impl<'a> ReferenceResolver<'a> {
         IndexSymbolIter::new(symbol.into_iter())
     }
 
+    fn resolve_entity_field_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+        let Some(mut cursor) = self.doc.cursor() else {
+            return IndexSymbolIter::empty();
+        };
+
+        let field_name = (cursor.goto_leaf_node_at_or_before_point(position)
+            && cursor.is_identifier()
+            && cursor.node().start_position() < position
+            && cursor.node().end_position() >= position)
+            .then_some(SymbolName::from(
+                self.doc.line_map.text_for_node(&cursor.node()),
+            ));
+
+        let Some(entity_node) = cursor
+            .goto_enclosing_entity_declaration()
+            .then_some(cursor.node())
+        else {
+            return IndexSymbolIter::empty();
+        };
+
+        if let Some(entity) = entity_node
+            .child(0)
+            .and_then(|entity_header_node| entity_header_node.child_by_field_name("name"))
+            .map(|name_node| SymbolName::from(self.doc.line_map.text_for_node(&name_node)))
+            .and_then(|entity_name| self.index.find_struct(&entity_name).next())
+            .and_then(|entity_ref| self.index.resolve_symbol(entity_ref))
+        {
+            if let Some(field_name) = field_name {
+                IndexSymbolIter::new(entity.symbol.child(&field_name).into_iter().map(|symbol| {
+                    index::QualifiedIndexSymbol {
+                        file: entity.file,
+                        symbol: &symbol,
+                    }
+                }))
+            } else {
+                IndexSymbolIter::new(std::iter::once(entity))
+            }
+        } else {
+            IndexSymbolIter::empty()
+        }
+    }
+
     fn resolve_type_reference(&self, position: Point) -> IndexSymbolIter<'_> {
         let Some(name) = self.doc.symbol_at_position(position) else {
             return IndexSymbolIter::empty();
@@ -801,6 +844,35 @@ End_Procedure
             "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 4, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] }) })"
         );
         assert_eq!(format!("{:?}", symbol.next()), "None");
+    }
+
+    #[test]
+    fn test_resolve_entity_field_reference() {
+        let test_content = r#"
+Entity Room
+    String Name
+
+    Add_Index Name
+End_Entity
+        "#;
+        let index = index::IndexRef::make_test_index_ref();
+        index::Indexer::index_test_content(test_content, "test.pkg".into(), &index);
+        let doc = DataFlexDocument::new("test.pkg".into(), test_content, &index.get());
+        let index = index.get();
+
+        let reference_resolver = ReferenceResolver::new(&doc, &index);
+        let mut symbol = reference_resolver.resolve_entity_field_reference(Point::new(4, 14));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Entity(StructSymbol { location: SourceLocation { line: 1, column: 7 }, range: SourceRange { start: SourceLocation { line: 1, column: 0 }, end: SourceLocation { line: 6, column: 0 } }, symbol_path: SymbolPath(\"Room\"), members: [Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] })], metadata: [] }) })"
+        );
+        assert_eq!(format!("{:?}", symbol.next()), "None");
+
+        let mut symbol = reference_resolver.resolve_entity_field_reference(Point::new(4, 16));
+        assert_eq!(
+            format!("{:?}", symbol.next()),
+            "Some(QualifiedIndexSymbol { file.path: \"test.pkg\", symbol: Variable(VariableSymbol { location: SourceLocation { line: 2, column: 11 }, range: SourceRange { start: SourceLocation { line: 2, column: 4 }, end: SourceLocation { line: 3, column: 0 } }, symbol_path: SymbolPath(\"Room.Name\"), data_type: DataFlexDataType(\"String\"), metadata: [] }) })"
+        );
     }
 
     #[test]

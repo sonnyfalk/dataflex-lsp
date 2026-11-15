@@ -100,6 +100,9 @@ impl CodeCompletion {
                 Some(Self::override_completions(doc, position, kind, index))
             }
             DocumentContext::TypeReference => Some(Self::type_completions(index)),
+            DocumentContext::EntityFieldReference => {
+                Some(Self::entity_field_completions(doc, position, index))
+            }
         };
 
         completions
@@ -111,6 +114,7 @@ impl CodeCompletion {
             DocumentContext::MethodReference(_) => true,
             DocumentContext::DotMemberExpression => true,
             DocumentContext::FileDependency => true,
+            DocumentContext::EntityFieldReference => true,
             DocumentContext::Expression => false,
             DocumentContext::ParenExpression => false,
             DocumentContext::CommandReference => false,
@@ -422,6 +426,41 @@ impl CodeCompletion {
         } else {
             vec![]
         }
+    }
+
+    fn entity_field_completions(
+        doc: &DataFlexDocument,
+        position: Point,
+        index: &index::Index,
+    ) -> Vec<CompletionItem> {
+        let Some(cursor) = doc.cursor().and_then(|mut cursor| {
+            cursor
+                .goto_leaf_node_at_or_before_point(position)
+                .then_some(cursor)
+        }) else {
+            return vec![];
+        };
+
+        let position = if cursor.is_identifier()
+            && cursor.node().start_position() <= position
+            && cursor.node().end_position() >= position
+        {
+            cursor.node().start_position()
+        } else {
+            position
+        };
+
+        let reference_resolver = ReferenceResolver::new(doc, index);
+        reference_resolver
+            .resolve_reference(DocumentContext::EntityFieldReference, position)
+            .filter_map(|qualified_symbol| StructSymbol::from_index_symbol(qualified_symbol.symbol))
+            .flat_map(|struct_symbol| struct_symbol.members.iter())
+            .map(|member| CompletionItem {
+                label: member.name().to_string(),
+                kind: CompletionItemKind::StructMember,
+                ..Default::default()
+            })
+            .collect()
     }
 
     fn command_completions(index: &index::Index) -> Vec<CompletionItem> {

@@ -80,6 +80,10 @@ impl<'a> DataFlexTreeCursor<'a> {
         self.goto_enclosing_node_kind(&["call_expression"])
     }
 
+    pub fn goto_enclosing_entity_declaration(&mut self) -> bool {
+        self.goto_enclosing_node_kind(&["entity_declaration"])
+    }
+
     pub fn goto_descendant_typedecl(&mut self) -> bool {
         self.goto_descendant_node_kind(&["system_typedecl", "custom_typedecl"])
     }
