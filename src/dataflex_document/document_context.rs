@@ -148,6 +148,11 @@ macro_rules! context_scanner_match {
             context_scanner_match!(@rules $scanner, $($inner_rest)*);
         }
     };
+    (@rules $scanner:ident, ($keyword:pat, $($inner_rest:tt)+)*) => {
+        while matches!($scanner.accept_keyword_if(|kw| matches!(kw, $keyword)).ok()?, ContextScannerStatus::Continue) {
+            context_scanner_match!(@rules $scanner, $($inner_rest)*);
+        }
+    };
     (@rules $scanner:ident, $keyword:pat, $($rest:tt)*) => {
         if matches!($scanner.accept_keyword_if(|kw| matches!(kw, $keyword)).ok()?, ContextScannerStatus::Stop) {
             return None;
@@ -294,7 +299,7 @@ impl DocumentContext {
                 context_scanner_match!(scanner, typedecl, identifier, expr)
             }
             ("keyword", "add_index") => {
-                context_scanner_match!(scanner, identifier -> Self::EntityFieldReference)
+                context_scanner_match!(scanner, identifier -> Self::EntityFieldReference, ("asc" | "desc", identifier -> Self::EntityFieldReference)*)
             }
             ("keyword", "if") => {
                 let context =
@@ -1210,6 +1215,16 @@ mod test {
             &index::Index::make_test_index(),
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 10 });
+        assert_eq!(context, Some(DocumentContext::EntityFieldReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Index Name Asc \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 15 });
+        assert_eq!(context, None);
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 19 });
         assert_eq!(context, Some(DocumentContext::EntityFieldReference));
     }
 
