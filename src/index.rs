@@ -251,6 +251,25 @@ impl Index {
             .collect()
     }
 
+    pub fn find_entity(
+        &self,
+        name: &SymbolName,
+    ) -> impl Iterator<Item = &IndexSymbolRef> + use<'_> {
+        self.lookup_tables
+            .entity_lookup_table()
+            .get_vec(name)
+            .into_iter()
+            .flatten()
+    }
+
+    pub fn all_known_entities(&self) -> Vec<SymbolName> {
+        self.lookup_tables
+            .entity_lookup_table()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
     pub fn find_dataflex_table(
         &self,
         name: &SymbolName,

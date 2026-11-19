@@ -100,6 +100,7 @@ impl CodeCompletion {
                 Some(Self::override_completions(doc, position, kind, index))
             }
             DocumentContext::TypeReference => Some(Self::type_completions(index)),
+            DocumentContext::EntityReference => Some(Self::entity_completions(index)),
             DocumentContext::EntityFieldReference => {
                 Some(Self::entity_field_completions(doc, position, index))
             }
@@ -114,6 +115,7 @@ impl CodeCompletion {
             DocumentContext::MethodReference(_) => true,
             DocumentContext::DotMemberExpression => true,
             DocumentContext::FileDependency => true,
+            DocumentContext::EntityReference => true,
             DocumentContext::EntityFieldReference => true,
             DocumentContext::Expression => false,
             DocumentContext::ParenExpression => false,
@@ -389,6 +391,7 @@ impl CodeCompletion {
                 .resolve_type_of_variable(position, name)
                 .or_else(|| reference_resolver.resolve_object_entity_type(name, position))
                 .and_then(|data_type| index.find_struct(data_type.name()).next())
+                .or_else(|| index.find_struct(&name).next())
                 .and_then(|struct_ref| index.resolve_symbol(struct_ref))
         } else {
             reference_resolver
@@ -426,6 +429,18 @@ impl CodeCompletion {
         } else {
             vec![]
         }
+    }
+
+    fn entity_completions(index: &index::Index) -> Vec<CompletionItem> {
+        index
+            .all_known_entities()
+            .into_iter()
+            .map(|entity_name| CompletionItem {
+                label: entity_name.to_string(),
+                kind: CompletionItemKind::TableName,
+                ..Default::default()
+            })
+            .collect()
     }
 
     fn entity_field_completions(

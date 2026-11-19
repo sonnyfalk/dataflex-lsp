@@ -29,6 +29,7 @@ impl<'a> ReferenceResolver<'a> {
             DocumentContext::FileDependency => IndexSymbolIter::empty(),
             DocumentContext::MethodDeclaration(_) => IndexSymbolIter::empty(),
             DocumentContext::TypeReference => self.resolve_type_reference(position),
+            DocumentContext::EntityReference => self.resolve_entity_reference(position),
             DocumentContext::EntityFieldReference => self.resolve_entity_field_reference(position),
         }
     }
@@ -390,6 +391,7 @@ impl<'a> ReferenceResolver<'a> {
                 .resolve_type_of_variable(position, &variable_name)
                 .or_else(|| self.resolve_object_entity_type(&variable_name, position))
                 .and_then(|data_type| self.index.find_struct(data_type.name()).next())
+                .or_else(|| self.index.find_struct(&variable_name).next())
                 .and_then(|struct_ref| self.index.resolve_symbol(struct_ref));
 
             log::trace!(
@@ -454,6 +456,30 @@ impl<'a> ReferenceResolver<'a> {
 
         log::trace!("resolve_member_expr_reference - result = {:?}", symbol);
         IndexSymbolIter::new(symbol.into_iter())
+    }
+
+    fn resolve_entity_reference(&self, position: Point) -> IndexSymbolIter<'_> {
+        let Some(mut cursor) = self.doc.cursor() else {
+            return IndexSymbolIter::empty();
+        };
+
+        let entity_name = (cursor.goto_leaf_node_at_or_before_point(position)
+            && cursor.is_identifier()
+            && cursor.node().start_position() < position
+            && cursor.node().end_position() >= position)
+            .then_some(SymbolName::from(
+                self.doc.line_map.text_for_node(&cursor.node()),
+            ));
+
+        entity_name
+            .map(|entity_name| {
+                IndexSymbolIter::new(
+                    self.index
+                        .find_entity(&entity_name)
+                        .filter_map(|entity_ref| self.index.resolve_symbol(entity_ref)),
+                )
+            })
+            .unwrap_or(IndexSymbolIter::empty())
     }
 
     fn resolve_entity_field_reference(&self, position: Point) -> IndexSymbolIter<'_> {

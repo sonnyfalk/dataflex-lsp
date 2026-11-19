@@ -12,6 +12,7 @@ pub enum DocumentContext {
     FileDependency,
     MethodDeclaration(MethodKind),
     TypeReference,
+    EntityReference,
     EntityFieldReference,
 }
 
@@ -189,6 +190,7 @@ impl DocumentContext {
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityReference => false,
             Self::EntityFieldReference => false,
         }
     }
@@ -204,6 +206,7 @@ impl DocumentContext {
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityReference => false,
             Self::EntityFieldReference => false,
         }
     }
@@ -219,6 +222,7 @@ impl DocumentContext {
             Self::FileDependency => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityReference => false,
             Self::EntityFieldReference => false,
         }
     }
@@ -234,6 +238,7 @@ impl DocumentContext {
             Self::CommandReference => false,
             Self::MethodDeclaration(_) => false,
             Self::TypeReference => false,
+            Self::EntityReference => false,
             Self::EntityFieldReference => false,
         }
     }
@@ -300,6 +305,9 @@ impl DocumentContext {
             }
             ("keyword", "add_index") => {
                 context_scanner_match!(scanner, identifier -> Self::EntityFieldReference, ("asc" | "desc", identifier -> Self::EntityFieldReference)*)
+            }
+            ("keyword", "add_relation") => {
+                context_scanner_match!(scanner, identifier -> Self::EntityFieldReference, "to", identifier -> Self::EntityReference)
             }
             ("keyword", "if") => {
                 let context =
@@ -1226,6 +1234,36 @@ mod test {
         assert_eq!(context, None);
         let context = DocumentContext::context(&doc, Point { row: 1, column: 19 });
         assert_eq!(context, Some(DocumentContext::EntityFieldReference));
+    }
+
+    #[test]
+    fn test_add_relation_entity_field_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Relation \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 13 });
+        assert_eq!(context, Some(DocumentContext::EntityFieldReference));
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Relation ID to Other. \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 25 });
+        assert_eq!(context, Some(DocumentContext::DotMemberExpression));
+    }
+
+    #[test]
+    fn test_add_relation_entity_context() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Relation ID to \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 19 });
+        assert_eq!(context, Some(DocumentContext::EntityReference));
     }
 
     #[test]

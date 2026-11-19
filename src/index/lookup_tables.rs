@@ -53,7 +53,6 @@ impl LookupTables {
         &mut self.struct_lookup_table
     }
 
-    #[allow(dead_code)]
     pub fn entity_lookup_table(&self) -> &MultiMap<SymbolName, IndexSymbolRef> {
         &self.entity_lookup_table
     }
