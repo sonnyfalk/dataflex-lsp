@@ -307,7 +307,7 @@ impl DocumentContext {
                 context_scanner_match!(scanner, identifier -> Self::EntityFieldReference, ("asc" | "desc", identifier -> Self::EntityFieldReference)*)
             }
             ("keyword", "add_relation") => {
-                context_scanner_match!(scanner, identifier -> Self::EntityFieldReference, "to", identifier -> Self::EntityReference)
+                context_scanner_match!(scanner, identifier -> Self::EntityFieldReference, "to", identifier -> Self::EntityReference, ".", identifier, ("and", identifier -> Self::EntityFieldReference, "to", identifier -> Self::EntityReference, ".", identifier)*)
             }
             ("keyword", "if") => {
                 let context =
@@ -353,6 +353,7 @@ impl DocumentContext {
         let mut cursor = doc.cursor()?;
         if cursor.goto_leaf_node_at_or_before_point(position)
             && cursor.goto_enclosing_member_access()
+            && cursor.node().end_position() >= position
         {
             Some(Self::DotMemberExpression)
         } else {
@@ -1264,6 +1265,25 @@ mod test {
         );
         let context = DocumentContext::context(&doc, Point { row: 1, column: 19 });
         assert_eq!(context, Some(DocumentContext::EntityReference));
+    }
+
+    #[test]
+    fn test_add_relation_multiple() {
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Relation ID to OtherEntity.ID \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 34 });
+        assert_eq!(context, None);
+
+        let doc = DataFlexDocument::new(
+            "test.pkg".into(),
+            "Entity MyEntity\nAdd_Relation ID to OtherEntity.ID and \nEnd_Entity\n",
+            &index::Index::make_test_index(),
+        );
+        let context = DocumentContext::context(&doc, Point { row: 1, column: 38 });
+        assert_eq!(context, Some(DocumentContext::EntityFieldReference));
     }
 
     #[test]

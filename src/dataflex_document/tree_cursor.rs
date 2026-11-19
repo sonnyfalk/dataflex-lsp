@@ -152,7 +152,7 @@ impl<'a> DataFlexTreeCursor<'a> {
     }
 
     pub fn is_keyword<P: Fn(&str) -> bool>(&self, pred: P) -> bool {
-        if self.node().kind() == "keyword" {
+        if self.node().kind() == "keyword" || !self.node().is_named() {
             let mut keyword = self.doc.line_map.text_for_node(&self.node());
             keyword.make_ascii_lowercase();
             pred(&keyword)
